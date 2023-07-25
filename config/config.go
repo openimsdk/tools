@@ -15,9 +15,16 @@
 package config
 
 import (
+	"bytes"
+	"github.com/OpenIMSDK/tools/constant"
 	"github.com/OpenIMSDK/tools/discoveryregistry"
+	"github.com/OpenIMSDK/tools/utils"
 	"gopkg.in/yaml.v3"
 )
+
+var Version string
+
+var Config configStruct
 
 const ConfKey = "conf"
 
@@ -41,7 +48,7 @@ type POfflinePush struct {
 	Ext    string `yaml:"ext"`
 }
 
-type Config struct {
+type configStruct struct {
 	Zookeeper struct {
 		Schema   string   `yaml:"schema"`
 		ZkAddr   []string `yaml:"address"`
@@ -295,7 +302,7 @@ type notification struct {
 	ConversationSetPrivate NotificationConf `yaml:"conversationSetPrivate"`
 }
 
-func (c *Config) GetServiceNames() []string {
+func (c *configStruct) GetServiceNames() []string {
 	return []string{
 		c.RpcRegisterName.OpenImUserName,
 		c.RpcRegisterName.OpenImFriendName,
@@ -309,7 +316,7 @@ func (c *Config) GetServiceNames() []string {
 	}
 }
 
-func (c *Config) RegisterConf2Registry(registry discoveryregistry.SvcDiscoveryRegistry) error {
+func (c *configStruct) RegisterConf2Registry(registry discoveryregistry.SvcDiscoveryRegistry) error {
 	bytes, err := yaml.Marshal(c)
 	if err != nil {
 		return err
@@ -317,6 +324,31 @@ func (c *Config) RegisterConf2Registry(registry discoveryregistry.SvcDiscoveryRe
 	return registry.RegisterConf2Registry(ConfKey, bytes)
 }
 
-func (c *Config) GetConfFromRegistry(registry discoveryregistry.SvcDiscoveryRegistry) ([]byte, error) {
+func (c *configStruct) GetConfFromRegistry(registry discoveryregistry.SvcDiscoveryRegistry) ([]byte, error) {
 	return registry.GetConfFromRegistry(ConfKey)
+}
+
+func (c *configStruct) EncodeConfig() []byte {
+	buf := bytes.NewBuffer(nil)
+	if err := yaml.NewEncoder(buf).Encode(c); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func GetOptionsByNotification(cfg NotificationConf) utils.Options {
+	opts := utils.NewOptions()
+	if cfg.UnreadCount {
+		opts = utils.WithOptions(opts, utils.WithUnreadCount(true))
+	}
+	if cfg.OfflinePush.Enable {
+		opts = utils.WithOptions(opts, utils.WithOfflinePush(true))
+	}
+	switch cfg.ReliabilityLevel {
+	case constant.UnreliableNotification:
+	case constant.ReliableNotificationNoMsg:
+		opts = utils.WithOptions(opts, utils.WithHistory(true), utils.WithPersistent())
+	}
+	opts = utils.WithOptions(opts, utils.WithSendMsg(cfg.IsSendMsg))
+	return opts
 }

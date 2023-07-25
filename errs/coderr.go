@@ -15,7 +15,7 @@
 package errs
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -97,7 +97,12 @@ func (e *codeError) Is(err error, loose ...bool) bool {
 }
 
 func (e *codeError) Error() string {
-	return fmt.Sprintf("%s", e.msg)
+	v := make([]string, 0, 3)
+	v = append(v, strconv.Itoa(e.code), e.msg)
+	if e.detail != "" {
+		v = append(v, e.detail)
+	}
+	return strings.Join(v, " ")
 }
 
 func Unwrap(err error) error {
