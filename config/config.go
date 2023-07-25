@@ -14,15 +14,6 @@
 
 package config
 
-import (
-	_ "embed"
-)
-
-//go:embed version
-var Version string
-
-var Config config
-
 type CallBackConfig struct {
 	Enable                 bool  `yaml:"enable"`
 	CallbackTimeOut        int   `yaml:"timeout"`
@@ -43,7 +34,7 @@ type POfflinePush struct {
 	Ext    string `yaml:"ext"`
 }
 
-type config struct {
+type Config struct {
 	Zookeeper struct {
 		Schema   string   `yaml:"schema"`
 		ZkAddr   []string `yaml:"address"`
@@ -297,16 +288,16 @@ type notification struct {
 	ConversationSetPrivate NotificationConf `yaml:"conversationSetPrivate"`
 }
 
-func GetServiceNames() []string {
+func (c *Config) GetServiceNames() []string {
 	return []string{
-		Config.RpcRegisterName.OpenImUserName,
-		Config.RpcRegisterName.OpenImFriendName,
-		Config.RpcRegisterName.OpenImMsgName,
-		Config.RpcRegisterName.OpenImPushName,
-		Config.RpcRegisterName.OpenImMessageGatewayName,
-		Config.RpcRegisterName.OpenImGroupName,
-		Config.RpcRegisterName.OpenImAuthName,
-		Config.RpcRegisterName.OpenImConversationName,
-		Config.RpcRegisterName.OpenImThirdName,
+		c.RpcRegisterName.OpenImUserName,
+		c.RpcRegisterName.OpenImFriendName,
+		c.RpcRegisterName.OpenImMsgName,
+		c.RpcRegisterName.OpenImPushName,
+		c.RpcRegisterName.OpenImMessageGatewayName,
+		c.RpcRegisterName.OpenImGroupName,
+		c.RpcRegisterName.OpenImAuthName,
+		c.RpcRegisterName.OpenImConversationName,
+		c.RpcRegisterName.OpenImThirdName,
 	}
 }
