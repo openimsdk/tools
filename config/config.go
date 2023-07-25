@@ -14,6 +14,13 @@
 
 package config
 
+import (
+	"github.com/OpenIMSDK/tools/discoveryregistry"
+	"gopkg.in/yaml.v3"
+)
+
+const ConfKey = "conf"
+
 type CallBackConfig struct {
 	Enable                 bool  `yaml:"enable"`
 	CallbackTimeOut        int   `yaml:"timeout"`
@@ -300,4 +307,16 @@ func (c *Config) GetServiceNames() []string {
 		c.RpcRegisterName.OpenImConversationName,
 		c.RpcRegisterName.OpenImThirdName,
 	}
+}
+
+func (c *Config) RegisterConf2Registry(registry discoveryregistry.SvcDiscoveryRegistry) error {
+	bytes, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return registry.RegisterConf2Registry(ConfKey, bytes)
+}
+
+func (c *Config) GetConfFromRegistry(registry discoveryregistry.SvcDiscoveryRegistry) ([]byte, error) {
+	return registry.GetConfFromRegistry(ConfKey)
 }
