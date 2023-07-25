@@ -317,11 +317,11 @@ func (c *configStruct) GetServiceNames() []string {
 }
 
 func (c *configStruct) RegisterConf2Registry(registry discoveryregistry.SvcDiscoveryRegistry) error {
-	bytes, err := yaml.Marshal(c)
+	data, err := yaml.Marshal(c)
 	if err != nil {
 		return err
 	}
-	return registry.RegisterConf2Registry(ConfKey, bytes)
+	return registry.RegisterConf2Registry(ConfKey, data)
 }
 
 func (c *configStruct) GetConfFromRegistry(registry discoveryregistry.SvcDiscoveryRegistry) ([]byte, error) {
