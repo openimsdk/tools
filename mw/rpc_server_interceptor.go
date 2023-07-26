@@ -17,22 +17,17 @@ package mw
 import (
 	"context"
 	"fmt"
-	"math"
-	"runtime"
-	"strings"
-
 	"github.com/OpenIMSDK/tools/checker"
+	"math"
 
 	"github.com/OpenIMSDK/tools/constant"
 
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"github.com/OpenIMSDK/protocol/errinfo"
-	"github.com/OpenIMSDK/tools/config"
 	"github.com/OpenIMSDK/tools/errs"
 	"github.com/OpenIMSDK/tools/log"
 	"github.com/OpenIMSDK/tools/mw/specialerror"
@@ -130,43 +125,44 @@ func RpcServerInterceptor(
 		code = errs.ServerInternalError
 	}
 	grpcStatus := status.New(codes.Code(code), codeErr.Msg())
-	var errInfo *errinfo.ErrorInfo
-	if config.Config.Log.WithStack {
-		if unwrap != err {
-			sti, ok := err.(interface{ StackTrace() errors.StackTrace })
-			if ok {
-				log.ZWarn(
-					ctx,
-					"rpc server resp",
-					err,
-					"funcName",
-					funcName,
-					"unwrap",
-					unwrap.Error(),
-					"stack",
-					fmt.Sprintf("%+v", err),
-				)
-				if fs := sti.StackTrace(); len(fs) > 0 {
-					pc := uintptr(fs[0])
-					fn := runtime.FuncForPC(pc)
-					file, line := fn.FileLine(pc)
-					errInfo = &errinfo.ErrorInfo{
-						Path:  file,
-						Line:  uint32(line),
-						Name:  fn.Name(),
-						Cause: unwrap.Error(),
-						Warp:  nil,
-					}
-					if arr := strings.Split(err.Error(), ": "); len(arr) > 1 {
-						errInfo.Warp = arr[:len(arr)-1]
-					}
-				}
-			}
-		}
-	}
-	if errInfo == nil {
-		errInfo = &errinfo.ErrorInfo{Cause: err.Error()}
-	}
+	//var errInfo *errinfo.ErrorInfo
+	//if config.Config.Log.WithStack {
+	//	if unwrap != err {
+	//		sti, ok := err.(interface{ StackTrace() errors.StackTrace })
+	//		if ok {
+	//			log.ZWarn(
+	//				ctx,
+	//				"rpc server resp",
+	//				err,
+	//				"funcName",
+	//				funcName,
+	//				"unwrap",
+	//				unwrap.Error(),
+	//				"stack",
+	//				fmt.Sprintf("%+v", err),
+	//			)
+	//			if fs := sti.StackTrace(); len(fs) > 0 {
+	//				pc := uintptr(fs[0])
+	//				fn := runtime.FuncForPC(pc)
+	//				file, line := fn.FileLine(pc)
+	//				errInfo = &errinfo.ErrorInfo{
+	//					Path:  file,
+	//					Line:  uint32(line),
+	//					Name:  fn.Name(),
+	//					Cause: unwrap.Error(),
+	//					Warp:  nil,
+	//				}
+	//				if arr := strings.Split(err.Error(), ": "); len(arr) > 1 {
+	//					errInfo.Warp = arr[:len(arr)-1]
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
+	//if errInfo == nil {
+	//	errInfo = &errinfo.ErrorInfo{Cause: err.Error()}
+	//}
+	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
 		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)

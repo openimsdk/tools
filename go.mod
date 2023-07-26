@@ -25,7 +25,7 @@ require (
 )
 
 require (
-	github.com/OpenIMSDK/protocol v0.0.0-20230725064305-11f0568fe5e9
+	github.com/OpenIMSDK/protocol v0.0.1
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

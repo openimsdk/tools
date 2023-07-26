@@ -23,7 +23,6 @@ import (
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 
-	"github.com/OpenIMSDK/tools/config"
 	"github.com/OpenIMSDK/tools/constant"
 	"github.com/OpenIMSDK/tools/mcontext"
 
@@ -53,8 +52,9 @@ func InitFromConfig(
 	isJson bool,
 	logLocation string,
 	rotateCount uint,
+	rotationTime uint,
 ) error {
-	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation, rotateCount)
+	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime)
 	if err != nil {
 		return err
 	}
@@ -98,6 +98,7 @@ type ZapLogger struct {
 	level            zapcore.Level
 	loggerName       string
 	loggerPrefixName string
+	rotationTime     time.Duration
 }
 
 func NewZapLogger(
@@ -107,6 +108,7 @@ func NewZapLogger(
 	isJson bool,
 	logLocation string,
 	rotateCount uint,
+	rotationTime uint,
 ) (*ZapLogger, error) {
 	zapConfig := zap.Config{
 		Level: zap.NewAtomicLevelAt(logLevelMap[logLevel]),
@@ -122,7 +124,7 @@ func NewZapLogger(
 	// if isStdout {
 	// 	zapConfig.OutputPaths = append(zapConfig.OutputPaths, "stdout", "stderr")
 	// }
-	zl := &ZapLogger{level: logLevelMap[logLevel], loggerName: loggerName, loggerPrefixName: loggerPrefixName}
+	zl := &ZapLogger{level: logLevelMap[logLevel], loggerName: loggerName, loggerPrefixName: loggerPrefixName, rotationTime: time.Duration(rotationTime) * time.Hour}
 	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
 	if err != nil {
 		return nil, err
@@ -200,7 +202,7 @@ func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) 
 func (l *ZapLogger) getWriter(logLocation string, rorateCount uint) (zapcore.WriteSyncer, error) {
 	logf, err := rotatelogs.New(logLocation+sp+l.loggerPrefixName+".%Y-%m-%d",
 		rotatelogs.WithRotationCount(rorateCount),
-		rotatelogs.WithRotationTime(time.Duration(config.Config.Log.RotationTime)*time.Hour),
+		rotatelogs.WithRotationTime(l.rotationTime),
 	)
 	if err != nil {
 		return nil, err

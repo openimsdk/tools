@@ -16,7 +16,7 @@ package config
 
 import (
 	"bytes"
-	"github.com/OpenIMSDK/tools/constant"
+	"github.com/OpenIMSDK/protocol/constant"
 	"github.com/OpenIMSDK/tools/discoveryregistry"
 	"github.com/OpenIMSDK/tools/utils"
 	"gopkg.in/yaml.v3"
