@@ -20,7 +20,7 @@ import (
 	"github.com/OpenIMSDK/tools/checker"
 	"math"
 
-	"github.com/OpenIMSDK/tools/constant"
+	"github.com/OpenIMSDK/protocol/constant"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

@@ -54,7 +54,7 @@ func GormIn[E any](db **gorm.DB, field string, es []E) {
 	if len(es) == 0 {
 		return
 	}
-	*db = (*db).Where(field+" in (?)", es)
+	*db = (*db).Where(field+" in ?", es)
 }
 
 func MapCount(db *gorm.DB, field string) (map[string]uint32, error) {

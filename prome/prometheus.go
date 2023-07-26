@@ -24,10 +24,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var Enable bool
+
 func StartPrometheusSrv(prometheusPort int) error {
+	if !Enable {
+		return nil
+	}
 	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(":"+strconv.Itoa(prometheusPort), nil)
-	return err
+	return http.ListenAndServe(":"+strconv.Itoa(prometheusPort), nil)
 }
 
 func PrometheusHandler() gin.HandlerFunc {
@@ -60,25 +64,33 @@ func PrometheusMiddleware(c *gin.Context) {
 }
 
 func Inc(counter prometheus.Counter) {
-	if counter != nil {
-		counter.Inc()
+	if Enable {
+		if counter != nil {
+			counter.Inc()
+		}
 	}
 }
 
 func Add(counter prometheus.Counter, add int) {
-	if counter != nil {
-		counter.Add(float64(add))
+	if Enable {
+		if counter != nil {
+			counter.Add(float64(add))
+		}
 	}
 }
 
 func GaugeInc(gauges prometheus.Gauge) {
-	if gauges != nil {
-		gauges.Inc()
+	if Enable {
+		if gauges != nil {
+			gauges.Inc()
+		}
 	}
 }
 
 func GaugeDec(gauges prometheus.Gauge) {
-	if gauges != nil {
-		gauges.Dec()
+	if Enable {
+		if gauges != nil {
+			gauges.Dec()
+		}
 	}
 }
