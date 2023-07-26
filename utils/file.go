@@ -15,15 +15,9 @@
 package utils
 
 import (
-	"fmt"
-	"math/rand"
 	"os"
-	"path"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/OpenIMSDK/tools/constant"
 )
 
 const (
@@ -55,15 +49,15 @@ func MkDir(path string) error {
 	return os.MkdirAll(path, os.ModePerm)
 }
 
-func GetNewFileNameAndContentType(fileName string, fileType int) (string, string) {
-	suffix := path.Ext(fileName)
-	newName := fmt.Sprintf("%d-%d%s", time.Now().UnixNano(), rand.Int(), fileName)
-	contentType := ""
-	if fileType == constant.ImageType {
-		contentType = "image/" + suffix[1:]
-	}
-	return newName, contentType
-}
+//func GetNewFileNameAndContentType(fileName string, fileType int) (string, string) {
+//	suffix := path.Ext(fileName)
+//	newName := fmt.Sprintf("%d-%d%s", time.Now().UnixNano(), rand.Int(), fileName)
+//	contentType := ""
+//	if fileType == constant.ImageType {
+//		contentType = "image/" + suffix[1:]
+//	}
+//	return newName, contentType
+//}
 
 func ByteSize(bytes uint64) string {
 	unit := ""

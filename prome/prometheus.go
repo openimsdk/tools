@@ -19,20 +19,15 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/OpenIMSDK/tools/config"
-
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func StartPrometheusSrv(prometheusPort int) error {
-	if config.Config.Prometheus.Enable {
-		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(":"+strconv.Itoa(prometheusPort), nil)
-		return err
-	}
-	return nil
+	http.Handle("/metrics", promhttp.Handler())
+	err := http.ListenAndServe(":"+strconv.Itoa(prometheusPort), nil)
+	return err
 }
 
 func PrometheusHandler() gin.HandlerFunc {
@@ -65,33 +60,25 @@ func PrometheusMiddleware(c *gin.Context) {
 }
 
 func Inc(counter prometheus.Counter) {
-	if config.Config.Prometheus.Enable {
-		if counter != nil {
-			counter.Inc()
-		}
+	if counter != nil {
+		counter.Inc()
 	}
 }
 
 func Add(counter prometheus.Counter, add int) {
-	if config.Config.Prometheus.Enable {
-		if counter != nil {
-			counter.Add(float64(add))
-		}
+	if counter != nil {
+		counter.Add(float64(add))
 	}
 }
 
 func GaugeInc(gauges prometheus.Gauge) {
-	if config.Config.Prometheus.Enable {
-		if gauges != nil {
-			gauges.Inc()
-		}
+	if gauges != nil {
+		gauges.Inc()
 	}
 }
 
 func GaugeDec(gauges prometheus.Gauge) {
-	if config.Config.Prometheus.Enable {
-		if gauges != nil {
-			gauges.Dec()
-		}
+	if gauges != nil {
+		gauges.Dec()
 	}
 }

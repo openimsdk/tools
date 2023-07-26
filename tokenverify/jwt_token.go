@@ -15,15 +15,11 @@
 package tokenverify
 
 import (
-	"context"
-	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/OpenIMSDK/tools/config"
 	"github.com/OpenIMSDK/tools/errs"
-	"github.com/OpenIMSDK/tools/mcontext"
 	"github.com/OpenIMSDK/tools/utils"
 )
 
@@ -47,14 +43,8 @@ func BuildClaims(uid string, platformID int, ttl int64) Claims {
 	}
 }
 
-func secret() jwt.Keyfunc {
-	return func(token *jwt.Token) (interface{}, error) {
-		return []byte(config.Config.Secret), nil
-	}
-}
-
-func GetClaimFromToken(tokensString string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokensString, &Claims{}, secret())
+func GetClaimFromToken(tokensString string, secretFunc jwt.Keyfunc) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokensString, &Claims{}, secretFunc)
 	if err != nil {
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
@@ -75,48 +65,4 @@ func GetClaimFromToken(tokensString string) (*Claims, error) {
 		}
 		return nil, utils.Wrap(errs.ErrTokenUnknown, "")
 	}
-}
-
-func CheckAccessV3(ctx context.Context, ownerUserID string) (err error) {
-	opUserID := mcontext.GetOpUserID(ctx)
-	if utils.IsContain(opUserID, config.Config.Manager.UserID) {
-		return nil
-	}
-	if opUserID == ownerUserID {
-		return nil
-	}
-	return errs.ErrNoPermission.Wrap(utils.GetSelfFuncName())
-}
-
-func IsAppManagerUid(ctx context.Context) bool {
-	return utils.IsContain(mcontext.GetOpUserID(ctx), config.Config.Manager.UserID)
-}
-
-func CheckAdmin(ctx context.Context) error {
-	if utils.IsContain(mcontext.GetOpUserID(ctx), config.Config.Manager.UserID) {
-		return nil
-	}
-	return errs.ErrNoPermission.Wrap(fmt.Sprintf("user %s is not admin userID", mcontext.GetOpUserID(ctx)))
-}
-
-func ParseRedisInterfaceToken(redisToken interface{}) (*Claims, error) {
-	return GetClaimFromToken(string(redisToken.([]uint8)))
-}
-
-func IsManagerUserID(opUserID string) bool {
-	return utils.IsContain(opUserID, config.Config.Manager.UserID)
-}
-
-func WsVerifyToken(token, userID string, platformID int) error {
-	claim, err := GetClaimFromToken(token)
-	if err != nil {
-		return err
-	}
-	if claim.UserID != userID {
-		return errs.ErrTokenInvalid.Wrap(fmt.Sprintf("token uid %s != userID %s", claim.UserID, userID))
-	}
-	if claim.PlatformID != platformID {
-		return errs.ErrTokenInvalid.Wrap(fmt.Sprintf("token platform %d != %d", claim.PlatformID, platformID))
-	}
-	return nil
 }

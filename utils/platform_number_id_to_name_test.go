@@ -17,7 +17,7 @@ package utils
 import (
 	"testing"
 
-	"github.com/OpenIMSDK/tools/constant"
+	"github.com/OpenIMSDK/protocol/constant"
 
 	"github.com/stretchr/testify/assert"
 )
