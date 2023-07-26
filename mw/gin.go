@@ -20,8 +20,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/OpenIMSDK/protocol/constant"
 	"github.com/OpenIMSDK/tools/apiresp"
-	"github.com/OpenIMSDK/tools/constant"
 	"github.com/OpenIMSDK/tools/errs"
 )
 

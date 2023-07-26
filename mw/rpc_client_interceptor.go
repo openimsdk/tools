@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/OpenIMSDK/protocol/constant"
 	"github.com/OpenIMSDK/protocol/errinfo"
-	"github.com/OpenIMSDK/tools/constant"
 	"github.com/OpenIMSDK/tools/errs"
 	"github.com/OpenIMSDK/tools/log"
 )
