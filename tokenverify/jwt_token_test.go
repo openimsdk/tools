@@ -20,13 +20,11 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/OpenIMSDK/protocol/constant"
-	"github.com/OpenIMSDK/tools/config"
 )
 
 var secret = "OpenIM_server"
 
 func Test_ParseToken(t *testing.T) {
-	config.Config.Secret = "OpenIM_server"
 	claims1 := BuildClaims("123456", constant.AndroidPadPlatformID, 10)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims1)
 	tokenString, err := token.SignedString([]byte(secret))
