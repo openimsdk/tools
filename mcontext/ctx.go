@@ -17,7 +17,7 @@ package mcontext
 import (
 	"context"
 
-	"github.com/OpenIMSDK/tools/constant"
+	"github.com/OpenIMSDK/protocol/constant"
 	"github.com/OpenIMSDK/tools/errs"
 )
 
