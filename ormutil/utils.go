@@ -15,7 +15,6 @@
 package ormutil
 
 import (
-	"fmt"
 	"strings"
 
 	"gorm.io/gorm"
@@ -38,14 +37,13 @@ func GormPage[E any](db *gorm.DB, pageNumber, showNumber int32) (uint32, []*E, e
 
 func GormSearch[E any](db *gorm.DB, fields []string, value string, pageNumber, showNumber int32) (uint32, []*E, error) {
 	if len(fields) > 0 && value != "" {
-		val := "%" + value + "%"
 		arr := make([]string, 0, len(fields))
-		vals := make([]interface{}, 0, len(fields))
+		values := make([]interface{}, 0, len(fields))
 		for _, field := range fields {
-			arr = append(arr, fmt.Sprintf("`%s` like ?", field))
-			vals = append(vals, val)
+			arr = append(arr, "`"+field+"` like concat('%',?,'%')")
+			values = append(values, value)
 		}
-		db = db.Where(strings.Join(arr, " or "), vals...)
+		db = db.Where(strings.Join(arr, " or "), values...)
 	}
 	return GormPage[E](db, pageNumber, showNumber)
 }
@@ -54,7 +52,7 @@ func GormIn[E any](db **gorm.DB, field string, es []E) {
 	if len(es) == 0 {
 		return
 	}
-	*db = (*db).Where(field+" in ?", es)
+	*db = (*db).Where("`"+field+"` in ?", es)
 }
 
 func MapCount(db *gorm.DB, field string) (map[string]uint32, error) {
@@ -62,7 +60,7 @@ func MapCount(db *gorm.DB, field string) (map[string]uint32, error) {
 		ID    string `gorm:"column:id"`
 		Count uint32 `gorm:"column:count"`
 	}
-	if err := db.Select(field + " as id, count(1) as count").Group(field).Find(&items).Error; err != nil {
+	if err := db.Select("`" + field + "` as id, count(1) as count").Group(field).Find(&items).Error; err != nil {
 		return nil, errs.Wrap(err)
 	}
 	m := make(map[string]uint32)
