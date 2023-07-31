@@ -38,7 +38,7 @@ var (
 func (s *ZkClient) watch(ctx context.Context) {
 	select {
 	case <-ctx.Done():
-		log.ZDebug(context.Background(), "zk watch ctx done")
+		s.logger.Printf("zk watch ctx done")
 		return
 	case event := <-s.eventChan:
 		s.logger.Printf("zk eventChan recv new event: %+v", event)
