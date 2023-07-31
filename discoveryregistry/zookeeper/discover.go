@@ -44,15 +44,22 @@ func (s *ZkClient) watch(ctx context.Context) {
 		log.ZDebug(context.Background(), "zk recv event", "event", event)
 		switch event.Type {
 		case zk.EventSession:
-			if event.State == zk.StateHasSession && s.isRegistered {
-				s.logger.Printf("zk session event stateHasSession: %+v, client prepare to create new temp node", event)
-				node, err := s.CreateTempNode(s.rpcRegisterName, s.rpcRegisterAddr)
-				if err != nil {
-					s.logger.Printf("zk session event stateHasSession: %+v, create temp node error: %v", event, err)
-				} else {
-					s.node = node
+			switch event.State {
+			case zk.StateHasSession:
+				if s.isRegistered && !s.isStateDisconnected {
+					s.logger.Printf("zk session event stateHasSession: %+v, client prepare to create new temp node", event)
+					node, err := s.CreateTempNode(s.rpcRegisterName, s.rpcRegisterAddr)
+					if err != nil {
+						s.logger.Printf("zk session event stateHasSession: %+v, create temp node error: %v", event, err)
+					} else {
+						s.node = node
+					}
 				}
-			} else {
+			case zk.StateDisconnected:
+				s.isStateDisconnected = true
+			case zk.StateConnected:
+				s.isStateDisconnected = false
+			default:
 				s.logger.Printf("zk session event: %+v", event)
 			}
 		case zk.EventNodeChildrenChanged:

@@ -55,11 +55,11 @@ type ZkClient struct {
 	lock    sync.Locker
 	options []grpc.DialOption
 
-	resolvers  map[string]*Resolver
-	localConns map[string][]grpc.ClientConnInterface
-	cancel     context.CancelFunc
-
-	balancerName string
+	resolvers           map[string]*Resolver
+	localConns          map[string][]grpc.ClientConnInterface
+	cancel              context.CancelFunc
+	isStateDisconnected bool
+	balancerName        string
 
 	logger Logger
 }
