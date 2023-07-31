@@ -17,6 +17,7 @@ package zookeeper
 import (
 	"context"
 	"net"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
@@ -148,7 +149,7 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 }
 
 func (s *ZkClient) CloseZK() {
-	s.logger.Printf("close zk called")
+	s.logger.Printf("close zk called: %+v", debug.Stack())
 	s.cancel()
 	s.ticker.Stop()
 	s.conn.Close()
