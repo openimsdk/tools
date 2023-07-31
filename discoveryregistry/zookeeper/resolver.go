@@ -37,8 +37,6 @@ func (r *Resolver) ResolveNowZK(o resolver.ResolveNowOptions) {
 		"start resolve now",
 		"target",
 		r.target,
-		"cc",
-		r.cc.UpdateState,
 		"serviceName",
 		strings.TrimLeft(r.target.URL.Path, "/"),
 	)
