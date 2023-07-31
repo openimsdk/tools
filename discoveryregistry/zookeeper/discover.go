@@ -36,46 +36,48 @@ var (
 )
 
 func (s *ZkClient) watch(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		s.logger.Printf("zk watch ctx done")
-		return
-	case event := <-s.eventChan:
-		s.logger.Printf("zk eventChan recv new event: %+v", event)
-		switch event.Type {
-		case zk.EventSession:
-			switch event.State {
-			case zk.StateHasSession:
-				if s.isRegistered && !s.isStateDisconnected {
-					s.logger.Printf("zk session event stateHasSession: %+v, client prepare to create new temp node", event)
-					node, err := s.CreateTempNode(s.rpcRegisterName, s.rpcRegisterAddr)
-					if err != nil {
-						s.logger.Printf("zk session event stateHasSession: %+v, create temp node error: %v", event, err)
-					} else {
-						s.node = node
+	for {
+		select {
+		case <-ctx.Done():
+			s.logger.Printf("zk watch ctx done")
+			return
+		case event := <-s.eventChan:
+			s.logger.Printf("zk eventChan recv new event: %+v", event)
+			switch event.Type {
+			case zk.EventSession:
+				switch event.State {
+				case zk.StateHasSession:
+					if s.isRegistered && !s.isStateDisconnected {
+						s.logger.Printf("zk session event stateHasSession: %+v, client prepare to create new temp node", event)
+						node, err := s.CreateTempNode(s.rpcRegisterName, s.rpcRegisterAddr)
+						if err != nil {
+							s.logger.Printf("zk session event stateHasSession: %+v, create temp node error: %v", event, err)
+						} else {
+							s.node = node
+						}
 					}
+				case zk.StateDisconnected:
+					s.isStateDisconnected = true
+				case zk.StateConnected:
+					s.isStateDisconnected = false
+				default:
+					s.logger.Printf("zk session event: %+v", event)
 				}
-			case zk.StateDisconnected:
-				s.isStateDisconnected = true
-			case zk.StateConnected:
-				s.isStateDisconnected = false
-			default:
-				s.logger.Printf("zk session event: %+v", event)
+			case zk.EventNodeChildrenChanged:
+				s.logger.Printf("zk event: %s", event.Path)
+				l := strings.Split(event.Path, "/")
+				if len(l) > 1 {
+					serviceName := l[len(l)-1]
+					s.lock.Lock()
+					s.flushResolverAndDeleteLocal(serviceName)
+					s.lock.Unlock()
+				}
+				s.logger.Printf("zk event handle success: %s", event.Path)
+			case zk.EventNodeDataChanged:
+			case zk.EventNodeCreated:
+			case zk.EventNodeDeleted:
+			case zk.EventNotWatching:
 			}
-		case zk.EventNodeChildrenChanged:
-			s.logger.Printf("zk event: %s", event.Path)
-			l := strings.Split(event.Path, "/")
-			if len(l) > 1 {
-				serviceName := l[len(l)-1]
-				s.lock.Lock()
-				s.flushResolverAndDeleteLocal(serviceName)
-				s.lock.Unlock()
-			}
-			s.logger.Printf("zk event handle success: %s", event.Path)
-		case zk.EventNodeDataChanged:
-		case zk.EventNodeCreated:
-		case zk.EventNodeDeleted:
-		case zk.EventNotWatching:
 		}
 	}
 }
