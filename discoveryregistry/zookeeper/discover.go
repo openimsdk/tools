@@ -38,6 +38,7 @@ var (
 func (s *ZkClient) watch() {
 	for {
 		event := <-s.eventChan
+		log.ZDebug(context.Background(), "zk recv event", "event", event)
 		switch event.Type {
 		case zk.EventSession:
 			if event.State == zk.StateHasSession && s.isRegistered {
