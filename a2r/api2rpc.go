@@ -39,7 +39,7 @@ func Call[A, B, C any](
 		return
 	}
 	if err := checker.Validate(&req); err != nil {
-		apiresp.GinError(c, errs.ErrArgs.Wrap(err.Error())) // 参数校验失败
+		apiresp.GinError(c, err) // 参数校验失败
 		return
 	}
 	data, err := rpc(client, c, &req)
