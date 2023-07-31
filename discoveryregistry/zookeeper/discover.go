@@ -35,9 +35,12 @@ var (
 	ErrConnIsNilButLocalNotNil = errors.New("conn is nil, but local is not nil")
 )
 
-func (s *ZkClient) watch() {
-	for {
-		event := <-s.eventChan
+func (s *ZkClient) watch(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		log.ZDebug(context.Background(), "zk watch ctx done")
+		return
+	case event := <-s.eventChan:
 		log.ZDebug(context.Background(), "zk recv event", "event", event)
 		switch event.Type {
 		case zk.EventSession:

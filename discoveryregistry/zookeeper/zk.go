@@ -15,6 +15,7 @@
 package zookeeper
 
 import (
+	"context"
 	"net"
 	"strconv"
 	"sync"
@@ -56,6 +57,7 @@ type ZkClient struct {
 
 	resolvers  map[string]*Resolver
 	localConns map[string][]grpc.ClientConnInterface
+	cancel     context.CancelFunc
 
 	balancerName string
 
@@ -111,6 +113,8 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 		resolvers:  make(map[string]*Resolver),
 		lock:       &sync.Mutex{},
 	}
+	baseCtx, cancel := context.WithCancel(context.Background())
+	client.cancel = cancel
 	client.ticker = time.NewTicker(defaultFreq)
 	for _, option := range options {
 		option(client)
@@ -138,12 +142,14 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 	}
 	resolver.Register(client)
 	go client.refresh()
-	go client.watch()
+	go client.watch(baseCtx)
 	time.Sleep(time.Millisecond * 50)
 	return client, nil
 }
 
 func (s *ZkClient) CloseZK() {
+	s.cancel()
+	s.ticker.Stop()
 	s.conn.Close()
 }
 
