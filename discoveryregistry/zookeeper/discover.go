@@ -17,7 +17,6 @@ package zookeeper
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -108,7 +107,7 @@ func (s *ZkClient) GetConnsRemote(serviceName string) (conns []resolver.Address,
 	return conns, nil
 }
 
-func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
+func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
 	s.logger.Printf("get conns from client, serviceName: %s", serviceName)
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -136,14 +135,16 @@ func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grp
 	return conns, nil
 }
 
-func (s *ZkClient) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
+func (s *ZkClient) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	newOpts := append(s.options, grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"LoadBalancingPolicy": "%s"}`, s.balancerName)))
 	s.logger.Printf("get conn from client, serviceName: %s", serviceName)
 	return grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", s.scheme, serviceName), append(newOpts, opts...)...)
 }
 
-func (s *ZkClient) CloseConn(conn grpc.ClientConnInterface) {
-	if closer, ok := conn.(io.Closer); ok {
-		closer.Close()
-	}
+func (s *ZkClient) GetSelfConnTarget() string {
+	return s.rpcRegisterAddr
+}
+
+func (s *ZkClient) CloseConn(conn *grpc.ClientConn) {
+	conn.Close()
 }

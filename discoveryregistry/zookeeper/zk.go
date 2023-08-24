@@ -56,7 +56,7 @@ type ZkClient struct {
 	options []grpc.DialOption
 
 	resolvers           map[string]*Resolver
-	localConns          map[string][]grpc.ClientConnInterface
+	localConns          map[string][]*grpc.ClientConn
 	cancel              context.CancelFunc
 	isStateDisconnected bool
 	balancerName        string
@@ -109,7 +109,7 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 		zkRoot:     "/",
 		scheme:     zkRoot,
 		timeout:    timeout,
-		localConns: make(map[string][]grpc.ClientConnInterface),
+		localConns: make(map[string][]*grpc.ClientConn),
 		resolvers:  make(map[string]*Resolver),
 		lock:       &sync.Mutex{},
 	}
@@ -228,6 +228,6 @@ func (s *ZkClient) AddOption(opts ...grpc.DialOption) {
 	s.options = append(s.options, opts...)
 }
 
-func (s *ZkClient) GetClientLocalConns() map[string][]grpc.ClientConnInterface {
+func (s *ZkClient) GetClientLocalConns() map[string][]*grpc.ClientConn {
 	return s.localConns
 }

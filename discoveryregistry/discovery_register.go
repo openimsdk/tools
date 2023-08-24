@@ -21,12 +21,13 @@ import (
 )
 
 type Conn interface {
-	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error)
-	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error)
+	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error)
+	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
+	GetSelfConnTarget() string
 	AddOption(opts ...grpc.DialOption)
-	CloseConn(conn grpc.ClientConnInterface)
+	CloseConn(conn *grpc.ClientConn)
 	// do not use this method for call rpc
-	GetClientLocalConns() map[string][]grpc.ClientConnInterface
+	GetClientLocalConns() map[string][]*grpc.ClientConn
 }
 
 type SvcDiscoveryRegistry interface {
