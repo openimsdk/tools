@@ -137,7 +137,7 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 	client.eventChan = eventChan
 	client.conn = conn
 	if err := client.ensureRoot(); err != nil {
-		client.CloseZK()
+		client.Close()
 		return nil, err
 	}
 	resolver.Register(client)
@@ -147,7 +147,7 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 	return client, nil
 }
 
-func (s *ZkClient) CloseZK() {
+func (s *ZkClient) Close() {
 	s.logger.Printf("close zk called")
 	s.cancel()
 	s.ticker.Stop()
