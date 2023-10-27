@@ -37,4 +37,5 @@ type SvcDiscoveryRegistry interface {
 	CreateRpcRootNodes(serviceNames []string) error
 	RegisterConf2Registry(key string, conf []byte) error
 	GetConfFromRegistry(key string) ([]byte, error)
+	Close()
 }
