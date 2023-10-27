@@ -72,10 +72,6 @@ func (s *ZkClient) Build(
 ) (resolver.Resolver, error) {
 	s.logger.Printf("build resolver: %+v, cc: %+v", target, cc.UpdateState)
 	serviceName := strings.TrimLeft(target.URL.Path, "/")
-	if oldResolver, ok := s.resolvers[serviceName]; ok {
-		s.logger.Printf("rpc resolver exist: %+v, cc: %+v, key: %s", target, cc.UpdateState, serviceName)
-		return oldResolver, nil
-	}
 	r := &Resolver{}
 	r.target = target
 	r.cc = cc
