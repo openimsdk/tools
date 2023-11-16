@@ -16,6 +16,7 @@ package utils
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -94,5 +95,88 @@ func TestCompleteAny(t *testing.T) {
 	}))
 
 	fmt.Printf("%+v\n", ok)
+}
+
+func TestStructFieldNotNilReplace(t *testing.T) {
+	type Req struct {
+		GroupID      string `json:"groupID"`
+		GroupName    string `json:"groupName"`
+		Notification string `json:"notification"`
+		Introduction string `json:"introduction"`
+		Count        int64  `json:"faceURL"`
+		OwnerUserID  string `json:"ownerUserID"`
+	}
+
+	tests := []struct {
+		name string
+		req  Req
+		resp Req
+		want Req
+	}{
+		{
+			name: "One by one conversion",
+			req: Req{
+				GroupID:      "groupID",
+				GroupName:    "groupName",
+				Notification: "notification",
+				Introduction: "introduction",
+				Count:        123,
+				OwnerUserID:  "ownerUserID",
+			},
+			resp: Req{
+				GroupID:      "ID",
+				GroupName:    "Name",
+				Notification: "notification",
+				Introduction: "introduction",
+				Count:        456,
+				OwnerUserID:  "ownerUserID",
+			},
+			want: Req{
+				GroupID:      "groupID",
+				GroupName:    "groupName",
+				Notification: "notification",
+				Introduction: "introduction",
+				Count:        123,
+				OwnerUserID:  "ownerUserID",
+			},
+		},
+		{
+			name: "Changing the values of some fields",
+			req: Req{
+				GroupID:      "groupID",
+				GroupName:    "groupName",
+				Notification: "",
+				Introduction: "",
+				Count:        123,
+				OwnerUserID:  "ownerUserID",
+			},
+			resp: Req{
+				GroupID:      "ID",
+				GroupName:    "Name",
+				Notification: "notification",
+				Introduction: "introduction",
+				Count:        456,
+				OwnerUserID:  "ownerUserID",
+			},
+			want: Req{
+				GroupID:      "groupID",
+				GroupName:    "groupName",
+				Notification: "notification",
+				Introduction: "introduction",
+				Count:        123,
+				OwnerUserID:  "ownerUserID",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			StructFieldNotNilReplace(&tt.resp, &tt.req)
+			fmt.Println(tt.resp)
+			if !reflect.DeepEqual(tt.want, tt.resp) {
+				t.Errorf("%v have a err,%v", tt.name, tt.want)
+			}
+		})
+	}
 
 }

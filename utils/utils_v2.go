@@ -16,6 +16,7 @@ package utils
 
 import (
 	"encoding/json"
+	"reflect"
 	"sort"
 )
 
@@ -531,6 +532,24 @@ func NotNilReplace[T any](old, new_ *T) {
 		return
 	}
 	*old = *new_
+}
+
+func StructFieldNotNilReplace(dest, src interface{}) {
+	destVal := reflect.ValueOf(dest).Elem()
+	srcVal := reflect.ValueOf(src).Elem()
+
+	for i := 0; i < destVal.NumField(); i++ {
+		destField := destVal.Field(i)
+		srcField := srcVal.Field(i)
+
+		// Check if the source field is valid and not nil
+		if srcField.IsValid() && !srcField.IsZero() {
+			// Check if the destination field can be set
+			if destField.CanSet() {
+				destField.Set(srcField)
+			}
+		}
+	}
 }
 
 func Batch[T any, V any](fn func(T) V, ts []T) []V {
