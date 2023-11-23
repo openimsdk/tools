@@ -16,32 +16,68 @@ package tx
 
 import (
 	"context"
+	"go.mongodb.org/mongo-driver/bson"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/mongo"
-
-	"github.com/OpenIMSDK/tools/utils"
 )
 
 func NewMongo(client *mongo.Client) CtxTx {
 	return &_Mongo{
-		client: client,
+		initialized: false,
+		lock:        &sync.Mutex{},
+		client:      client,
 	}
 }
 
 type _Mongo struct {
-	client *mongo.Client
+	initialized bool
+	lock        sync.Locker
+	client      *mongo.Client
+	tx          func(func(ctx context.Context) error) error
+}
+
+func (m *_Mongo) init(ctx context.Context) (err error) {
+	m.lock.Lock()
+	defer func() {
+		if err == nil {
+			m.initialized = true
+		}
+		m.lock.Unlock()
+	}()
+	if m.initialized {
+		return nil
+	}
+	var res map[string]any
+	if err := m.client.Database("admin").RunCommand(ctx, bson.M{"isMaster": 1}).Decode(&res); err != nil {
+		return err
+	}
+	_, allowTx := res["setName"]
+	if !allowTx {
+		return nil
+	}
+	m.tx = func(fn func(ctx context.Context) error) error {
+		sess, err := m.client.StartSession()
+		if err != nil {
+			return err
+		}
+		defer sess.EndSession(ctx)
+		_, err = sess.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
+			return nil, fn(sessCtx)
+		})
+		return err
+	}
+	return nil
 }
 
 func (m *_Mongo) Transaction(ctx context.Context, fn func(ctx context.Context) error) error {
-	sess, err := m.client.StartSession()
-	if err != nil {
-		return err
+	if !m.initialized {
+		if err := m.init(ctx); err != nil {
+			return err
+		}
 	}
-	sCtx := mongo.NewSessionContext(ctx, sess)
-	defer sess.EndSession(sCtx)
-	if err := fn(sCtx); err != nil {
-		_ = sess.AbortTransaction(sCtx)
-		return err
+	if m.tx == nil {
+		return fn(ctx)
 	}
-	return utils.Wrap(sess.CommitTransaction(sCtx), "")
+	return m.tx(fn)
 }
