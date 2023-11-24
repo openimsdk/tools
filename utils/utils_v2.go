@@ -542,11 +542,39 @@ func StructFieldNotNilReplace(dest, src interface{}) {
 		destField := destVal.Field(i)
 		srcField := srcVal.Field(i)
 
-		// Check if the source field is valid and not nil
-		if srcField.IsValid() && !srcField.IsZero() {
-			// Check if the destination field can be set
+		// Check if the source field is valid
+		if srcField.IsValid() {
+			// Check if the target field can be set
 			if destField.CanSet() {
-				destField.Set(srcField)
+				// Handling fields of slice type
+				if destField.Kind() == reflect.Slice && srcField.Kind() == reflect.Slice {
+					elemType := destField.Type().Elem()
+					// Check if a slice element is a pointer to a structure
+					if elemType.Kind() == reflect.Ptr && elemType.Elem().Kind() == reflect.Struct {
+						// Create a new slice to store the copied elements
+						newSlice := reflect.MakeSlice(destField.Type(), srcField.Len(), srcField.Cap())
+						for j := 0; j < srcField.Len(); j++ {
+							newElem := reflect.New(elemType.Elem())
+							// Recursive update, retaining non-zero values
+							StructFieldNotNilReplace(newElem.Interface(), srcField.Index(j).Interface())
+							// Checks if the field of the new element is zero-valued, and if so, preserves the value at the corresponding position in the original slice
+							for k := 0; k < newElem.Elem().NumField(); k++ {
+								if newElem.Elem().Field(k).IsZero() {
+									newElem.Elem().Field(k).Set(destField.Index(j).Elem().Field(k))
+								}
+							}
+							newSlice.Index(j).Set(newElem)
+						}
+						destField.Set(newSlice)
+					} else {
+						destField.Set(srcField)
+					}
+				} else {
+					// For non-sliced fields, update the source field if it is non-zero, otherwise keep the original value
+					if !srcField.IsZero() {
+						destField.Set(srcField)
+					}
+				}
 			}
 		}
 	}
