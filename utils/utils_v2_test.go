@@ -179,4 +179,105 @@ func TestStructFieldNotNilReplace(t *testing.T) {
 		})
 	}
 
+	type Req11 struct {
+		GroupID      *string `json:"groupID"`
+		GroupName    *string `json:"groupName"`
+		Notification *string `json:"notification"`
+		Introduction *string `json:"introduction"`
+		Count        *int64  `json:"faceURL"`
+		OwnerUserID  *string `json:"ownerUserID"`
+	}
+
+	type Req1 struct {
+		Re  []*Req
+		Re1 *Req
+		Re2 Req11
+	}
+	r := Req{
+		GroupID:      "groupID1",
+		GroupName:    "groupName2",
+		Notification: "1",
+		Introduction: "1",
+		Count:        123,
+		OwnerUserID:  "ownerUserID1",
+	}
+	tests1 := []struct {
+		name string
+		req  Req1
+		resp Req1
+		want Req1
+	}{
+		{
+			name: "name",
+			req: Req1{
+				Re: []*Req{
+					{
+						GroupID:      "groupID1",
+						GroupName:    "groupName2",
+						Notification: "1",
+						Introduction: "1",
+						Count:        123,
+						OwnerUserID:  "ownerUserID1",
+					},
+					{
+						GroupID:      "groupID2",
+						GroupName:    "groupName2",
+						Notification: "2",
+						Introduction: "2",
+						Count:        456,
+						OwnerUserID:  "ownerUserID2",
+					},
+				},
+				Re1: &r,
+				Re2: Req11{
+					GroupID:      &r.GroupID,
+					GroupName:    &r.GroupName,
+					Notification: &r.Notification,
+					Introduction: &r.Introduction,
+					Count:        &r.Count,
+					OwnerUserID:  &r.OwnerUserID,
+				},
+			},
+			resp: Req1{},
+			want: Req1{
+				Re: []*Req{
+					{
+						GroupID:      "groupID1",
+						GroupName:    "groupName2",
+						Notification: "1",
+						Introduction: "1",
+						Count:        123,
+						OwnerUserID:  "ownerUserID1",
+					},
+					{
+						GroupID:      "groupID2",
+						GroupName:    "groupName2",
+						Notification: "2",
+						Introduction: "2",
+						Count:        456,
+						OwnerUserID:  "ownerUserID2",
+					},
+				},
+				Re1: &r,
+				Re2: Req11{
+					GroupID:      &r.GroupID,
+					GroupName:    &r.GroupName,
+					Notification: &r.Notification,
+					Introduction: &r.Introduction,
+					Count:        &r.Count,
+					OwnerUserID:  &r.OwnerUserID,
+				},
+			},
+		},
+	}
+	for _, tt := range tests1 {
+		t.Run(tt.name, func(t *testing.T) {
+			StructFieldNotNilReplace(&tt.resp, &tt.req)
+			fmt.Println(tt.resp)
+			if !reflect.DeepEqual(tt.want, tt.resp) {
+				t.Errorf("%v have a err,%v", tt.name, tt.want)
+			}
+		})
+	}
+
 }
