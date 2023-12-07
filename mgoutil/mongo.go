@@ -29,16 +29,7 @@ func anes[T any](ts []T) []any {
 }
 
 func findOptionToCountOption(opts []*options.FindOptions) *options.CountOptions {
-	countOpt := options.Count()
-	for _, opt := range opts {
-		if opt.Skip != nil {
-			countOpt.SetSkip(*opt.Skip)
-		}
-		if opt.Limit != nil {
-			countOpt.SetLimit(*opt.Limit)
-		}
-	}
-	return countOpt
+	return options.Count()
 }
 
 func InsertMany[T any](ctx context.Context, coll *mongo.Collection, val []T, opts ...*options.InsertManyOptions) error {
