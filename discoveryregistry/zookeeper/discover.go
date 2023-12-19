@@ -106,7 +106,10 @@ func (s *ZkClient) GetConnsRemote(serviceName string) (conns []resolver.Address,
 	}
 	return conns, nil
 }
-
+func (s *ZkClient) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
+	log.ZWarn(ctx, "not impliment", errors.New("zkclinet not impliment GetUserIdHashGatewayHost method"))
+	return "", nil
+}
 func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
 	s.logger.Printf("get conns from client, serviceName: %s", serviceName)
 	s.lock.Lock()

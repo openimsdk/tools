@@ -28,6 +28,7 @@ type Conn interface {
 	CloseConn(conn *grpc.ClientConn)
 	// do not use this method for call rpc
 	GetClientLocalConns() map[string][]*grpc.ClientConn
+	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error)
 }
 
 type SvcDiscoveryRegistry interface {
