@@ -229,16 +229,25 @@ func (l *ZapLogger) ToZap() *zap.SugaredLogger {
 }
 
 func (l *ZapLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	if l.level > zapcore.DebugLevel {
+		return
+	}
 	keysAndValues = l.kvAppend(ctx, keysAndValues)
 	l.zap.Debugw(msg, keysAndValues...)
 }
 
 func (l *ZapLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	if l.level > zapcore.InfoLevel {
+		return
+	}
 	keysAndValues = l.kvAppend(ctx, keysAndValues)
 	l.zap.Infow(msg, keysAndValues...)
 }
 
 func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValues ...interface{}) {
+	if l.level > zapcore.WarnLevel {
+		return
+	}
 	if err != nil {
 		keysAndValues = append(keysAndValues, "error", err.Error())
 	}
@@ -247,6 +256,9 @@ func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValu
 }
 
 func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndValues ...interface{}) {
+	if l.level > zapcore.ErrorLevel {
+		return
+	}
 	if err != nil {
 		keysAndValues = append(keysAndValues, "error", err.Error())
 	}
