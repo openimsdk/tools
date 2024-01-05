@@ -160,11 +160,19 @@ Connected:
 	client.zkRoot += zkRoot
 	client.eventChan = eventChan
 	client.conn = conn
-	time.Sleep(time.Second * 5)
-	if err := client.ensureRoot(); err != nil {
-		client.Close()
-		log.ZError(context.Background(), "zk client ensure root bug", err)
-		return nil, err
+
+	var errZK error
+	for i := 0; i < 300; i++ {
+		if errZK = client.ensureRoot(); errZK != nil {
+			log.ZWarn(context.Background(), "zk client ensure root bug: ", errZK, "try: ", i)
+			time.Sleep(time.Second * 1)
+		} else {
+			break
+		}
+	}
+	if errZK != nil {
+		log.ZError(context.Background(), "zk client ensure root bug", errZK)
+		return nil, errZK
 	}
 	resolver.Register(client)
 	go client.refresh()
