@@ -22,6 +22,9 @@ import (
 
 // SliceSub a中存在,b中不存在 (a-b)
 func SliceSub[E comparable](a, b []E) []E {
+	if len(b) == 0 {
+		return a
+	}
 	k := make(map[E]struct{})
 	for i := 0; i < len(b); i++ {
 		k[b[i]] = struct{}{}
