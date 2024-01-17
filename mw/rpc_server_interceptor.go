@@ -46,7 +46,6 @@ func RpcServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (resp interface{}, err error) {
-	log.ZDebug(ctx, "rpc server req", "req", rpcString(req))
 	//defer func() {
 	//	if r := recover(); r != nil {
 	// 		log.ZError(ctx, "rpc panic", nil, "FullMethod", info.FullMethod, "type:", fmt.Sprintf("%T", r), "panic:", r)
@@ -71,6 +70,7 @@ func RpcServerInterceptor(
 	//	}
 	//}()
 	funcName := info.FullMethod
+	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.New(codes.InvalidArgument, "missing metadata").Err()
@@ -101,7 +101,6 @@ func RpcServerInterceptor(
 	if opts := md.Get(constant.ConnID); len(opts) == 1 {
 		ctx = context.WithValue(ctx, constant.ConnID, opts[0])
 	}
-	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
 	resp, err = func() (interface{}, error) {
 		if err := checker.Validate(req); err != nil {
 			return nil, err
