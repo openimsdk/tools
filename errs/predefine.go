@@ -58,7 +58,9 @@ var (
 
 	ErrConnOverMaxNumLimit = NewCodeError(ConnOverMaxNumLimit, "ConnOverMaxNumLimit")
 
-	ErrConnArgsErr = NewCodeError(ConnArgsErr, "args err, need token, sendID, platformID")
+	ErrConnArgsErr          = NewCodeError(ConnArgsErr, "args err, need token, sendID, platformID")
+	ErrPushMsgErr           = NewCodeError(PushMsgErr, "push msg err")
+	ErrIOSBackgroundPushErr = NewCodeError(IOSBackgroundPushErr, "ios background push err")
 
 	ErrFileUploadedExpired = NewCodeError(FileUploadedExpiredError, "FileUploadedExpiredError")
 )

@@ -84,9 +84,10 @@ const (
 	TokenNotExistError    = 1507
 
 	// 长连接网关错误码.
-	ConnOverMaxNumLimit = 1601
-	ConnArgsErr         = 1602
-
+	ConnOverMaxNumLimit  = 1601
+	ConnArgsErr          = 1602
+	PushMsgErr           = 1603
+	IOSBackgroundPushErr = 1604
 	// S3错误码.
 	FileUploadedExpiredError = 1701 // 上传过期
 )
