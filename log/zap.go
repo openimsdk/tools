@@ -200,7 +200,15 @@ func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) 
 }
 
 func (l *ZapLogger) getWriter(logLocation string, rorateCount uint) (zapcore.WriteSyncer, error) {
-	logf, err := rotatelogs.New(logLocation+sp+l.loggerPrefixName+".%Y-%m-%d",
+	var path string
+	if l.rotationTime%(time.Hour*24) == 0 {
+		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d"
+	} else if l.rotationTime%time.Hour == 0 {
+		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d_%H"
+	} else {
+		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d_%H_%M_%S"
+	}
+	logf, err := rotatelogs.New(path,
 		rotatelogs.WithRotationCount(rorateCount),
 		rotatelogs.WithRotationTime(l.rotationTime),
 	)
