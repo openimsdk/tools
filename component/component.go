@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/IBM/sarama"
-	"github.com/OpenIMSDK/tools/config"
 	"github.com/OpenIMSDK/tools/errs"
 	"github.com/go-zookeeper/zk"
 	"github.com/minio/minio-go/v7"
@@ -72,15 +71,32 @@ func getEnv(key, fallback string) string {
 
 // CheckMongo checks the MongoDB connection without retries
 func CheckMongo(cfg interface{}) (string, error) {
-	mongoStu := cfg.(config.Mongo)
-	uri := getEnv("MONGO_URI", buildMongoURI(mongoStu))
+	mongoStu := cfg.(struct {
+		Uri         string   `yaml:"uri"`
+		Address     []string `yaml:"address"`
+		Database    string   `yaml:"database"`
+		Username    string   `yaml:"username"`
+		Password    string   `yaml:"password"`
+		MaxPoolSize int      `yaml:"maxPoolSize"`
+	})
+
+	mongodbHosts := strings.Join(mongoStu.Address, ",")
+	var uri string
+	if mongoStu.Username != "" && mongoStu.Password != "" {
+		uri = fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
+			mongoStu.Username, mongoStu.Password, mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
+	}
+	uri = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
+		mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
+
+	uriEnv := getEnv("MONGO_URI", uri)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
 	defer cancel()
 
 	str := "ths uri is:" + strings.Join(mongoStu.Address, ",")
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uriEnv))
 	if err != nil {
 		return "", errs.Wrap(ErrStr(err, str))
 	}
@@ -94,24 +110,6 @@ func CheckMongo(cfg interface{}) (string, error) {
 	}
 
 	return str, nil
-}
-
-// buildMongoURI constructs the MongoDB URI using configuration settings
-func buildMongoURI(mongoStu config.Mongo) string {
-	// Fallback to config if environment variables are not set
-	username := mongoStu.Username
-	password := mongoStu.Password
-	database := mongoStu.Database
-	maxPoolSize := mongoStu.MaxPoolSize
-
-	mongodbHosts := strings.Join(mongoStu.Address, ",")
-
-	if username != "" && password != "" {
-		return fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
-			username, password, mongodbHosts, database, maxPoolSize)
-	}
-	return fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
-		mongodbHosts, database, maxPoolSize)
 }
 
 func exactIP(urll string) string {
@@ -129,7 +127,44 @@ func exactIP(urll string) string {
 
 // CheckMinio checks the MinIO connection
 func CheckMinio(cfg interface{}) (string, error) {
-	minioStu := cfg.(config.Object)
+	minioStu := cfg.(struct {
+		Enable string `yaml:"enable"`
+		ApiURL string `yaml:"apiURL"`
+		Minio  struct {
+			Bucket          string `yaml:"bucket"`
+			Endpoint        string `yaml:"endpoint"`
+			AccessKeyID     string `yaml:"accessKeyID"`
+			SecretAccessKey string `yaml:"secretAccessKey"`
+			SessionToken    string `yaml:"sessionToken"`
+			SignEndpoint    string `yaml:"signEndpoint"`
+			PublicRead      bool   `yaml:"publicRead"`
+		} `yaml:"minio"`
+		Cos struct {
+			BucketURL    string `yaml:"bucketURL"`
+			SecretID     string `yaml:"secretID"`
+			SecretKey    string `yaml:"secretKey"`
+			SessionToken string `yaml:"sessionToken"`
+			PublicRead   bool   `yaml:"publicRead"`
+		} `yaml:"cos"`
+		Oss struct {
+			Endpoint        string `yaml:"endpoint"`
+			Bucket          string `yaml:"bucket"`
+			BucketURL       string `yaml:"bucketURL"`
+			AccessKeyID     string `yaml:"accessKeyID"`
+			AccessKeySecret string `yaml:"accessKeySecret"`
+			SessionToken    string `yaml:"sessionToken"`
+			PublicRead      bool   `yaml:"publicRead"`
+		} `yaml:"oss"`
+		Kodo struct {
+			Endpoint        string `yaml:"endpoint"`
+			Bucket          string `yaml:"bucket"`
+			BucketURL       string `yaml:"bucketURL"`
+			AccessKeyID     string `yaml:"accessKeyID"`
+			AccessKeySecret string `yaml:"accessKeySecret"`
+			SessionToken    string `yaml:"sessionToken"`
+			PublicRead      bool   `yaml:"publicRead"`
+		} `yaml:"kodo"`
+	})
 	// Check if MinIO is enabled
 	if minioStu.Enable != "minio" {
 		return "", nil
@@ -186,7 +221,13 @@ func CheckMinio(cfg interface{}) (string, error) {
 
 // CheckRedis checks the Redis connection
 func CheckRedis(cfg interface{}) (string, error) {
-	redisStu := cfg.(config.Redis)
+	redisStu := cfg.(struct {
+		ClusterMode    bool     `yaml:"clusterMode"`
+		Address        []string `yaml:"address"`
+		Username       string   `yaml:"username"`
+		Password       string   `yaml:"password"`
+		EnablePipeline bool     `yaml:"enablePipeline"`
+	})
 	// Prioritize environment variables
 	address := getEnv("REDIS_ADDRESS", strings.Join(redisStu.Address, ","))
 	username := getEnv("REDIS_USERNAME", redisStu.Username)
@@ -226,7 +267,12 @@ func CheckRedis(cfg interface{}) (string, error) {
 
 // CheckZookeeper checks the Zookeeper connection
 func CheckZookeeper(cfg interface{}) (string, error) {
-	zkStu := cfg.(config.Zookeeper)
+	zkStu := cfg.(struct {
+		Schema   string   `yaml:"schema"`
+		ZkAddr   []string `yaml:"address"`
+		Username string   `yaml:"username"`
+		Password string   `yaml:"password"`
+	})
 	// Prioritize environment variables
 	schema := getEnv("ZOOKEEPER_SCHEMA", "digest")
 	address := getEnv("ZOOKEEPER_ADDRESS", strings.Join(zkStu.ZkAddr, ","))
@@ -269,7 +315,17 @@ Connected:
 
 // CheckMySQL checks the mysql connection
 func CheckMySQL(cfg interface{}) (string, error) {
-	mysqlStu := cfg.(config.Mysql)
+	mysqlStu := cfg.(struct {
+		Address       []string `yaml:"address"`
+		Username      string   `yaml:"username"`
+		Password      string   `yaml:"password"`
+		Database      string   `yaml:"database"`
+		MaxOpenConn   int      `yaml:"maxOpenConn"`
+		MaxIdleConn   int      `yaml:"maxIdleConn"`
+		MaxLifeTime   int      `yaml:"maxLifeTime"`
+		LogLevel      int      `yaml:"logLevel"`
+		SlowThreshold int      `yaml:"slowThreshold"`
+	})
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
 		mysqlStu.Username,
 		mysqlStu.Password,
@@ -296,7 +352,35 @@ func CheckMySQL(cfg interface{}) (string, error) {
 
 // CheckKafka checks the Kafka connection
 func CheckKafka(cfgi interface{}) (string, error) {
-	kafkaStu := cfgi.(config.Kafka)
+	kafkaStu := cfgi.(struct {
+		Username     string   `yaml:"username"`
+		Password     string   `yaml:"password"`
+		ProducerAck  string   `yaml:"producerAck"`
+		CompressType string   `yaml:"compressType"`
+		Addr         []string `yaml:"addr"`
+		TLS          *struct {
+			CACrt              string `yaml:"caCrt"`
+			ClientCrt          string `yaml:"clientCrt"`
+			ClientKey          string `yaml:"clientKey"`
+			ClientKeyPwd       string `yaml:"clientKeyPwd"`
+			InsecureSkipVerify bool   `yaml:"insecureSkipVerify"`
+		} `yaml:"tls"`
+		LatestMsgToRedis struct {
+			Topic string `yaml:"topic"`
+		} `yaml:"latestMsgToRedis"`
+		MsgToMongo struct {
+			Topic string `yaml:"topic"`
+		} `yaml:"offlineMsgToMongo"`
+		MsgToPush struct {
+			Topic string `yaml:"topic"`
+		} `yaml:"msgToPush"`
+		ConsumerGroupID struct {
+			MsgToRedis string `yaml:"msgToRedis"`
+			MsgToMongo string `yaml:"msgToMongo"`
+			MsgToMySql string `yaml:"msgToMySql"`
+			MsgToPush  string `yaml:"msgToPush"`
+		} `yaml:"consumerGroupID"`
+	})
 	// Prioritize environment variables
 	username := getEnv("KAFKA_USERNAME", kafkaStu.Username)
 	password := getEnv("KAFKA_PASSWORD", kafkaStu.Password)
