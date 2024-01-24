@@ -17,7 +17,6 @@ package component
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/OpenIMSDK/tools/config"
@@ -39,12 +38,11 @@ import (
 
 const (
 	// defaultCfgPath is the default path of the configuration file.
-	defaultCfgPath           = "../../../../../config/config.yaml"
 	minioHealthCheckDuration = 1
-	maxRetry                 = 300
 	componentStartErrCode    = 6000
 	configErrCode            = 6001
 	mongoConnTimeout         = 30 * time.Second
+	MaxRetry                 = 300
 )
 
 const (
@@ -54,7 +52,6 @@ const (
 )
 
 var (
-	cfgPath           = flag.String("c", defaultCfgPath, "Path to the configuration file")
 	ErrComponentStart = errs.NewCodeError(componentStartErrCode, "ComponentStartErr")
 	ErrConfig         = errs.NewCodeError(configErrCode, "Config file is incorrect")
 )
@@ -73,7 +70,7 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// checkMongo checks the MongoDB connection without retries
+// CheckMongo checks the MongoDB connection without retries
 func CheckMongo(cfg interface{}) (string, error) {
 	mongoStu := cfg.(config.Mongo)
 	uri := getEnv("MONGO_URI", buildMongoURI(mongoStu))
@@ -130,7 +127,7 @@ func exactIP(urll string) string {
 	return host
 }
 
-// checkMinio checks the MinIO connection
+// CheckMinio checks the MinIO connection
 func CheckMinio(cfg interface{}) (string, error) {
 	minioStu := cfg.(config.Object)
 	// Check if MinIO is enabled
@@ -187,7 +184,7 @@ func CheckMinio(cfg interface{}) (string, error) {
 	return str, nil
 }
 
-// checkRedis checks the Redis connection
+// CheckRedis checks the Redis connection
 func CheckRedis(cfg interface{}) (string, error) {
 	redisStu := cfg.(config.Redis)
 	// Prioritize environment variables
@@ -227,7 +224,7 @@ func CheckRedis(cfg interface{}) (string, error) {
 	return str, nil
 }
 
-// checkZookeeper checks the Zookeeper connection
+// CheckZookeeper checks the Zookeeper connection
 func CheckZookeeper(cfg interface{}) (string, error) {
 	zkStu := cfg.(config.Zookeeper)
 	// Prioritize environment variables
@@ -347,7 +344,7 @@ func CheckKafka(cfgi interface{}) (string, error) {
 	return str, nil
 }
 
-// isTopicPresent checks if a topic is present in the list of topics
+// IsTopicPresent checks if a topic is present in the list of topics
 func IsTopicPresent(topic string, topics []string) bool {
 	for _, t := range topics {
 		if t == topic {
