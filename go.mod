@@ -20,7 +20,8 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/image v0.9.0
 	google.golang.org/grpc v1.56.2
-	gorm.io/gorm v1.23.8
+	gorm.io/driver/mysql v1.5.2
+	gorm.io/gorm v1.25.2-0.20230530020048-26663ab9bf55
 )
 
 require (
@@ -29,6 +30,7 @@ require (
 	github.com/eapache/go-resiliency v1.4.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect

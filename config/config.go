@@ -117,3 +117,15 @@ type Object struct {
 		PublicRead      bool   `yaml:"publicRead"`
 	} `yaml:"kodo"`
 }
+
+type Mysql struct {
+	Address       []string `yaml:"address"`
+	Username      string   `yaml:"username"`
+	Password      string   `yaml:"password"`
+	Database      string   `yaml:"database"`
+	MaxOpenConn   int      `yaml:"maxOpenConn"`
+	MaxIdleConn   int      `yaml:"maxIdleConn"`
+	MaxLifeTime   int      `yaml:"maxLifeTime"`
+	LogLevel      int      `yaml:"logLevel"`
+	SlowThreshold int      `yaml:"slowThreshold"`
+}

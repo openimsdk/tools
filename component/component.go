@@ -28,6 +28,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"net"
 	"net/url"
 	"os"
@@ -73,7 +75,7 @@ func CheckMongo(cfg interface{}) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
 	defer cancel()
 
-	str := "ths addr is:" + strings.Join(mongoStu.Address, ",")
+	str := "ths uri is:" + strings.Join(mongoStu.Address, ",")
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
@@ -210,9 +212,10 @@ func CheckRedis(cfg interface{}) (string, error) {
 
 	// Ping Redis to check connectivity
 	_, err := redisClient.Ping(context.Background()).Result()
-	str := "the addr is:" + strings.Join(redisAddresses, ",")
+	str := fmt.Sprintf("the addr is:%s", strings.Join(redisAddresses, ","))
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, str))
+		strs := fmt.Sprintf("%s, the username is:%s, the password is:%s.", str, username, password)
+		return "", errs.Wrap(ErrStr(err, strs))
 	}
 
 	return str, nil
@@ -231,7 +234,7 @@ func CheckZookeeper(cfg interface{}) (string, error) {
 	zookeeperAddresses := strings.Split(address, ",")
 
 	// Connect to Zookeeper
-	str := "the addr is:" + address
+	str := fmt.Sprintf("the addr is:%s,the schema is:%s, the username is:%s, the password is:%s.", zookeeperAddresses, schema, username, password)
 	c, eventChan, err := zk.Connect(zookeeperAddresses, time.Second) // Adjust the timeout as necessary
 	if err != nil {
 		return "", errs.Wrap(ErrStr(err, str))
@@ -245,7 +248,7 @@ func CheckZookeeper(cfg interface{}) (string, error) {
 				goto Connected
 			}
 		case <-timeout:
-			return "", errs.Wrap(errors.New("timeout waiting for Zookeeper connection"), "Zookeeper Addr: "+strings.Join(zkStu.ZkAddr, " "))
+			return "", errs.Wrap(ErrStr(errors.New("timeout waiting for Zookeeper connection"), str))
 		}
 	}
 Connected:
@@ -254,14 +257,41 @@ Connected:
 	// Set authentication if username and password are provided
 	if username != "" && password != "" {
 		if err := c.AddAuth(schema, []byte(username+":"+password)); err != nil {
-			return "", errs.Wrap(ErrStr(err, str))
+			return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the schema is %s, the username is %s, the password is %s", schema, password, password)))
 		}
 	}
 
-	return str, nil
+	return fmt.Sprintf("the address is:%s", zookeeperAddresses), nil
 }
 
-// checkKafka checks the Kafka connection
+// CheckMySQL checks the mysql connection
+func CheckMySQL(cfg interface{}) (string, error) {
+	mysqlStu := cfg.(config.Mysql)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
+		mysqlStu.Username,
+		mysqlStu.Password,
+		mysqlStu.Address[0],
+		mysqlStu.Database,
+	)
+
+	db, err := gorm.Open(mysql.Open(dsn), nil)
+	if err != nil {
+		return "", errs.Wrap(ErrStr(err, dsn))
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return "", errs.Wrap(err, "get sqlDB failed")
+	}
+	defer sqlDB.Close()
+	err = sqlDB.Ping()
+	if err != nil {
+		return "", errs.Wrap(err, "ping sqlDB failed")
+	}
+
+	return "", nil
+}
+
+// CheckKafka checks the Kafka connection
 func CheckKafka(cfgi interface{}) (string, error) {
 	kafkaStu := cfgi.(config.Kafka)
 	// Prioritize environment variables
@@ -286,14 +316,14 @@ func CheckKafka(cfgi interface{}) (string, error) {
 	str := "the addr is:" + address
 	kafkaClient, err := sarama.NewClient(kafkaAddresses, cfg)
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, str))
+		return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", address, username, password)))
 	}
 	defer kafkaClient.Close()
 
 	// Verify if necessary topics exist
 	topics, err := kafkaClient.Topics()
 	if err != nil {
-		return "", errs.Wrap(err)
+		return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the topics is %s", strings.Join(topics, ","))))
 	}
 
 	requiredTopics := []string{
