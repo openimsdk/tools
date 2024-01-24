@@ -66,7 +66,7 @@ func getEnv(key, fallback string) string {
 }
 
 // checkMongo checks the MongoDB connection without retries
-func checkMongo(mongoStu config.Mongo) (string, error) {
+func CheckMongo(mongoStu config.Mongo) (string, error) {
 	uri := getEnv("MONGO_URI", buildMongoURI(mongoStu))
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
@@ -76,7 +76,7 @@ func checkMongo(mongoStu config.Mongo) (string, error) {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
-		return "", errs.Wrap(errStr(err, str))
+		return "", errs.Wrap(ErrStr(err, str))
 	}
 	defer client.Disconnect(context.Background())
 
@@ -84,7 +84,7 @@ func checkMongo(mongoStu config.Mongo) (string, error) {
 	defer cancel()
 
 	if err = client.Ping(ctx, nil); err != nil {
-		return "", errs.Wrap(errStr(err, str))
+		return "", errs.Wrap(ErrStr(err, str))
 	}
 
 	return str, nil
@@ -122,7 +122,7 @@ func exactIP(urll string) string {
 }
 
 // checkMinio checks the MinIO connection
-func checkMinio(minioStu config.Object) (string, error) {
+func CheckMinio(minioStu config.Object) (string, error) {
 	// Check if MinIO is enabled
 	if minioStu.Enable != "minio" {
 		return "", nil
@@ -142,7 +142,7 @@ func checkMinio(minioStu config.Object) (string, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		str := "the endpoint is:" + endpoint
-		return "", errs.Wrap(errStr(err, str))
+		return "", errs.Wrap(ErrStr(err, str))
 	}
 	secure := u.Scheme == "https" || useSSL == "true"
 
@@ -160,7 +160,7 @@ func checkMinio(minioStu config.Object) (string, error) {
 	// Perform health check
 	cancel, err := minioClient.HealthCheck(time.Duration(minioHealthCheckDuration) * time.Second)
 	if err != nil {
-		return "", errs.Wrap(errStr(err, str))
+		return "", errs.Wrap(ErrStr(err, str))
 	}
 	defer cancel()
 
@@ -178,7 +178,7 @@ func checkMinio(minioStu config.Object) (string, error) {
 }
 
 // checkRedis checks the Redis connection
-func checkRedis(redisStu config.Redis) (string, error) {
+func CheckRedis(redisStu config.Redis) (string, error) {
 	// Prioritize environment variables
 	address := getEnv("REDIS_ADDRESS", strings.Join(redisStu.Address, ","))
 	username := getEnv("REDIS_USERNAME", redisStu.Username)
@@ -209,14 +209,14 @@ func checkRedis(redisStu config.Redis) (string, error) {
 	_, err := redisClient.Ping(context.Background()).Result()
 	str := "the addr is:" + strings.Join(redisAddresses, ",")
 	if err != nil {
-		return "", errs.Wrap(errStr(err, str))
+		return "", errs.Wrap(ErrStr(err, str))
 	}
 
 	return str, nil
 }
 
 // checkZookeeper checks the Zookeeper connection
-func checkZookeeper(zkStu config.Zookeeper) (string, error) {
+func CheckZookeeper(zkStu config.Zookeeper) (string, error) {
 	// Prioritize environment variables
 	schema := getEnv("ZOOKEEPER_SCHEMA", "digest")
 	address := getEnv("ZOOKEEPER_ADDRESS", strings.Join(zkStu.ZkAddr, ","))
@@ -230,7 +230,7 @@ func checkZookeeper(zkStu config.Zookeeper) (string, error) {
 	str := "the addr is:" + address
 	c, eventChan, err := zk.Connect(zookeeperAddresses, time.Second) // Adjust the timeout as necessary
 	if err != nil {
-		return "", errs.Wrap(errStr(err, str))
+		return "", errs.Wrap(ErrStr(err, str))
 	}
 	timeout := time.After(5 * time.Second)
 	for {
@@ -250,7 +250,7 @@ Connected:
 	// Set authentication if username and password are provided
 	if username != "" && password != "" {
 		if err := c.AddAuth(schema, []byte(username+":"+password)); err != nil {
-			return "", errs.Wrap(errStr(err, str))
+			return "", errs.Wrap(ErrStr(err, str))
 		}
 	}
 
@@ -258,7 +258,7 @@ Connected:
 }
 
 // checkKafka checks the Kafka connection
-func checkKafka(kafkaStu config.Kafka) (string, error) {
+func CheckKafka(kafkaStu config.Kafka) (string, error) {
 	// Prioritize environment variables
 	username := getEnv("KAFKA_USERNAME", kafkaStu.Username)
 	password := getEnv("KAFKA_PASSWORD", kafkaStu.Password)
@@ -281,7 +281,7 @@ func checkKafka(kafkaStu config.Kafka) (string, error) {
 	str := "the addr is:" + address
 	kafkaClient, err := sarama.NewClient(kafkaAddresses, cfg)
 	if err != nil {
-		return "", errs.Wrap(errStr(err, str))
+		return "", errs.Wrap(ErrStr(err, str))
 	}
 	defer kafkaClient.Close()
 
@@ -298,7 +298,7 @@ func checkKafka(kafkaStu config.Kafka) (string, error) {
 	}
 
 	for _, requiredTopic := range requiredTopics {
-		if !isTopicPresent(requiredTopic, topics) {
+		if !IsTopicPresent(requiredTopic, topics) {
 			return "", ErrComponentStart.Wrap(fmt.Sprintf("Kafka doesn't contain topic: %v", requiredTopic))
 		}
 	}
@@ -307,7 +307,7 @@ func checkKafka(kafkaStu config.Kafka) (string, error) {
 }
 
 // isTopicPresent checks if a topic is present in the list of topics
-func isTopicPresent(topic string, topics []string) bool {
+func IsTopicPresent(topic string, topics []string) bool {
 	for _, t := range topics {
 		if t == topic {
 			return true
@@ -320,18 +320,18 @@ func colorPrint(colorCode int, format string, a ...interface{}) {
 	fmt.Printf("\x1b[%dm%s\x1b[0m\n", colorCode, fmt.Sprintf(format, a...))
 }
 
-func errorPrint(s string) {
+func ErrorPrint(s string) {
 	colorPrint(colorRed, "%v", s)
 }
 
-func successPrint(s string) {
+func SuccessPrint(s string) {
 	colorPrint(colorGreen, "%v", s)
 }
 
-func warningPrint(s string) {
+func WarningPrint(s string) {
 	colorPrint(colorYellow, "Warning: But %v", s)
 }
 
-func errStr(err error, str string) error {
+func ErrStr(err error, str string) error {
 	return fmt.Errorf("%v;%s", err, str)
 }
