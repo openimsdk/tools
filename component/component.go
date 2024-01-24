@@ -59,7 +59,7 @@ var (
 	ErrConfig         = errs.NewCodeError(configErrCode, "Config file is incorrect")
 )
 
-type checkFunc struct {
+type CheckFunc struct {
 	name     string
 	function func(interface{}) (string, error)
 	config   interface{}
