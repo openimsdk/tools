@@ -66,7 +66,8 @@ func getEnv(key, fallback string) string {
 }
 
 // checkMongo checks the MongoDB connection without retries
-func CheckMongo(mongoStu config.Mongo) (string, error) {
+func CheckMongo(cfg interface{}) (string, error) {
+	mongoStu := cfg.(config.Mongo)
 	uri := getEnv("MONGO_URI", buildMongoURI(mongoStu))
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
@@ -122,7 +123,8 @@ func exactIP(urll string) string {
 }
 
 // checkMinio checks the MinIO connection
-func CheckMinio(minioStu config.Object) (string, error) {
+func CheckMinio(cfg interface{}) (string, error) {
+	minioStu := cfg.(config.Object)
 	// Check if MinIO is enabled
 	if minioStu.Enable != "minio" {
 		return "", nil
@@ -178,7 +180,8 @@ func CheckMinio(minioStu config.Object) (string, error) {
 }
 
 // checkRedis checks the Redis connection
-func CheckRedis(redisStu config.Redis) (string, error) {
+func CheckRedis(cfg interface{}) (string, error) {
+	redisStu := cfg.(config.Redis)
 	// Prioritize environment variables
 	address := getEnv("REDIS_ADDRESS", strings.Join(redisStu.Address, ","))
 	username := getEnv("REDIS_USERNAME", redisStu.Username)
@@ -216,7 +219,8 @@ func CheckRedis(redisStu config.Redis) (string, error) {
 }
 
 // checkZookeeper checks the Zookeeper connection
-func CheckZookeeper(zkStu config.Zookeeper) (string, error) {
+func CheckZookeeper(cfg interface{}) (string, error) {
+	zkStu := cfg.(config.Zookeeper)
 	// Prioritize environment variables
 	schema := getEnv("ZOOKEEPER_SCHEMA", "digest")
 	address := getEnv("ZOOKEEPER_ADDRESS", strings.Join(zkStu.ZkAddr, ","))
@@ -258,7 +262,8 @@ Connected:
 }
 
 // checkKafka checks the Kafka connection
-func CheckKafka(kafkaStu config.Kafka) (string, error) {
+func CheckKafka(cfgi interface{}) (string, error) {
+	kafkaStu := cfgi.(config.Kafka)
 	// Prioritize environment variables
 	username := getEnv("KAFKA_USERNAME", kafkaStu.Username)
 	password := getEnv("KAFKA_PASSWORD", kafkaStu.Password)
