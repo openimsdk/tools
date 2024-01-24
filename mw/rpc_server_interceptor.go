@@ -17,8 +17,9 @@ package mw
 import (
 	"context"
 	"fmt"
-	"github.com/OpenIMSDK/tools/checker"
 	"math"
+
+	"github.com/OpenIMSDK/tools/checker"
 
 	"github.com/OpenIMSDK/protocol/constant"
 
@@ -119,8 +120,8 @@ func RpcServerInterceptor(
 		codeErr = errs.ErrInternalServer
 	}
 	code := codeErr.Code()
-	if code <= 0 || code > math.MaxUint32 {
-		log.ZError(ctx, "rpc UnknownError", err, "rpc UnknownCode:", code)
+	if code <= 0 || int64(code) > int64(math.MaxUint32) {
+		log.ZError(ctx, "rpc UnknownError", err, "rpc UnknownCode:", int64(code))
 		code = errs.ServerInternalError
 	}
 	grpcStatus := status.New(codes.Code(code), codeErr.Msg())
