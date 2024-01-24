@@ -59,6 +59,12 @@ var (
 	ErrConfig         = errs.NewCodeError(configErrCode, "Config file is incorrect")
 )
 
+type checkFunc struct {
+	name     string
+	function func(interface{}) (string, error)
+	config   interface{}
+}
+
 // Helper function to get environment variable or default value
 func getEnv(key, fallback string) string {
 	if value, exists := os.LookupEnv(key); exists {
