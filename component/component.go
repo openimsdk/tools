@@ -60,9 +60,9 @@ var (
 )
 
 type CheckFunc struct {
-	name     string
-	function func(interface{}) (string, error)
-	config   interface{}
+	Name     string
+	Function func(interface{}) (string, error)
+	Config   interface{}
 }
 
 // Helper function to get environment variable or default value
