@@ -330,7 +330,7 @@ func CheckMySQL(cfg interface{}) (string, error) {
 		mysqlStu.Username,
 		mysqlStu.Password,
 		mysqlStu.Address[0],
-		mysqlStu.Database,
+		"mysql",
 	)
 
 	db, err := gorm.Open(mysql.Open(dsn), nil)
