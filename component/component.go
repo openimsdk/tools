@@ -30,7 +30,6 @@ import (
 	"gorm.io/gorm"
 	"net"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -54,20 +53,6 @@ var (
 	ErrComponentStart = errs.NewCodeError(componentStartErrCode, "ComponentStartErr")
 	ErrConfig         = errs.NewCodeError(configErrCode, "Config file is incorrect")
 )
-
-type CheckFunc struct {
-	Name     string
-	Function func(interface{}) (string, error)
-	Config   interface{}
-}
-
-// Helper function to get environment variable or default value
-func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return fallback
-}
 
 // CheckMongo checks the MongoDB connection without retries
 func CheckMongo(mongoStu *Mongo) (string, error) {
