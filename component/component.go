@@ -70,16 +70,7 @@ func getEnv(key, fallback string) string {
 }
 
 // CheckMongo checks the MongoDB connection without retries
-func CheckMongo(cfg interface{}) (string, error) {
-	mongoStu := cfg.(struct {
-		Uri         string   `yaml:"uri"`
-		Address     []string `yaml:"address"`
-		Database    string   `yaml:"database"`
-		Username    string   `yaml:"username"`
-		Password    string   `yaml:"password"`
-		MaxPoolSize int      `yaml:"maxPoolSize"`
-	})
-
+func CheckMongo(mongoStu *Mongo) (string, error) {
 	mongodbHosts := strings.Join(mongoStu.Address, ",")
 	var uri string
 	if mongoStu.Username != "" && mongoStu.Password != "" {
@@ -126,76 +117,32 @@ func exactIP(urll string) string {
 }
 
 // CheckMinio checks the MinIO connection
-func CheckMinio(cfg interface{}) (string, error) {
-	minioStu := cfg.(struct {
-		Enable string `yaml:"enable"`
-		ApiURL string `yaml:"apiURL"`
-		Minio  struct {
-			Bucket          string `yaml:"bucket"`
-			Endpoint        string `yaml:"endpoint"`
-			AccessKeyID     string `yaml:"accessKeyID"`
-			SecretAccessKey string `yaml:"secretAccessKey"`
-			SessionToken    string `yaml:"sessionToken"`
-			SignEndpoint    string `yaml:"signEndpoint"`
-			PublicRead      bool   `yaml:"publicRead"`
-		} `yaml:"minio"`
-		Cos struct {
-			BucketURL    string `yaml:"bucketURL"`
-			SecretID     string `yaml:"secretID"`
-			SecretKey    string `yaml:"secretKey"`
-			SessionToken string `yaml:"sessionToken"`
-			PublicRead   bool   `yaml:"publicRead"`
-		} `yaml:"cos"`
-		Oss struct {
-			Endpoint        string `yaml:"endpoint"`
-			Bucket          string `yaml:"bucket"`
-			BucketURL       string `yaml:"bucketURL"`
-			AccessKeyID     string `yaml:"accessKeyID"`
-			AccessKeySecret string `yaml:"accessKeySecret"`
-			SessionToken    string `yaml:"sessionToken"`
-			PublicRead      bool   `yaml:"publicRead"`
-		} `yaml:"oss"`
-		Kodo struct {
-			Endpoint        string `yaml:"endpoint"`
-			Bucket          string `yaml:"bucket"`
-			BucketURL       string `yaml:"bucketURL"`
-			AccessKeyID     string `yaml:"accessKeyID"`
-			AccessKeySecret string `yaml:"accessKeySecret"`
-			SessionToken    string `yaml:"sessionToken"`
-			PublicRead      bool   `yaml:"publicRead"`
-		} `yaml:"kodo"`
-	})
+func CheckMinio(minioStu *Minio) (string, error) {
 	// Check if MinIO is enabled
 	if minioStu.Enable != "minio" {
 		return "", nil
 	}
 
-	// Prioritize environment variables
-	endpoint := getEnv("MINIO_ENDPOINT", minioStu.Minio.Endpoint)
-	accessKeyID := getEnv("MINIO_ACCESS_KEY_ID", minioStu.Minio.AccessKeyID)
-	secretAccessKey := getEnv("MINIO_SECRET_ACCESS_KEY", minioStu.Minio.SecretAccessKey)
-	useSSL := getEnv("MINIO_USE_SSL", "false") // Assuming SSL is not used by default
-
-	if endpoint == "" || accessKeyID == "" || secretAccessKey == "" {
+	if minioStu.Endpoint == "" || minioStu.AccessKeyID == "" || minioStu.SecretAccessKey == "" {
 		return "", ErrConfig.Wrap("MinIO configuration missing")
 	}
 
 	// Parse endpoint URL to determine if SSL is enabled
-	u, err := url.Parse(endpoint)
+	u, err := url.Parse(minioStu.Endpoint)
 	if err != nil {
-		str := "the endpoint is:" + endpoint
+		str := "the endpoint is:" + minioStu.Endpoint
 		return "", errs.Wrap(ErrStr(err, str))
 	}
-	secure := u.Scheme == "https" || useSSL == "true"
+	secure := u.Scheme == "https" || minioStu.UseSSL == "true"
 
 	// Initialize MinIO client
 	minioClient, err := minio.New(u.Host, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+		Creds:  credentials.NewStaticV4(minioStu.AccessKeyID, minioStu.SecretAccessKey, ""),
 		Secure: secure,
 	})
 	str := "ths addr is:" + u.Host
 	if err != nil {
-		strs := fmt.Sprintf("%v;host:%s,accessKeyID:%s,secretAccessKey:%s,Secure:%v", err, u.Host, accessKeyID, secretAccessKey, secure)
+		strs := fmt.Sprintf("%v;host:%s,accessKeyID:%s,secretAccessKey:%s,Secure:%v", err, u.Host, minioStu.AccessKeyID, minioStu.SecretAccessKey, secure)
 		return "", errs.Wrap(err, strs)
 	}
 
@@ -212,53 +159,39 @@ func CheckMinio(cfg interface{}) (string, error) {
 	}
 
 	// Check for localhost in API URL and Minio SignEndpoint
-	if exactIP(minioStu.ApiURL) == "127.0.0.1" || exactIP(minioStu.Minio.SignEndpoint) == "127.0.0.1" {
+	if exactIP(minioStu.ApiURL) == "127.0.0.1" || exactIP(minioStu.SignEndpoint) == "127.0.0.1" {
 		return "", ErrConfig.Wrap("apiURL or Minio SignEndpoint endpoint contain 127.0.0.1")
 	}
-
 	return str, nil
 }
 
 // CheckRedis checks the Redis connection
-func CheckRedis(cfg interface{}) (string, error) {
-	redisStu := cfg.(struct {
-		ClusterMode    bool     `yaml:"clusterMode"`
-		Address        []string `yaml:"address"`
-		Username       string   `yaml:"username"`
-		Password       string   `yaml:"password"`
-		EnablePipeline bool     `yaml:"enablePipeline"`
-	})
-	// Prioritize environment variables
-	address := getEnv("REDIS_ADDRESS", strings.Join(redisStu.Address, ","))
-	username := getEnv("REDIS_USERNAME", redisStu.Username)
-	password := getEnv("REDIS_PASSWORD", redisStu.Password)
-
+func CheckRedis(redisStu *Redis) (string, error) {
 	// Split address to handle multiple addresses for cluster setup
-	redisAddresses := strings.Split(address, ",")
 
 	var redisClient redis.UniversalClient
-	if len(redisAddresses) > 1 {
+	if len(redisStu.Address) > 1 {
 		// Use cluster client for multiple addresses
 		redisClient = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    redisAddresses,
-			Username: username,
-			Password: password,
+			Addrs:    redisStu.Address,
+			Username: redisStu.Username,
+			Password: redisStu.Password,
 		})
 	} else {
 		// Use regular client for single address
 		redisClient = redis.NewClient(&redis.Options{
-			Addr:     redisAddresses[0],
-			Username: username,
-			Password: password,
+			Addr:     redisStu.Address[0],
+			Username: redisStu.Username,
+			Password: redisStu.Password,
 		})
 	}
 	defer redisClient.Close()
 
 	// Ping Redis to check connectivity
 	_, err := redisClient.Ping(context.Background()).Result()
-	str := fmt.Sprintf("the addr is:%s", strings.Join(redisAddresses, ","))
+	str := fmt.Sprintf("the addr is:%s", strings.Join(redisStu.Address, ","))
 	if err != nil {
-		strs := fmt.Sprintf("%s, the username is:%s, the password is:%s.", str, username, password)
+		strs := fmt.Sprintf("%s, the username is:%s, the password is:%s.", str, redisStu.Username, redisStu.Password)
 		return "", errs.Wrap(ErrStr(err, strs))
 	}
 
@@ -266,25 +199,11 @@ func CheckRedis(cfg interface{}) (string, error) {
 }
 
 // CheckZookeeper checks the Zookeeper connection
-func CheckZookeeper(cfg interface{}) (string, error) {
-	zkStu := cfg.(struct {
-		Schema   string   `yaml:"schema"`
-		ZkAddr   []string `yaml:"address"`
-		Username string   `yaml:"username"`
-		Password string   `yaml:"password"`
-	})
-	// Prioritize environment variables
-	schema := getEnv("ZOOKEEPER_SCHEMA", "digest")
-	address := getEnv("ZOOKEEPER_ADDRESS", strings.Join(zkStu.ZkAddr, ","))
-	username := getEnv("ZOOKEEPER_USERNAME", zkStu.Username)
-	password := getEnv("ZOOKEEPER_PASSWORD", zkStu.Password)
-
-	// Split addresses to handle multiple Zookeeper nodes
-	zookeeperAddresses := strings.Split(address, ",")
+func CheckZookeeper(zkStu *Zookeeper) (string, error) {
 
 	// Connect to Zookeeper
-	str := fmt.Sprintf("the addr is:%s,the schema is:%s, the username is:%s, the password is:%s.", zookeeperAddresses, schema, username, password)
-	c, eventChan, err := zk.Connect(zookeeperAddresses, time.Second) // Adjust the timeout as necessary
+	str := fmt.Sprintf("the addr is:%s,the schema is:%s, the username is:%s, the password is:%s.", zkStu.ZkAddr, zkStu.Schema, zkStu.Username, zkStu.Password)
+	c, eventChan, err := zk.Connect(zkStu.ZkAddr, time.Second) // Adjust the timeout as necessary
 	if err != nil {
 		return "", errs.Wrap(ErrStr(err, str))
 	}
@@ -303,29 +222,11 @@ func CheckZookeeper(cfg interface{}) (string, error) {
 Connected:
 	defer c.Close()
 
-	// Set authentication if username and password are provided
-	if username != "" && password != "" {
-		if err := c.AddAuth(schema, []byte(username+":"+password)); err != nil {
-			return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the schema is %s, the username is %s, the password is %s", schema, password, password)))
-		}
-	}
-
-	return fmt.Sprintf("the address is:%s", zookeeperAddresses), nil
+	return fmt.Sprintf("the address is:%s", zkStu.ZkAddr), nil
 }
 
 // CheckMySQL checks the mysql connection
-func CheckMySQL(cfg interface{}) (string, error) {
-	mysqlStu := cfg.(struct {
-		Address       []string `yaml:"address"`
-		Username      string   `yaml:"username"`
-		Password      string   `yaml:"password"`
-		Database      string   `yaml:"database"`
-		MaxOpenConn   int      `yaml:"maxOpenConn"`
-		MaxIdleConn   int      `yaml:"maxIdleConn"`
-		MaxLifeTime   int      `yaml:"maxLifeTime"`
-		LogLevel      int      `yaml:"logLevel"`
-		SlowThreshold int      `yaml:"slowThreshold"`
-	})
+func CheckMySQL(mysqlStu *MySQL) (string, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
 		mysqlStu.Username,
 		mysqlStu.Password,
@@ -351,91 +252,26 @@ func CheckMySQL(cfg interface{}) (string, error) {
 }
 
 // CheckKafka checks the Kafka connection
-func CheckKafka(cfgi interface{}) (string, error) {
-	kafkaStu := cfgi.(struct {
-		Username     string   `yaml:"username"`
-		Password     string   `yaml:"password"`
-		ProducerAck  string   `yaml:"producerAck"`
-		CompressType string   `yaml:"compressType"`
-		Addr         []string `yaml:"addr"`
-		TLS          *struct {
-			CACrt              string `yaml:"caCrt"`
-			ClientCrt          string `yaml:"clientCrt"`
-			ClientKey          string `yaml:"clientKey"`
-			ClientKeyPwd       string `yaml:"clientKeyPwd"`
-			InsecureSkipVerify bool   `yaml:"insecureSkipVerify"`
-		} `yaml:"tls"`
-		LatestMsgToRedis struct {
-			Topic string `yaml:"topic"`
-		} `yaml:"latestMsgToRedis"`
-		MsgToMongo struct {
-			Topic string `yaml:"topic"`
-		} `yaml:"offlineMsgToMongo"`
-		MsgToPush struct {
-			Topic string `yaml:"topic"`
-		} `yaml:"msgToPush"`
-		ConsumerGroupID struct {
-			MsgToRedis string `yaml:"msgToRedis"`
-			MsgToMongo string `yaml:"msgToMongo"`
-			MsgToMySql string `yaml:"msgToMySql"`
-			MsgToPush  string `yaml:"msgToPush"`
-		} `yaml:"consumerGroupID"`
-	})
-	// Prioritize environment variables
-	username := getEnv("KAFKA_USERNAME", kafkaStu.Username)
-	password := getEnv("KAFKA_PASSWORD", kafkaStu.Password)
-	address := getEnv("KAFKA_ADDRESS", strings.Join(kafkaStu.Addr, ","))
-
-	// Split addresses to handle multiple Kafka brokers
-	kafkaAddresses := strings.Split(address, ",")
-
+func CheckKafka(kafkaStu *Kafka) (string, error) {
 	// Configure Kafka client
 	cfg := sarama.NewConfig()
-	if username != "" && password != "" {
+	if kafkaStu.Username != "" && kafkaStu.Password != "" {
 		cfg.Net.SASL.Enable = true
-		cfg.Net.SASL.User = username
-		cfg.Net.SASL.Password = password
+		cfg.Net.SASL.User = kafkaStu.Username
+		cfg.Net.SASL.Password = kafkaStu.Password
 	}
 	// Additional Kafka setup (e.g., TLS configuration) can be added here
 	// kafka.SetupTLSConfig(cfg)
 
 	// Create Kafka client
-	str := "the addr is:" + address
-	kafkaClient, err := sarama.NewClient(kafkaAddresses, cfg)
+	str := "the addr is:" + strings.Join(kafkaStu.Addr, ",")
+	kafkaClient, err := sarama.NewClient(kafkaStu.Addr, cfg)
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", address, username, password)))
+		return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", kafkaStu.Addr, kafkaStu.Username, kafkaStu.Password)))
 	}
 	defer kafkaClient.Close()
 
-	// Verify if necessary topics exist
-	topics, err := kafkaClient.Topics()
-	if err != nil {
-		return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the topics is %s", strings.Join(topics, ","))))
-	}
-
-	requiredTopics := []string{
-		kafkaStu.MsgToMongo.Topic,
-		kafkaStu.MsgToPush.Topic,
-		kafkaStu.LatestMsgToRedis.Topic,
-	}
-
-	for _, requiredTopic := range requiredTopics {
-		if !IsTopicPresent(requiredTopic, topics) {
-			return "", ErrComponentStart.Wrap(fmt.Sprintf("Kafka doesn't contain topic: %v", requiredTopic))
-		}
-	}
-
 	return str, nil
-}
-
-// IsTopicPresent checks if a topic is present in the list of topics
-func IsTopicPresent(topic string, topics []string) bool {
-	for _, t := range topics {
-		if t == topic {
-			return true
-		}
-	}
-	return false
 }
 
 func colorPrint(colorCode int, format string, a ...interface{}) {
