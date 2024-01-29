@@ -72,22 +72,21 @@ func getEnv(key, fallback string) string {
 // CheckMongo checks the MongoDB connection without retries
 func CheckMongo(mongoStu *Mongo) (string, error) {
 	mongodbHosts := strings.Join(mongoStu.Address, ",")
-	var uri string
-	if mongoStu.Username != "" && mongoStu.Password != "" {
-		uri = fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
-			mongoStu.Username, mongoStu.Password, mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
+	if mongoStu.URL == "" {
+		if mongoStu.Username != "" && mongoStu.Password != "" {
+			mongoStu.URL = fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
+				mongoStu.Username, mongoStu.Password, mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
+		}
+		mongoStu.URL = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
+			mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
 	}
-	uri = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
-		mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
-
-	uriEnv := getEnv("MONGO_URI", uri)
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
 	defer cancel()
 
 	str := "ths uri is:" + strings.Join(mongoStu.Address, ",")
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uriEnv))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoStu.URL))
 	if err != nil {
 		return "", errs.Wrap(ErrStr(err, str))
 	}
@@ -118,11 +117,6 @@ func exactIP(urll string) string {
 
 // CheckMinio checks the MinIO connection
 func CheckMinio(minioStu *Minio) (string, error) {
-	// Check if MinIO is enabled
-	if minioStu.Enable != "minio" {
-		return "", nil
-	}
-
 	if minioStu.Endpoint == "" || minioStu.AccessKeyID == "" || minioStu.SecretAccessKey == "" {
 		return "", ErrConfig.Wrap("MinIO configuration missing")
 	}
@@ -252,7 +246,7 @@ func CheckMySQL(mysqlStu *MySQL) (string, error) {
 }
 
 // CheckKafka checks the Kafka connection
-func CheckKafka(kafkaStu *Kafka) (string, error) {
+func CheckKafka(kafkaStu *Kafka) (string, sarama.Client, error) {
 	// Configure Kafka client
 	cfg := sarama.NewConfig()
 	if kafkaStu.Username != "" && kafkaStu.Password != "" {
@@ -267,11 +261,11 @@ func CheckKafka(kafkaStu *Kafka) (string, error) {
 	str := "the addr is:" + strings.Join(kafkaStu.Addr, ",")
 	kafkaClient, err := sarama.NewClient(kafkaStu.Addr, cfg)
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", kafkaStu.Addr, kafkaStu.Username, kafkaStu.Password)))
+		return "", nil, errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", kafkaStu.Addr, kafkaStu.Username, kafkaStu.Password)))
 	}
 	defer kafkaClient.Close()
 
-	return str, nil
+	return str, kafkaClient, nil
 }
 
 func colorPrint(colorCode int, format string, a ...interface{}) {

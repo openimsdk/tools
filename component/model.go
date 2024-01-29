@@ -1,6 +1,7 @@
 package component
 
 type Mongo struct {
+	URL         string
 	Address     []string
 	Database    string
 	Username    string
@@ -9,7 +10,6 @@ type Mongo struct {
 }
 
 type Minio struct {
-	Enable          string
 	ApiURL          string
 	Endpoint        string
 	AccessKeyID     string
@@ -42,14 +42,4 @@ type Kafka struct {
 	Username string   `yaml:"username"`
 	Password string   `yaml:"password"`
 	Addr     []string `yaml:"addr"`
-
-	LatestMsgToRedis struct {
-		Topic string `yaml:"topic"`
-	} `yaml:"latestMsgToRedis"`
-	MsgToMongo struct {
-		Topic string `yaml:"topic"`
-	} `yaml:"offlineMsgToMongo"`
-	MsgToPush struct {
-		Topic string `yaml:"topic"`
-	} `yaml:"msgToPush"`
 }
