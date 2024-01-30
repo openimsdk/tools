@@ -65,27 +65,7 @@ func Find[T any](ctx context.Context, coll *mongo.Collection, filter any, opts .
 		return nil, errs.Wrap(err)
 	}
 	defer cur.Close(ctx)
-	var res []T
-	if basic[T]() {
-		var temp []map[string]T
-		if err := cur.All(ctx, &temp); err != nil {
-			return nil, errs.Wrap(err)
-		}
-		res = make([]T, 0, len(temp))
-		for _, m := range temp {
-			if len(m) != 1 {
-				return nil, errs.ErrInternalServer.Wrap("mongo find result len(m) != 1")
-			}
-			for _, t := range m {
-				res = append(res, t)
-			}
-		}
-	} else {
-		if err := cur.All(ctx, &res); err != nil {
-			return nil, errs.Wrap(err)
-		}
-	}
-	return res, nil
+	return decodes[T](ctx, cur)
 }
 
 func FindOne[T any](ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.FindOneOptions) (res T, err error) {
@@ -160,9 +140,30 @@ func Aggregate[T any](ctx context.Context, coll *mongo.Collection, pipeline any,
 	if err != nil {
 		return nil, err
 	}
-	var ts []T
-	if err := cur.All(ctx, &ts); err != nil {
-		return nil, err
+	defer cur.Close(ctx)
+	return decodes[T](ctx, cur)
+}
+
+func decodes[T any](ctx context.Context, cur *mongo.Cursor) ([]T, error) {
+	var res []T
+	if basic[T]() {
+		var temp []map[string]T
+		if err := cur.All(ctx, &temp); err != nil {
+			return nil, errs.Wrap(err)
+		}
+		res = make([]T, 0, len(temp))
+		for _, m := range temp {
+			if len(m) != 1 {
+				return nil, errs.ErrInternalServer.Wrap("mongo find result len(m) != 1")
+			}
+			for _, t := range m {
+				res = append(res, t)
+			}
+		}
+	} else {
+		if err := cur.All(ctx, &res); err != nil {
+			return nil, err
+		}
 	}
-	return ts, nil
+	return res, nil
 }
