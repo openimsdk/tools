@@ -221,13 +221,14 @@ func CheckMySQL(mysqlStu *MySQL) (string, error) {
 	if err != nil {
 		return "", errs.Wrap(err, "get sqlDB failed")
 	}
+	str := "the addr is:" + strings.Join(mysqlStu.Address, ",")
 	defer sqlDB.Close()
 	err = sqlDB.Ping()
 	if err != nil {
 		return "", errs.Wrap(err, "ping sqlDB failed")
 	}
 
-	return "", nil
+	return str, nil
 }
 
 // CheckKafka checks the Kafka connection
