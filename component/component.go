@@ -248,7 +248,6 @@ func CheckKafka(kafkaStu *Kafka) (string, sarama.Client, error) {
 	if err != nil {
 		return "", nil, errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", kafkaStu.Addr, kafkaStu.Username, kafkaStu.Password)))
 	}
-	defer kafkaClient.Close()
 
 	return str, kafkaClient, nil
 }
