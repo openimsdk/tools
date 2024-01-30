@@ -221,13 +221,14 @@ func CheckMySQL(mysqlStu *MySQL) (string, error) {
 	if err != nil {
 		return "", errs.Wrap(err, "get sqlDB failed")
 	}
+	str := "the addr is:" + strings.Join(mysqlStu.Address, ",")
 	defer sqlDB.Close()
 	err = sqlDB.Ping()
 	if err != nil {
 		return "", errs.Wrap(err, "ping sqlDB failed")
 	}
 
-	return "", nil
+	return str, nil
 }
 
 // CheckKafka checks the Kafka connection
@@ -248,7 +249,6 @@ func CheckKafka(kafkaStu *Kafka) (string, sarama.Client, error) {
 	if err != nil {
 		return "", nil, errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", kafkaStu.Addr, kafkaStu.Username, kafkaStu.Password)))
 	}
-	defer kafkaClient.Close()
 
 	return str, kafkaClient, nil
 }
