@@ -16,6 +16,7 @@ package component
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/IBM/sarama"
@@ -38,8 +39,6 @@ import (
 const (
 	// defaultCfgPath is the default path of the configuration file.
 	minioHealthCheckDuration = 1
-	componentStartErrCode    = 6000
-	configErrCode            = 6001
 	mongoConnTimeout         = 30 * time.Second
 	MaxRetry                 = 300
 )
@@ -50,13 +49,8 @@ const (
 	colorYellow = 33
 )
 
-var (
-	ErrComponentStart = errs.NewCodeError(componentStartErrCode, "ComponentStartErr")
-	ErrConfig         = errs.NewCodeError(configErrCode, "Config file is incorrect")
-)
-
 // CheckMongo checks the MongoDB connection without retries
-func CheckMongo(mongoStu *Mongo) (string, error) {
+func CheckMongo(mongoStu *Mongo) error {
 	mongodbHosts := strings.Join(mongoStu.Address, ",")
 	if mongoStu.URL == "" {
 		if mongoStu.Username != "" && mongoStu.Password != "" {
@@ -67,14 +61,17 @@ func CheckMongo(mongoStu *Mongo) (string, error) {
 			mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
 	}
 
+	mogoInfo, err := json.Marshal(mongoStu)
+	if err != nil {
+		return errs.Wrap(errors.New("mongoStu Marshal failed"))
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
 	defer cancel()
 
-	str := "ths uri is:" + strings.Join(mongoStu.Address, ",")
-
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoStu.URL))
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, str))
+		return errs.Wrap(ErrStr(err, string(mogoInfo)))
 	}
 	defer client.Disconnect(context.Background())
 
@@ -82,10 +79,9 @@ func CheckMongo(mongoStu *Mongo) (string, error) {
 	defer cancel()
 
 	if err = client.Ping(ctx, nil); err != nil {
-		return "", errs.Wrap(ErrStr(err, str))
+		return errs.Wrap(ErrStr(err, string(mogoInfo)))
 	}
-
-	return str, nil
+	return nil
 }
 
 func exactIP(urll string) string {
@@ -102,16 +98,19 @@ func exactIP(urll string) string {
 }
 
 // CheckMinio checks the MinIO connection
-func CheckMinio(minioStu *Minio) (string, error) {
+func CheckMinio(minioStu *Minio) error {
 	if minioStu.Endpoint == "" || minioStu.AccessKeyID == "" || minioStu.SecretAccessKey == "" {
-		return "", ErrConfig.Wrap("MinIO configuration missing")
+		return errs.Wrap(errors.New("MinIO configuration missing"))
 	}
 
 	// Parse endpoint URL to determine if SSL is enabled
+	minioInfo, err := json.Marshal(minioStu)
+	if err != nil {
+		return errs.Wrap(errors.New("minioStu Marshal failed"))
+	}
 	u, err := url.Parse(minioStu.Endpoint)
 	if err != nil {
-		str := "the endpoint is:" + minioStu.Endpoint
-		return "", errs.Wrap(ErrStr(err, str))
+		return errs.Wrap(ErrStr(err, string(minioInfo)))
 	}
 	secure := u.Scheme == "https" || minioStu.UseSSL == "true"
 
@@ -120,34 +119,36 @@ func CheckMinio(minioStu *Minio) (string, error) {
 		Creds:  credentials.NewStaticV4(minioStu.AccessKeyID, minioStu.SecretAccessKey, ""),
 		Secure: secure,
 	})
-	str := "ths addr is:" + u.Host
 	if err != nil {
-		strs := fmt.Sprintf("%v;host:%s,accessKeyID:%s,secretAccessKey:%s,Secure:%v", err, u.Host, minioStu.AccessKeyID, minioStu.SecretAccessKey, secure)
-		return "", errs.Wrap(err, strs)
+		return errs.Wrap(ErrStr(err, string(minioInfo)))
 	}
 
 	// Perform health check
 	cancel, err := minioClient.HealthCheck(time.Duration(minioHealthCheckDuration) * time.Second)
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, str))
+		return errs.Wrap(ErrStr(err, string(minioInfo)))
 	}
 	defer cancel()
 
 	if minioClient.IsOffline() {
-		str := fmt.Sprintf("Minio server is offline;%s", str)
-		return "", ErrComponentStart.Wrap(str)
+		return errs.Wrap(ErrStr(err, string(minioInfo)))
 	}
 
 	// Check for localhost in API URL and Minio SignEndpoint
 	if exactIP(minioStu.ApiURL) == "127.0.0.1" || exactIP(minioStu.SignEndpoint) == "127.0.0.1" {
-		return "", ErrConfig.Wrap("apiURL or Minio SignEndpoint endpoint contain 127.0.0.1")
+		return errs.Wrap(errors.New("apiURL or Minio SignEndpoint endpoint contain 127.0.0.1"), string(minioInfo))
 	}
-	return str, nil
+	return nil
 }
 
 // CheckRedis checks the Redis connection
-func CheckRedis(redisStu *Redis) (string, error) {
+func CheckRedis(redisStu *Redis) error {
 	// Split address to handle multiple addresses for cluster setup
+
+	redisInfo, err := json.Marshal(redisStu)
+	if err != nil {
+		return errs.Wrap(errors.New("redisStu Marshal failed"))
+	}
 
 	var redisClient redis.UniversalClient
 	if len(redisStu.Address) > 1 {
@@ -168,24 +169,25 @@ func CheckRedis(redisStu *Redis) (string, error) {
 	defer redisClient.Close()
 
 	// Ping Redis to check connectivity
-	_, err := redisClient.Ping(context.Background()).Result()
-	str := fmt.Sprintf("the addr is:%s", strings.Join(redisStu.Address, ","))
+	_, err = redisClient.Ping(context.Background()).Result()
 	if err != nil {
-		strs := fmt.Sprintf("%s, the username is:%s, the password is:%s.", str, redisStu.Username, redisStu.Password)
-		return "", errs.Wrap(ErrStr(err, strs))
+		return errs.Wrap(ErrStr(err, string(redisInfo)))
 	}
-
-	return str, nil
+	return nil
 }
 
 // CheckZookeeper checks the Zookeeper connection
-func CheckZookeeper(zkStu *Zookeeper) (string, error) {
+func CheckZookeeper(zkStu *Zookeeper) error {
+
+	zkStuInfo, err := json.Marshal(zkStu)
+	if err != nil {
+		return errs.Wrap(errors.New("redisStu Marshal failed"))
+	}
 
 	// Connect to Zookeeper
-	str := fmt.Sprintf("the addr is:%s,the schema is:%s, the username is:%s, the password is:%s.", zkStu.ZkAddr, zkStu.Schema, zkStu.Username, zkStu.Password)
 	c, eventChan, err := zk.Connect(zkStu.ZkAddr, time.Second) // Adjust the timeout as necessary
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, str))
+		return errs.Wrap(ErrStr(err, string(zkStuInfo)))
 	}
 	timeout := time.After(5 * time.Second)
 	for {
@@ -196,17 +198,17 @@ func CheckZookeeper(zkStu *Zookeeper) (string, error) {
 				goto Connected
 			}
 		case <-timeout:
-			return "", errs.Wrap(ErrStr(errors.New("timeout waiting for Zookeeper connection"), str))
+			return errs.Wrap(ErrStr(errors.New("timeout waiting for Zookeeper connection"), string(zkStuInfo)))
 		}
 	}
 Connected:
 	defer c.Close()
 
-	return fmt.Sprintf("the address is:%s", zkStu.ZkAddr), nil
+	return nil
 }
 
 // CheckMySQL checks the mysql connection
-func CheckMySQL(mysqlStu *MySQL) (string, error) {
+func CheckMySQL(mysqlStu *MySQL) error {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
 		mysqlStu.Username,
 		mysqlStu.Password,
@@ -214,26 +216,30 @@ func CheckMySQL(mysqlStu *MySQL) (string, error) {
 		"mysql",
 	)
 
+	zkStuInfo, err := json.Marshal(mysqlStu)
+	if err != nil {
+		return errs.Wrap(errors.New("mysqlStu Marshal failed"))
+	}
+
 	db, err := gorm.Open(mysql.Open(dsn), nil)
 	if err != nil {
-		return "", errs.Wrap(ErrStr(err, dsn))
+		return errs.Wrap(ErrStr(err, dsn))
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
-		return "", errs.Wrap(err, "get sqlDB failed")
+		return errs.Wrap(ErrStr(err, string(zkStuInfo)))
 	}
-	str := "the addr is:" + strings.Join(mysqlStu.Address, ",")
 	defer sqlDB.Close()
 	err = sqlDB.Ping()
 	if err != nil {
-		return "", errs.Wrap(err, "ping sqlDB failed")
+		return errs.Wrap(ErrStr(err, string(zkStuInfo)))
 	}
 
-	return str, nil
+	return nil
 }
 
 // CheckKafka checks the Kafka connection
-func CheckKafka(kafkaStu *Kafka) (string, sarama.Client, error) {
+func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// Configure Kafka client
 	cfg := sarama.NewConfig()
 	if kafkaStu.Username != "" && kafkaStu.Password != "" {
@@ -245,13 +251,16 @@ func CheckKafka(kafkaStu *Kafka) (string, sarama.Client, error) {
 	// kafka.SetupTLSConfig(cfg)
 
 	// Create Kafka client
-	str := "the addr is:" + strings.Join(kafkaStu.Addr, ",")
+	kafkaInfo, err := json.Marshal(kafkaStu)
+	if err != nil {
+		return nil, errs.Wrap(errors.New("minioStu Marshal failed"))
+	}
 	kafkaClient, err := sarama.NewClient(kafkaStu.Addr, cfg)
 	if err != nil {
-		return "", nil, errs.Wrap(ErrStr(err, fmt.Sprintf("the address is:%s, the username is:%s, the password is:%s", kafkaStu.Addr, kafkaStu.Username, kafkaStu.Password)))
+		return nil, errs.Wrap(ErrStr(err, string(kafkaInfo)))
 	}
 
-	return str, kafkaClient, nil
+	return kafkaClient, nil
 }
 
 func colorPrint(colorCode int, format string, a ...interface{}) {
