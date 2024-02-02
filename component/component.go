@@ -28,6 +28,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"log"
 	"net"
 	"net/url"
 	"strings"
@@ -257,8 +258,12 @@ func colorPrint(colorCode int, format string, a ...interface{}) {
 	fmt.Printf("\x1b[%dm%s\x1b[0m\n", colorCode, fmt.Sprintf(format, a...))
 }
 
+func colorErrPrint(colorCode int, format string, a ...interface{}) {
+	log.Printf("\x1b[%dm%s\x1b[0m\n", colorCode, fmt.Sprintf(format, a...))
+}
+
 func ErrorPrint(s string) {
-	colorPrint(colorRed, "%v", s)
+	colorErrPrint(colorRed, "%v", s)
 }
 
 func SuccessPrint(s string) {
