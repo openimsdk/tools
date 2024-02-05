@@ -65,7 +65,7 @@ func Find[T any](ctx context.Context, coll *mongo.Collection, filter any, opts .
 		return nil, errs.Wrap(err)
 	}
 	defer cur.Close(ctx)
-	return decodes[T](ctx, cur)
+	return Decodes[T](ctx, cur)
 }
 
 func FindOne[T any](ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.FindOneOptions) (res T, err error) {
@@ -73,10 +73,15 @@ func FindOne[T any](ctx context.Context, coll *mongo.Collection, filter any, opt
 	if err := cur.Err(); err != nil {
 		return res, errs.Wrap(err)
 	}
-	if err := cur.Decode(&res); err != nil {
+	return DecodeOne[T](cur.Decode)
+}
+
+func FindOneAndUpdate[T any](ctx context.Context, coll *mongo.Collection, filter any, update any, opts ...*options.FindOneAndUpdateOptions) (res T, err error) {
+	result := coll.FindOneAndUpdate(ctx, filter, update, opts...)
+	if err := result.Err(); err != nil {
 		return res, errs.Wrap(err)
 	}
-	return res, nil
+	return DecodeOne[T](result.Decode)
 }
 
 func FindPage[T any](ctx context.Context, coll *mongo.Collection, filter any, pagination pagination.Pagination, opts ...*options.FindOptions) (int64, []T, error) {
@@ -141,10 +146,10 @@ func Aggregate[T any](ctx context.Context, coll *mongo.Collection, pipeline any,
 		return nil, err
 	}
 	defer cur.Close(ctx)
-	return decodes[T](ctx, cur)
+	return Decodes[T](ctx, cur)
 }
 
-func decodes[T any](ctx context.Context, cur *mongo.Cursor) ([]T, error) {
+func Decodes[T any](ctx context.Context, cur *mongo.Cursor) ([]T, error) {
 	var res []T
 	if basic[T]() {
 		var temp []map[string]T
@@ -166,4 +171,27 @@ func decodes[T any](ctx context.Context, cur *mongo.Cursor) ([]T, error) {
 		}
 	}
 	return res, nil
+}
+
+func DecodeOne[T any](decoder func(v any) error) (res T, err error) {
+	if basic[T]() {
+		var temp map[string]T
+		if err = decoder(&temp); err != nil {
+			err = errs.Wrap(err)
+			return
+		}
+		if len(temp) != 1 {
+			err = errs.ErrInternalServer.Wrap("mongo find result len(m) != 1")
+			return
+		}
+		for k := range temp {
+			res = temp[k]
+		}
+	} else {
+		if err = decoder(&res); err != nil {
+			err = errs.Wrap(err)
+			return
+		}
+	}
+	return
 }
