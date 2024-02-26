@@ -17,13 +17,14 @@ package zookeeper
 import (
 	"context"
 	"errors"
-	"github.com/OpenIMSDK/tools/errs"
-	"github.com/OpenIMSDK/tools/log"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/OpenIMSDK/tools/errs"
+	"github.com/OpenIMSDK/tools/log"
 
 	"github.com/go-zookeeper/zk"
 	"google.golang.org/grpc"
@@ -191,12 +192,12 @@ func (s *ZkClient) Close() {
 func (s *ZkClient) ensureAndCreate(node string) error {
 	exists, _, err := s.conn.Exists(node)
 	if err != nil {
-		return err
+		return errs.Wrap(err, "checking existence for node %s in ZkClient ensureAndCreate", node)
 	}
 	if !exists {
-		_, err := s.conn.Create(node, []byte(""), 0, zk.WorldACL(zk.PermAll))
+		_, err = s.conn.Create(node, []byte(""), 0, zk.WorldACL(zk.PermAll))
 		if err != nil && err != zk.ErrNodeExists {
-			return err
+			return errs.Wrap(err, "creating node %s in ZkClient ensureAndCreate", node)
 		}
 	}
 	return nil
