@@ -24,16 +24,17 @@ func (s *ZkClient) RegisterConf2Registry(key string, conf []byte) error {
 
 	exists, _, err := s.conn.Exists(path)
 	if err != nil {
-		return errs.Wrap(err, "checking existence in ZkClient RegisterConf2Registry")
+		return errs.Wrap(err, "checking existence for path %s in ZkClient RegisterConf2Registry", path)
 	}
+
 	if exists {
 		if err := s.conn.Delete(path, 0); err != nil {
-			return errs.Wrap(err, "deleting existing node in ZkClient RegisterConf2Registry")
+			return errs.Wrap(err, "deleting existing node for path %s in ZkClient RegisterConf2Registry", path)
 		}
 	}
 	_, err = s.conn.Create(path, conf, 0, zk.WorldACL(zk.PermAll))
 	if err != nil && err != zk.ErrNodeExists {
-		return errs.Wrap(err, "creating node in ZkClient RegisterConf2Registry")
+		return errs.Wrap(err, "creating node for path %s in ZkClient RegisterConf2Registry", path)
 	}
 	return nil
 }
