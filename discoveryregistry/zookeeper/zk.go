@@ -192,12 +192,12 @@ func (s *ZkClient) Close() {
 func (s *ZkClient) ensureAndCreate(node string) error {
 	exists, _, err := s.conn.Exists(node)
 	if err != nil {
-		return errs.Wrap(err, "checking existence in ZkClient ensureAndCreate")
+		return errs.Wrap(err, "checking existence for node %s in ZkClient ensureAndCreate", node)
 	}
 	if !exists {
 		_, err = s.conn.Create(node, []byte(""), 0, zk.WorldACL(zk.PermAll))
 		if err != nil && err != zk.ErrNodeExists {
-			return errs.Wrap(err, "creating node in ZkClient ensureAndCreate")
+			return errs.Wrap(err, "creating node %sin ZkClient ensureAndCreate", node)
 		}
 	}
 	return nil
