@@ -16,26 +16,32 @@ package zookeeper
 
 import (
 	"github.com/go-zookeeper/zk"
+    "github.com/OpenIMSDK/tools/errs"
 )
 
 func (s *ZkClient) RegisterConf2Registry(key string, conf []byte) error {
-	exists, _, err := s.conn.Exists(s.getPath(key))
+	path := s.getPath(key)
+
+	exists, _, err := s.conn.Exists(path)
 	if err != nil {
-		return err
+		return errs.Wrap(err, "checking existence in ZkClient RegisterConf2Registry")
 	}
 	if exists {
-		if err := s.conn.Delete(s.getPath(key), 0); err != nil {
-			return err
+		if err := s.conn.Delete(path, 0); err != nil {
+			return errs.Wrap(err, "deleting existing node in ZkClient RegisterConf2Registry")
 		}
 	}
-	_, err = s.conn.Create(s.getPath(key), conf, 0, zk.WorldACL(zk.PermAll))
-	if err != zk.ErrNodeExists {
-		return err
+	_, err = s.conn.Create(path, conf, 0, zk.WorldACL(zk.PermAll))
+	if err != nil && err != zk.ErrNodeExists {
+		return errs.Wrap(err, "creating node in ZkClient RegisterConf2Registry")
 	}
 	return nil
 }
 
 func (s *ZkClient) GetConfFromRegistry(key string) ([]byte, error) {
 	bytes, _, err := s.conn.Get(s.getPath(key))
-	return bytes, err
+	if err != nil {
+		return nil, errs.Wrap(err, "getting configuration from registry")
+	}
+	return bytes, nil
 }
