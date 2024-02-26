@@ -15,8 +15,8 @@
 package zookeeper
 
 import (
+	"github.com/OpenIMSDK/tools/errs"
 	"github.com/go-zookeeper/zk"
-    "github.com/OpenIMSDK/tools/errs"
 )
 
 func (s *ZkClient) RegisterConf2Registry(key string, conf []byte) error {
