@@ -29,6 +29,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/url"
@@ -187,34 +188,44 @@ func CheckRedis(redisStu *Redis) error {
 	return nil
 }
 
-// CheckZookeeper checks the Zookeeper connection
 func CheckZookeeper(zkStu *Zookeeper) error {
 	zkStuInfo, err := json.Marshal(zkStu)
 	if err != nil {
-		return errs.Wrap(errors.New("zkStu Marshal failed"))
+		return fmt.Errorf("zkStu Marshal failed: %w", err)
 	}
+
+	// Temporary disable logging
+	originalLogger := log.Default().Writer()
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(originalLogger) // Ensure logging is restored
 
 	// Connect to Zookeeper
-	c, eventChan, err := zk.Connect(zkStu.ZkAddr, time.Second) // Adjust the timeout as necessary
+	c, _, err := zk.Connect(zkStu.ZkAddr, time.Second) // Adjust the timeout as necessary
 	if err != nil {
-		return errs.Wrap(fmt.Errorf("zk connect failed, err:%v. %s", err, string(zkStuInfo)))
+		return fmt.Errorf("zk connect failed, err: %v. %s", err, string(zkStuInfo))
 	}
-	defer c.Close() // Ensure the connection is closed
+	defer c.Close()
 
-	timeout := time.After(5 * time.Second)
-	for {
-		select {
-		case event := <-eventChan:
-			if event.State == zk.StateConnected {
-				fmt.Println("Connected to Zookeeper")
-				// Perform some operations here to verify connection, e.g., c.Get("/somepath")
-				return nil
+	// Check if we can get a connection within 5 seconds
+	connected := make(chan bool)
+	go func() {
+		for {
+			if c.State() == zk.StateHasSession {
+				connected <- true
+				return
 			}
-		case <-timeout:
-			return errs.Wrap(ErrStr(errors.New("timeout waiting for Zookeeper connection"), string(zkStuInfo)))
+			time.Sleep(100 * time.Millisecond)
 		}
+	}()
+
+	select {
+	case <-connected:
+		// Connection successful
+		return nil
+	case <-time.After(5 * time.Second):
+		// Connection timed out
+		return fmt.Errorf("timeout waiting for Zookeeper connection: %s", string(zkStuInfo))
 	}
-	// No need for a 'Connected' label
 }
 
 // CheckMySQL checks the mysql connection
