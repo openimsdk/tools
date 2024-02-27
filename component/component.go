@@ -189,7 +189,6 @@ func CheckRedis(redisStu *Redis) error {
 
 // CheckZookeeper checks the Zookeeper connection
 func CheckZookeeper(zkStu *Zookeeper) error {
-
 	zkStuInfo, err := json.Marshal(zkStu)
 	if err != nil {
 		return errs.Wrap(errors.New("zkStu Marshal failed"))
@@ -200,20 +199,22 @@ func CheckZookeeper(zkStu *Zookeeper) error {
 	if err != nil {
 		return errs.Wrap(fmt.Errorf("zk connect failed, err:%v. %s", err, string(zkStuInfo)))
 	}
+	defer c.Close() // Ensure the connection is closed
+
 	timeout := time.After(5 * time.Second)
 	for {
 		select {
 		case event := <-eventChan:
 			if event.State == zk.StateConnected {
-				goto Connected
+				fmt.Println("Connected to Zookeeper")
+				// Perform some operations here to verify connection, e.g., c.Get("/somepath")
+				return nil
 			}
 		case <-timeout:
 			return errs.Wrap(ErrStr(errors.New("timeout waiting for Zookeeper connection"), string(zkStuInfo)))
 		}
 	}
-Connected:
-	defer c.Close()
-	return nil
+	// No need for a 'Connected' label
 }
 
 // CheckMySQL checks the mysql connection
