@@ -40,7 +40,7 @@ import (
 const (
 	// defaultCfgPath is the default path of the configuration file.
 	minioHealthCheckDuration = 1
-	mongoConnTimeout         = 15 * time.Second
+	mongoConnTimeout         = 5 * time.Second
 	MaxRetry                 = 300
 )
 
