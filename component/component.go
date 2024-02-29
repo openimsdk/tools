@@ -133,7 +133,7 @@ func CheckMinio(minioStu *Minio) error {
 	defer cancel()
 
 	if minioClient.IsOffline() {
-		return errs.Wrap(fmt.Errorf("minio client is offline, err:%v. %s", err, string(minioInfo)))
+		return errs.Wrap(fmt.Errorf("minio client is offline. %s", string(minioInfo)))
 	}
 
 	// Check for localhost in API URL and Minio SignEndpoint
