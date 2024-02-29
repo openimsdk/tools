@@ -40,7 +40,7 @@ import (
 const (
 	// defaultCfgPath is the default path of the configuration file.
 	minioHealthCheckDuration = 1
-	mongoConnTimeout         = 30 * time.Second
+	mongoConnTimeout         = 15 * time.Second
 	MaxRetry                 = 300
 )
 
@@ -57,9 +57,10 @@ func CheckMongo(mongoStu *Mongo) error {
 		if mongoStu.Username != "" && mongoStu.Password != "" {
 			mongoStu.URL = fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
 				mongoStu.Username, mongoStu.Password, mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
+		} else {
+			mongoStu.URL = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
+				mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
 		}
-		mongoStu.URL = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
-			mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
 	}
 
 	mongoInfo, err := json.Marshal(mongoStu)
@@ -278,7 +279,7 @@ func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	}
 	kafkaClient, err := sarama.NewClient(kafkaStu.Addr, cfg)
 	if err != nil {
-		return nil, errs.Wrap(fmt.Errorf("kafaka connected failed, err:%v, %s", err, string(kafkaInfo)))
+		return nil, errs.Wrap(fmt.Errorf("kafaka connected failed, err:%v. %s", err, string(kafkaInfo)))
 	}
 
 	return kafkaClient, nil
