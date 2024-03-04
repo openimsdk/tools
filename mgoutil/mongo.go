@@ -87,7 +87,7 @@ func FindOneAndUpdate[T any](ctx context.Context, coll *mongo.Collection, filter
 func FindPage[T any](ctx context.Context, coll *mongo.Collection, filter any, pagination pagination.Pagination, opts ...*options.FindOptions) (int64, []T, error) {
 	count, err := Count(ctx, coll, filter, findOptionToCountOption(opts))
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, errs.Wrap(err, "failed to count documents in collection")
 	}
 	if count == 0 || pagination == nil {
 		return count, nil, nil
@@ -121,7 +121,7 @@ func Exist(ctx context.Context, coll *mongo.Collection, filter any, opts ...*opt
 	opts = append(opts, options.Count().SetLimit(1))
 	count, err := Count(ctx, coll, filter, opts...)
 	if err != nil {
-		return false, err
+		return false, errs.Wrap(err, "failed to count documents in collection")
 	}
 	return count > 0, nil
 }
@@ -167,7 +167,7 @@ func Decodes[T any](ctx context.Context, cur *mongo.Cursor) ([]T, error) {
 		}
 	} else {
 		if err := cur.All(ctx, &res); err != nil {
-			return nil, err
+			return nil, errs.Wrap(err)
 		}
 	}
 	return res, nil

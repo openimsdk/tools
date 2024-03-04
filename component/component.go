@@ -29,6 +29,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/url"
@@ -39,7 +40,7 @@ import (
 const (
 	// defaultCfgPath is the default path of the configuration file.
 	minioHealthCheckDuration = 1
-	mongoConnTimeout         = 30 * time.Second
+	mongoConnTimeout         = 5 * time.Second
 	MaxRetry                 = 300
 )
 
@@ -56,12 +57,13 @@ func CheckMongo(mongoStu *Mongo) error {
 		if mongoStu.Username != "" && mongoStu.Password != "" {
 			mongoStu.URL = fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
 				mongoStu.Username, mongoStu.Password, mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
+		} else {
+			mongoStu.URL = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
+				mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
 		}
-		mongoStu.URL = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
-			mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
 	}
 
-	mogoInfo, err := json.Marshal(mongoStu)
+	mongoInfo, err := json.Marshal(mongoStu)
 	if err != nil {
 		return errs.Wrap(errors.New("mongoStu Marshal failed"))
 	}
@@ -71,21 +73,22 @@ func CheckMongo(mongoStu *Mongo) error {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoStu.URL))
 	if err != nil {
-		return errs.Wrap(ErrStr(err, string(mogoInfo)))
+		return errs.Wrap(fmt.Errorf("mongo connect failed, err:%v. %s", err, string(mongoInfo)))
 	}
 	defer client.Disconnect(context.Background())
-
-	ctx, cancel = context.WithTimeout(context.Background(), mongoConnTimeout)
 	defer cancel()
 
 	if err = client.Ping(ctx, nil); err != nil {
-		return errs.Wrap(ErrStr(err, string(mogoInfo)))
+		return errs.Wrap(fmt.Errorf("ping mongo failed, err:%v. %s", err, string(mongoInfo)))
 	}
 	return nil
 }
 
-func exactIP(urll string) string {
-	u, _ := url.Parse(urll)
+func exactIP(urlStr string) (string, error) {
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return "", errs.Wrap(fmt.Errorf("url parse error, err:%v. url:%s", err, urlStr))
+	}
 	host, _, err := net.SplitHostPort(u.Host)
 	if err != nil {
 		host = u.Host
@@ -93,14 +96,13 @@ func exactIP(urll string) string {
 	if strings.HasSuffix(host, ":") {
 		host = host[0 : len(host)-1]
 	}
-
-	return host
+	return host, nil
 }
 
 // CheckMinio checks the MinIO connection
 func CheckMinio(minioStu *Minio) error {
 	if minioStu.Endpoint == "" || minioStu.AccessKeyID == "" || minioStu.SecretAccessKey == "" {
-		return errs.Wrap(errors.New("MinIO configuration missing"))
+		return errs.Wrap(errors.New("missing configuration for endpoint, accessKeyID, or secretAccessKey"))
 	}
 
 	// Parse endpoint URL to determine if SSL is enabled
@@ -110,7 +112,7 @@ func CheckMinio(minioStu *Minio) error {
 	}
 	u, err := url.Parse(minioStu.Endpoint)
 	if err != nil {
-		return errs.Wrap(ErrStr(err, string(minioInfo)))
+		return errs.Wrap(fmt.Errorf("url parse failed, err:%v. %s", err, string(minioInfo)))
 	}
 	secure := u.Scheme == "https" || minioStu.UseSSL == "true"
 
@@ -120,23 +122,34 @@ func CheckMinio(minioStu *Minio) error {
 		Secure: secure,
 	})
 	if err != nil {
-		return errs.Wrap(ErrStr(err, string(minioInfo)))
+		return errs.Wrap(fmt.Errorf("initialize minio client failed, err:%v. %s", err, string(minioInfo)))
 	}
 
 	// Perform health check
 	cancel, err := minioClient.HealthCheck(time.Duration(minioHealthCheckDuration) * time.Second)
 	if err != nil {
-		return errs.Wrap(ErrStr(err, string(minioInfo)))
+		return errs.Wrap(fmt.Errorf("minio client health check failed, err:%v. %s", err, string(minioInfo)))
 	}
 	defer cancel()
 
 	if minioClient.IsOffline() {
-		return errs.Wrap(ErrStr(err, string(minioInfo)))
+		return errs.Wrap(fmt.Errorf("minio client is offline. %s", string(minioInfo)))
 	}
 
 	// Check for localhost in API URL and Minio SignEndpoint
-	if exactIP(minioStu.ApiURL) == "127.0.0.1" || exactIP(minioStu.SignEndpoint) == "127.0.0.1" {
-		return errs.Wrap(errors.New("apiURL or Minio SignEndpoint endpoint contain 127.0.0.1"), string(minioInfo))
+	apiURL, err := exactIP(minioStu.ApiURL)
+	if err != nil {
+		return err
+	}
+	signEndPoint, err := exactIP(minioStu.SignEndpoint)
+	if err != nil {
+		return err
+	}
+	if apiURL == "127.0.0.1" {
+		ErrorPrint(fmt.Sprintf("Warning, minioStu.apiURL(%s) contain 127.0.0.1.", minioStu.ApiURL))
+	}
+	if signEndPoint == "127.0.0.1" {
+		ErrorPrint(fmt.Sprintf("Warning, minioStu.signEndPoint(%s) contain 127.0.0.1.", minioStu.SignEndpoint))
 	}
 	return nil
 }
@@ -171,40 +184,49 @@ func CheckRedis(redisStu *Redis) error {
 	// Ping Redis to check connectivity
 	_, err = redisClient.Ping(context.Background()).Result()
 	if err != nil {
-		return errs.Wrap(ErrStr(err, string(redisInfo)))
+		return errs.Wrap(fmt.Errorf("redis ping failed, err:%v. %s", err, string(redisInfo)))
 	}
 	return nil
 }
 
-// CheckZookeeper checks the Zookeeper connection
 func CheckZookeeper(zkStu *Zookeeper) error {
-
 	zkStuInfo, err := json.Marshal(zkStu)
 	if err != nil {
-		return errs.Wrap(errors.New("redisStu Marshal failed"))
+		return fmt.Errorf("zkStu Marshal failed: %w", err)
 	}
+
+	// Temporary disable logging
+	originalLogger := log.Default().Writer()
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(originalLogger) // Ensure logging is restored
 
 	// Connect to Zookeeper
-	c, eventChan, err := zk.Connect(zkStu.ZkAddr, time.Second) // Adjust the timeout as necessary
+	c, _, err := zk.Connect(zkStu.ZkAddr, time.Second) // Adjust the timeout as necessary
 	if err != nil {
-		return errs.Wrap(ErrStr(err, string(zkStuInfo)))
+		return fmt.Errorf("zk connect failed, err: %v. %s", err, string(zkStuInfo))
 	}
-	timeout := time.After(5 * time.Second)
-	for {
-		select {
-		case event := <-eventChan:
-			if event.State == zk.StateConnected {
-				fmt.Println("Connected to Zookeeper")
-				goto Connected
-			}
-		case <-timeout:
-			return errs.Wrap(ErrStr(errors.New("timeout waiting for Zookeeper connection"), string(zkStuInfo)))
-		}
-	}
-Connected:
 	defer c.Close()
 
-	return nil
+	// Check if we can get a connection within 5 seconds
+	connected := make(chan bool)
+	go func() {
+		for {
+			if c.State() == zk.StateHasSession {
+				connected <- true
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	select {
+	case <-connected:
+		// Connection successful
+		return nil
+	case <-time.After(5 * time.Second):
+		// Connection timed out
+		return fmt.Errorf("timeout waiting for Zookeeper connection: %s", string(zkStuInfo))
+	}
 }
 
 // CheckMySQL checks the mysql connection
@@ -253,11 +275,11 @@ func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// Create Kafka client
 	kafkaInfo, err := json.Marshal(kafkaStu)
 	if err != nil {
-		return nil, errs.Wrap(errors.New("minioStu Marshal failed"))
+		return nil, errs.Wrap(errors.New("kafkaStu Marshal failed"))
 	}
 	kafkaClient, err := sarama.NewClient(kafkaStu.Addr, cfg)
 	if err != nil {
-		return nil, errs.Wrap(ErrStr(err, string(kafkaInfo)))
+		return nil, errs.Wrap(fmt.Errorf("kafaka connected failed, err:%v. %s", err, string(kafkaInfo)))
 	}
 
 	return kafkaClient, nil
