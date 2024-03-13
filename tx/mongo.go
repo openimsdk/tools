@@ -16,8 +16,9 @@ package tx
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/bson"
 	"sync"
+
+	"go.mongodb.org/mongo-driver/bson"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -34,7 +35,7 @@ type _Mongo struct {
 	initialized bool
 	lock        sync.Locker
 	client      *mongo.Client
-	tx          func(func(ctx context.Context) error) error
+	tx          func(context.Context, func(ctx context.Context) error) error
 }
 
 func (m *_Mongo) init(ctx context.Context) (err error) {
@@ -56,13 +57,13 @@ func (m *_Mongo) init(ctx context.Context) (err error) {
 	if !allowTx {
 		return nil
 	}
-	m.tx = func(fn func(ctx context.Context) error) error {
+	m.tx = func(fnctx context.Context, fn func(ctx context.Context) error) error {
 		sess, err := m.client.StartSession()
 		if err != nil {
 			return err
 		}
-		defer sess.EndSession(ctx)
-		_, err = sess.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
+		defer sess.EndSession(fnctx)
+		_, err = sess.WithTransaction(fnctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
 			return nil, fn(sessCtx)
 		})
 		return err
@@ -70,7 +71,7 @@ func (m *_Mongo) init(ctx context.Context) (err error) {
 	return nil
 }
 
-func (m *_Mongo) Transaction(ctx context.Context, fn func(ctx context.Context) error) error {
+func (m *_Mongo) Transaction(ctx context.Context, fn func(ctxx context.Context) error) error {
 	if !m.initialized {
 		if err := m.init(ctx); err != nil {
 			return err
@@ -79,5 +80,5 @@ func (m *_Mongo) Transaction(ctx context.Context, fn func(ctx context.Context) e
 	if m.tx == nil {
 		return fn(ctx)
 	}
-	return m.tx(fn)
+	return m.tx(ctx, fn)
 }
