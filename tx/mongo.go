@@ -35,6 +35,7 @@ type _Mongo struct {
 	initialized bool
 	lock        sync.Locker
 	client      *mongo.Client
+	tx          func(context.Context, func(ctx context.Context) error) error
 }
 
 func (m *_Mongo) init(ctx context.Context) (err error) {
@@ -56,22 +57,28 @@ func (m *_Mongo) init(ctx context.Context) (err error) {
 	if !allowTx {
 		return nil
 	}
+	m.tx = func(fnctx context.Context, fn func(ctx context.Context) error) error {
+		sess, err := m.client.StartSession()
+		if err != nil {
+			return err
+		}
+		defer sess.EndSession(fnctx)
+		_, err = sess.WithTransaction(fnctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
+			return nil, fn(sessCtx)
+		})
+		return err
+	}
 	return nil
 }
 
-func (m *_Mongo) Transaction(ctx context.Context, fn func(ctx context.Context) error) error {
+func (m *_Mongo) Transaction(ctx context.Context, fn func(ctxx context.Context) error) error {
 	if !m.initialized {
 		if err := m.init(ctx); err != nil {
 			return err
 		}
 	}
-	sess, err := m.client.StartSession()
-	if err != nil {
-		return err
+	if m.tx == nil {
+		return fn(ctx)
 	}
-	defer sess.EndSession(ctx)
-	_, err = sess.WithTransaction(ctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
-		return nil, fn(sessCtx)
-	})
-	return err
+	return m.tx(ctx, fn)
 }
