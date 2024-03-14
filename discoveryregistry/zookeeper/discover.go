@@ -22,8 +22,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/OpenIMSDK/tools/errs"
-	"github.com/OpenIMSDK/tools/log"
-
 	"github.com/go-zookeeper/zk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
@@ -38,19 +36,19 @@ func (s *ZkClient) watch(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Printf("zk watch ctx done")
+			s.logger.Debug(context.Background(), "zk watch ctx done")
 			return
 		case event := <-s.eventChan:
-			s.logger.Printf("zk eventChan recv new event: %+v", event)
+			s.logger.Debug(context.Background(), "zk eventChan recv new event", "event", event)
 			switch event.Type {
 			case zk.EventSession:
 				switch event.State {
 				case zk.StateHasSession:
 					if s.isRegistered && !s.isStateDisconnected {
-						s.logger.Printf("zk session event stateHasSession: %+v, client prepare to create new temp node", event)
+						s.logger.Debug(context.Background(), "zk session event stateHasSession, client prepare to create new temp node", "event", event)
 						node, err := s.CreateTempNode(s.rpcRegisterName, s.rpcRegisterAddr)
 						if err != nil {
-							s.logger.Printf("zk session event stateHasSession: %+v, create temp node error: %v", event, err)
+							s.logger.Error(context.Background(), "zk session event stateHasSession, create temp node error", err, "event", event)
 						} else {
 							s.node = node
 						}
@@ -60,10 +58,10 @@ func (s *ZkClient) watch(ctx context.Context) {
 				case zk.StateConnected:
 					s.isStateDisconnected = false
 				default:
-					s.logger.Printf("zk session event: %+v", event)
+					s.logger.Debug(context.Background(), "zk session event", "event", event)
 				}
 			case zk.EventNodeChildrenChanged:
-				s.logger.Printf("zk event: %s", event.Path)
+				s.logger.Debug(context.Background(), "zk event", "event", event)
 				l := strings.Split(event.Path, "/")
 				if len(l) > 1 {
 					serviceName := l[len(l)-1]
@@ -71,7 +69,7 @@ func (s *ZkClient) watch(ctx context.Context) {
 					s.flushResolverAndDeleteLocal(serviceName)
 					s.lock.Unlock()
 				}
-				s.logger.Printf("zk event handle success: %s", event.Path)
+				s.logger.Debug(context.Background(), "zk event handle success", "path", event.Path)
 			case zk.EventNodeDataChanged:
 			case zk.EventNodeCreated:
 			case zk.EventNodeDeleted:
@@ -100,24 +98,24 @@ func (s *ZkClient) GetConnsRemote(serviceName string) (conns []resolver.Address,
 				}
 				return nil, errors.Wrap(err, "get children error")
 			}
-			log.ZDebug(context.Background(), "get addrs from remote", "conn", string(data))
+			s.logger.Debug(context.Background(), "get addrs from remote", "conn", string(data))
 			conns = append(conns, resolver.Address{Addr: string(data), ServerName: serviceName})
 		}
 	}
 	return conns, nil
 }
 func (s *ZkClient) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
-	log.ZWarn(ctx, "not impliment", errors.New("zkclinet not impliment GetUserIdHashGatewayHost method"))
+	s.logger.Warn(ctx, "not impliment", errors.New("zkclinet not impliment GetUserIdHashGatewayHost method"))
 	return "", nil
 }
 func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
-	s.logger.Printf("get conns from client, serviceName: %s", serviceName)
+	s.logger.Debug(context.Background(), "get conns from client", "serviceName", serviceName)
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	conns := s.localConns[serviceName]
 	if len(conns) == 0 {
 		var err error
-		s.logger.Printf("get conns from zk remote, serviceName: %s", serviceName)
+		s.logger.Debug(context.Background(), "get conns from zk remote", "serviceName", serviceName)
 		addrs, err := s.GetConnsRemote(serviceName)
 		if err != nil {
 			return nil, err
@@ -128,7 +126,7 @@ func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grp
 		for _, addr := range addrs {
 			cc, err := grpc.DialContext(ctx, addr.Addr, append(s.options, opts...)...)
 			if err != nil {
-				log.ZError(context.Background(), "dialContext failed", err, "addr", addr.Addr, "opts", append(s.options, opts...))
+				s.logger.Error(context.Background(), "dialContext failed", err, "addr", addr.Addr, "opts", append(s.options, opts...))
 				return nil, errs.Wrap(err, "")
 			}
 			conns = append(conns, cc)
@@ -140,7 +138,7 @@ func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grp
 
 func (s *ZkClient) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	newOpts := append(s.options, grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"LoadBalancingPolicy": "%s"}`, s.balancerName)))
-	s.logger.Printf("get conn from client, serviceName: %s", serviceName)
+	s.logger.Debug(context.Background(), "get conn from client", "serviceName", serviceName)
 	return grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", s.scheme, serviceName), append(newOpts, opts...)...)
 }
 

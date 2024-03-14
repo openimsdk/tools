@@ -17,6 +17,7 @@ package zookeeper
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -35,10 +36,6 @@ const (
 	defaultFreq = time.Minute * 30
 	timeout     = 5
 )
-
-type Logger interface {
-	Printf(string, ...any)
-}
 
 type ZkClient struct {
 	zkServers []string
@@ -66,7 +63,7 @@ type ZkClient struct {
 	isStateDisconnected bool
 	balancerName        string
 
-	logger Logger
+	logger log.Logger
 }
 
 type ZkOption func(*ZkClient)
@@ -102,11 +99,12 @@ func WithTimeout(timeout int) ZkOption {
 	}
 }
 
-func WithLogger(logger Logger) ZkOption {
+func WithLogger(logger log.Logger) ZkOption {
 	return func(client *ZkClient) {
 		client.logger = logger
 	}
 }
+
 func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClient, error) {
 	client := &ZkClient{
 		zkServers:  zkServers,
@@ -116,6 +114,7 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 		localConns: make(map[string][]*grpc.ClientConn),
 		resolvers:  make(map[string]*Resolver),
 		lock:       &sync.Mutex{},
+		logger:     nilLog{},
 	}
 	baseCtx, cancel := context.WithCancel(context.Background())
 	client.cancel = cancel
@@ -127,10 +126,10 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 		zkServers,
 		time.Duration(client.timeout)*time.Second,
 		zk.WithLogInfo(true),
-		zk.WithLogger(client.logger),
+		zk.WithLogger(client),
 	)
 	if err != nil {
-		log.ZError(context.Background(), "zk Connect", err)
+		client.logger.Error(context.Background(), "zk connect", err)
 		return nil, err
 	}
 
@@ -152,7 +151,7 @@ Connected:
 
 	if client.userName != "" && client.password != "" {
 		if err := conn.AddAuth("digest", []byte(client.userName+":"+client.password)); err != nil {
-			log.ZError(context.Background(), "zk addAuth", err)
+			client.logger.Error(context.Background(), "zk addAuth", err)
 			return nil, err
 		}
 
@@ -165,14 +164,14 @@ Connected:
 	var errZK error
 	for i := 0; i < 300; i++ {
 		if errZK = client.ensureRoot(); errZK != nil {
-			log.ZWarn(context.Background(), "zk client ensure root bug: ", errZK, "try: ", i)
+			client.logger.Warn(context.Background(), "zk client ensure root bug: ", errZK, "try: ", i)
 			time.Sleep(time.Second * 1)
 		} else {
 			break
 		}
 	}
 	if errZK != nil {
-		log.ZError(context.Background(), "zk client ensure root bug", errZK)
+		client.logger.Error(context.Background(), "zk client ensure root bug", errZK)
 		return nil, errZK
 	}
 	resolver.Register(client)
@@ -183,7 +182,7 @@ Connected:
 }
 
 func (s *ZkClient) Close() {
-	s.logger.Printf("close zk called")
+	s.logger.Info(context.Background(), "close zk called")
 	s.cancel()
 	s.ticker.Stop()
 	s.conn.Close()
@@ -203,9 +202,13 @@ func (s *ZkClient) ensureAndCreate(node string) error {
 	return nil
 }
 
+func (s *ZkClient) Printf(format string, a ...any) {
+	s.logger.Debug(context.Background(), "zk internal info", "msg", fmt.Sprintf(format, a...))
+}
+
 func (s *ZkClient) refresh() {
 	for range s.ticker.C {
-		s.logger.Printf("refresh local conns")
+		s.logger.Debug(context.Background(), "zk refresh local conns")
 		s.lock.Lock()
 		for rpcName := range s.resolvers {
 			s.flushResolver(rpcName)
@@ -214,12 +217,12 @@ func (s *ZkClient) refresh() {
 			delete(s.localConns, rpcName)
 		}
 		s.lock.Unlock()
-		s.logger.Printf("refresh local conns success")
+		s.logger.Debug(context.Background(), "zk refresh local conns success")
 	}
 }
 
 func (s *ZkClient) flushResolverAndDeleteLocal(serviceName string) {
-	s.logger.Printf("start flush %s", serviceName)
+	s.logger.Debug(context.Background(), "zk start flush", "serviceName", serviceName)
 	s.flushResolver(serviceName)
 	delete(s.localConns, serviceName)
 }
