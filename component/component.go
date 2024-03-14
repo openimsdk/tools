@@ -27,8 +27,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"io/ioutil"
 	"log"
 	"net"
@@ -227,37 +225,6 @@ func CheckZookeeper(zkStu *Zookeeper) error {
 		// Connection timed out
 		return fmt.Errorf("timeout waiting for Zookeeper connection: %s", string(zkStuInfo))
 	}
-}
-
-// CheckMySQL checks the mysql connection
-func CheckMySQL(mysqlStu *MySQL) error {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
-		mysqlStu.Username,
-		mysqlStu.Password,
-		mysqlStu.Address[0],
-		"mysql",
-	)
-
-	zkStuInfo, err := json.Marshal(mysqlStu)
-	if err != nil {
-		return errs.Wrap(errors.New("mysqlStu Marshal failed"), "")
-	}
-
-	db, err := gorm.Open(mysql.Open(dsn), nil)
-	if err != nil {
-		return errs.Wrap(ErrStr(err, dsn), "")
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		return errs.Wrap(ErrStr(err, string(zkStuInfo)), "")
-	}
-	defer sqlDB.Close()
-	err = sqlDB.Ping()
-	if err != nil {
-		return errs.Wrap(ErrStr(err, string(zkStuInfo)), "")
-	}
-
-	return nil
 }
 
 // CheckKafka checks the Kafka connection
