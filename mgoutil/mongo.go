@@ -35,7 +35,7 @@ func findOptionToCountOption(opts []*options.FindOptions) *options.CountOptions 
 func InsertMany[T any](ctx context.Context, coll *mongo.Collection, val []T, opts ...*options.InsertManyOptions) error {
 	_, err := coll.InsertMany(ctx, anes(val), opts...)
 	if err != nil {
-		return errs.Wrap(err)
+		return errs.Wrap(err, "mongo insert many")
 	}
 	return nil
 }
@@ -43,10 +43,10 @@ func InsertMany[T any](ctx context.Context, coll *mongo.Collection, val []T, opt
 func UpdateOne(ctx context.Context, coll *mongo.Collection, filter any, update any, notMatchedErr bool, opts ...*options.UpdateOptions) error {
 	res, err := coll.UpdateOne(ctx, filter, update, opts...)
 	if err != nil {
-		return errs.Wrap(err)
+		return errs.Wrap(err, "mongo update one")
 	}
 	if notMatchedErr && res.MatchedCount == 0 {
-		return errs.Wrap(mongo.ErrNoDocuments)
+		return errs.Wrap(mongo.ErrNoDocuments, "mongo update not matched")
 	}
 	return nil
 }
@@ -54,7 +54,7 @@ func UpdateOne(ctx context.Context, coll *mongo.Collection, filter any, update a
 func UpdateMany(ctx context.Context, coll *mongo.Collection, filter any, update any, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
 	res, err := coll.UpdateMany(ctx, filter, update, opts...)
 	if err != nil {
-		return nil, errs.Wrap(err)
+		return nil, errs.Wrap(err, "mongo update many")
 	}
 	return res, nil
 }
@@ -62,7 +62,7 @@ func UpdateMany(ctx context.Context, coll *mongo.Collection, filter any, update 
 func Find[T any](ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.FindOptions) ([]T, error) {
 	cur, err := coll.Find(ctx, filter, opts...)
 	if err != nil {
-		return nil, errs.Wrap(err)
+		return nil, errs.Wrap(err, "mongo find")
 	}
 	defer cur.Close(ctx)
 	return Decodes[T](ctx, cur)
@@ -71,7 +71,7 @@ func Find[T any](ctx context.Context, coll *mongo.Collection, filter any, opts .
 func FindOne[T any](ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.FindOneOptions) (res T, err error) {
 	cur := coll.FindOne(ctx, filter, opts...)
 	if err := cur.Err(); err != nil {
-		return res, errs.Wrap(err)
+		return res, errs.Wrap(err, "mongo find one")
 	}
 	return DecodeOne[T](cur.Decode)
 }
@@ -79,7 +79,7 @@ func FindOne[T any](ctx context.Context, coll *mongo.Collection, filter any, opt
 func FindOneAndUpdate[T any](ctx context.Context, coll *mongo.Collection, filter any, update any, opts ...*options.FindOneAndUpdateOptions) (res T, err error) {
 	result := coll.FindOneAndUpdate(ctx, filter, update, opts...)
 	if err := result.Err(); err != nil {
-		return res, errs.Wrap(err)
+		return res, errs.Wrap(err, "mongo find one and update")
 	}
 	return DecodeOne[T](result.Decode)
 }
@@ -87,7 +87,7 @@ func FindOneAndUpdate[T any](ctx context.Context, coll *mongo.Collection, filter
 func FindPage[T any](ctx context.Context, coll *mongo.Collection, filter any, pagination pagination.Pagination, opts ...*options.FindOptions) (int64, []T, error) {
 	count, err := Count(ctx, coll, filter, findOptionToCountOption(opts))
 	if err != nil {
-		return 0, nil, errs.Wrap(err, "failed to count documents in collection")
+		return 0, nil, errs.Wrap(err, "mongo failed to count documents in collection")
 	}
 	if count == 0 || pagination == nil {
 		return count, nil, nil
@@ -114,28 +114,32 @@ func FindPageOnly[T any](ctx context.Context, coll *mongo.Collection, filter any
 }
 
 func Count(ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.CountOptions) (int64, error) {
-	return coll.CountDocuments(ctx, filter, opts...)
+	count, err := coll.CountDocuments(ctx, filter, opts...)
+	if err != nil {
+		return 0, errs.Wrap(err, "mongo count")
+	}
+	return count, nil
 }
 
 func Exist(ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.CountOptions) (bool, error) {
 	opts = append(opts, options.Count().SetLimit(1))
 	count, err := Count(ctx, coll, filter, opts...)
 	if err != nil {
-		return false, errs.Wrap(err, "failed to count documents in collection")
+		return false, err
 	}
 	return count > 0, nil
 }
 
 func DeleteOne(ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.DeleteOptions) error {
 	if _, err := coll.DeleteOne(ctx, filter, opts...); err != nil {
-		return errs.Wrap(err)
+		return errs.Wrap(err, "mongo delete one")
 	}
 	return nil
 }
 
 func DeleteMany(ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.DeleteOptions) error {
 	if _, err := coll.DeleteMany(ctx, filter, opts...); err != nil {
-		return errs.Wrap(err)
+		return errs.Wrap(err, "mongo delete many")
 	}
 	return nil
 }
@@ -154,7 +158,7 @@ func Decodes[T any](ctx context.Context, cur *mongo.Cursor) ([]T, error) {
 	if basic[T]() {
 		var temp []map[string]T
 		if err := cur.All(ctx, &temp); err != nil {
-			return nil, errs.Wrap(err)
+			return nil, errs.Wrap(err, "mongo decodes")
 		}
 		res = make([]T, 0, len(temp))
 		for _, m := range temp {
@@ -167,7 +171,7 @@ func Decodes[T any](ctx context.Context, cur *mongo.Cursor) ([]T, error) {
 		}
 	} else {
 		if err := cur.All(ctx, &res); err != nil {
-			return nil, errs.Wrap(err)
+			return nil, errs.Wrap(err, "mongo all")
 		}
 	}
 	return res, nil
@@ -177,7 +181,7 @@ func DecodeOne[T any](decoder func(v any) error) (res T, err error) {
 	if basic[T]() {
 		var temp map[string]T
 		if err = decoder(&temp); err != nil {
-			err = errs.Wrap(err)
+			err = errs.Wrap(err, "mongo decodes one")
 			return
 		}
 		if len(temp) != 1 {
@@ -189,7 +193,7 @@ func DecodeOne[T any](decoder func(v any) error) (res T, err error) {
 		}
 	} else {
 		if err = decoder(&res); err != nil {
-			err = errs.Wrap(err)
+			err = errs.Wrap(err, "mongo decoder")
 			return
 		}
 	}

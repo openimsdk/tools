@@ -65,28 +65,28 @@ func InitFromConfig(
 	return nil
 }
 
-func ZDebug(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func ZDebug(ctx context.Context, msg string, keysAndValues ...any) {
 	if pkgLogger == nil {
 		return
 	}
 	pkgLogger.Debug(ctx, msg, keysAndValues...)
 }
 
-func ZInfo(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func ZInfo(ctx context.Context, msg string, keysAndValues ...any) {
 	if pkgLogger == nil {
 		return
 	}
 	pkgLogger.Info(ctx, msg, keysAndValues...)
 }
 
-func ZWarn(ctx context.Context, msg string, err error, keysAndValues ...interface{}) {
+func ZWarn(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	if pkgLogger == nil {
 		return
 	}
 	pkgLogger.Warn(ctx, msg, err, keysAndValues...)
 }
 
-func ZError(ctx context.Context, msg string, err error, keysAndValues ...interface{}) {
+func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	if pkgLogger == nil {
 		return
 	}
@@ -236,7 +236,7 @@ func (l *ZapLogger) ToZap() *zap.SugaredLogger {
 	return l.zap
 }
 
-func (l *ZapLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Debug(ctx context.Context, msg string, keysAndValues ...any) {
 	if l.level > zapcore.DebugLevel {
 		return
 	}
@@ -244,7 +244,7 @@ func (l *ZapLogger) Debug(ctx context.Context, msg string, keysAndValues ...inte
 	l.zap.Debugw(msg, keysAndValues...)
 }
 
-func (l *ZapLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Info(ctx context.Context, msg string, keysAndValues ...any) {
 	if l.level > zapcore.InfoLevel {
 		return
 	}
@@ -252,7 +252,7 @@ func (l *ZapLogger) Info(ctx context.Context, msg string, keysAndValues ...inter
 	l.zap.Infow(msg, keysAndValues...)
 }
 
-func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValues ...interface{}) {
+func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	if l.level > zapcore.WarnLevel {
 		return
 	}
@@ -263,7 +263,7 @@ func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValu
 	l.zap.Warnw(msg, keysAndValues...)
 }
 
-func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndValues ...interface{}) {
+func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	if l.level > zapcore.ErrorLevel {
 		return
 	}
@@ -274,7 +274,7 @@ func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndVal
 	l.zap.Errorw(msg, keysAndValues...)
 }
 
-func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []interface{}) []interface{} {
+func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	if ctx == nil {
 		return keysAndValues
 	}
@@ -285,27 +285,27 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []interface{}) [
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
 	if opUserID != "" {
-		keysAndValues = append([]interface{}{constant.OpUserID, opUserID}, keysAndValues...)
+		keysAndValues = append([]any{constant.OpUserID, opUserID}, keysAndValues...)
 	}
 	if operationID != "" {
-		keysAndValues = append([]interface{}{constant.OperationID, operationID}, keysAndValues...)
+		keysAndValues = append([]any{constant.OperationID, operationID}, keysAndValues...)
 	}
 	if connID != "" {
-		keysAndValues = append([]interface{}{constant.ConnID, connID}, keysAndValues...)
+		keysAndValues = append([]any{constant.ConnID, connID}, keysAndValues...)
 	}
 	if triggerID != "" {
-		keysAndValues = append([]interface{}{constant.TriggerID, triggerID}, keysAndValues...)
+		keysAndValues = append([]any{constant.TriggerID, triggerID}, keysAndValues...)
 	}
 	if opUserPlatform != "" {
-		keysAndValues = append([]interface{}{constant.OpUserPlatform, opUserPlatform}, keysAndValues...)
+		keysAndValues = append([]any{constant.OpUserPlatform, opUserPlatform}, keysAndValues...)
 	}
 	if remoteAddr != "" {
-		keysAndValues = append([]interface{}{constant.RemoteAddr, remoteAddr}, keysAndValues...)
+		keysAndValues = append([]any{constant.RemoteAddr, remoteAddr}, keysAndValues...)
 	}
 	return keysAndValues
 }
 
-func (l *ZapLogger) WithValues(keysAndValues ...interface{}) Logger {
+func (l *ZapLogger) WithValues(keysAndValues ...any) Logger {
 	dup := *l
 	dup.zap = l.zap.With(keysAndValues...)
 	return &dup

@@ -34,7 +34,7 @@ import (
 	"github.com/OpenIMSDK/tools/mw/specialerror"
 )
 
-func rpcString(v interface{}) string {
+func rpcString(v any) string {
 	if s, ok := v.(interface{ String() string }); ok {
 		return s.String()
 	}
@@ -43,10 +43,10 @@ func rpcString(v interface{}) string {
 
 func RpcServerInterceptor(
 	ctx context.Context,
-	req interface{},
+	req any,
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
-) (resp interface{}, err error) {
+) (resp any, err error) {
 	//defer func() {
 	//	if r := recover(); r != nil {
 	// 		log.ZError(ctx, "rpc panic", nil, "FullMethod", info.FullMethod, "type:", fmt.Sprintf("%T", r), "panic:", r)
@@ -102,7 +102,7 @@ func RpcServerInterceptor(
 	if opts := md.Get(constant.ConnID); len(opts) == 1 {
 		ctx = context.WithValue(ctx, constant.ConnID, opts[0])
 	}
-	resp, err = func() (interface{}, error) {
+	resp, err = func() (any, error) {
 		if err := checker.Validate(req); err != nil {
 			return nil, err
 		}
@@ -166,7 +166,7 @@ func RpcServerInterceptor(
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
 		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
-		return nil, errs.Wrap(err)
+		return nil, errs.Wrap(err, "")
 	}
 	log.ZWarn(ctx, "rpc server resp", err, "funcName", funcName)
 	return nil, details.Err()

@@ -63,7 +63,7 @@ func (m *_Mongo) init(ctx context.Context) (err error) {
 			return err
 		}
 		defer sess.EndSession(fnctx)
-		_, err = sess.WithTransaction(fnctx, func(sessCtx mongo.SessionContext) (interface{}, error) {
+		_, err = sess.WithTransaction(fnctx, func(sessCtx mongo.SessionContext) (any, error) {
 			return nil, fn(sessCtx)
 		})
 		return err

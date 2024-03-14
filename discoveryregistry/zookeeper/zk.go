@@ -37,7 +37,7 @@ const (
 )
 
 type Logger interface {
-	Printf(string, ...interface{})
+	Printf(string, ...any)
 }
 
 type ZkClient struct {

@@ -22,9 +22,9 @@ import (
 
 func InterceptChain(intercepts ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
 	l := len(intercepts)
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		chain := func(currentInter grpc.UnaryServerInterceptor, currentHandler grpc.UnaryHandler) grpc.UnaryHandler {
-			return func(currentCtx context.Context, currentReq interface{}) (interface{}, error) {
+			return func(currentCtx context.Context, currentReq any) (any, error) {
 				return currentInter(
 					currentCtx,
 					currentReq,

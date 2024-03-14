@@ -129,7 +129,7 @@ func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grp
 			cc, err := grpc.DialContext(ctx, addr.Addr, append(s.options, opts...)...)
 			if err != nil {
 				log.ZError(context.Background(), "dialContext failed", err, "addr", addr.Addr, "opts", append(s.options, opts...))
-				return nil, errs.Wrap(err)
+				return nil, errs.Wrap(err, "")
 			}
 			conns = append(conns, cc)
 		}
