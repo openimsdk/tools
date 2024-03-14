@@ -147,7 +147,7 @@ func DeleteMany(ctx context.Context, coll *mongo.Collection, filter any, opts ..
 func Aggregate[T any](ctx context.Context, coll *mongo.Collection, pipeline any, opts ...*options.AggregateOptions) ([]T, error) {
 	cur, err := coll.Aggregate(ctx, pipeline, opts...)
 	if err != nil {
-		return nil, err
+		return nil, errs.Wrap(err, "mongo aggregate")
 	}
 	defer cur.Close(ctx)
 	return Decodes[T](ctx, cur)
