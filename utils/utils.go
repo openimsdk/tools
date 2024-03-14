@@ -16,8 +16,10 @@ package utils
 
 import (
 	"encoding/json"
+	"math/rand"
 	"reflect"
 	"sort"
+	"strconv"
 )
 
 // SliceSub a中存在,b中不存在 (a-b)
@@ -604,4 +606,36 @@ func InitMap[K comparable, V any](val *map[K]V) {
 	if val != nil && *val == nil {
 		*val = map[K]V{}
 	}
+}
+
+func GetSwitchFromOptions(Options map[string]bool, key string) (result bool) {
+	if Options == nil {
+		return true
+	}
+	if flag, ok := Options[key]; !ok || flag {
+		return true
+	}
+	return false
+}
+
+func SetSwitchFromOptions(options map[string]bool, key string, value bool) {
+	if options == nil {
+		options = make(map[string]bool, 5)
+	}
+	options[key] = value
+}
+
+func StructToJsonString(param any) string {
+	dataType, _ := json.Marshal(param)
+	dataString := string(dataType)
+	return dataString
+}
+
+func GetMsgID(sendID string) string {
+	t := int64ToString(GetCurrentTimestampByNano())
+	return Md5(t + sendID + int64ToString(rand.Int63n(GetCurrentTimestampByNano())))
+}
+
+func int64ToString(i int64) string {
+	return strconv.FormatInt(i, 10)
 }
