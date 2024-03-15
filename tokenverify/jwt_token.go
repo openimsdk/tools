@@ -47,21 +47,21 @@ func GetClaimFromToken(tokensString string, secretFunc jwt.Keyfunc) (*Claims, er
 	if err != nil {
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return nil, errs.Wrap(errs.ErrTokenMalformed, "")
+				return nil, errs.Wrap(errs.ErrTokenMalformed)
 			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				return nil, errs.Wrap(errs.ErrTokenExpired, "")
+				return nil, errs.Wrap(errs.ErrTokenExpired)
 			} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
-				return nil, errs.Wrap(errs.ErrTokenNotValidYet, "")
+				return nil, errs.Wrap(errs.ErrTokenNotValidYet)
 			} else {
-				return nil, errs.Wrap(errs.ErrTokenUnknown, "")
+				return nil, errs.Wrap(errs.ErrTokenUnknown)
 			}
 		} else {
-			return nil, errs.Wrap(errs.ErrTokenUnknown, "")
+			return nil, errs.Wrap(errs.ErrTokenUnknown)
 		}
 	} else {
 		if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 			return claims, nil
 		}
-		return nil, errs.Wrap(errs.ErrTokenUnknown, "")
+		return nil, errs.Wrap(errs.ErrTokenUnknown)
 	}
 }

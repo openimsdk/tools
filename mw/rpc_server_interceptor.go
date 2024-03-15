@@ -166,7 +166,7 @@ func RpcServerInterceptor(
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
 		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
-		return nil, errs.Wrap(err, "")
+		return nil, errs.Wrap(err)
 	}
 	log.ZWarn(ctx, "rpc server resp", err, "funcName", funcName)
 	return nil, details.Err()

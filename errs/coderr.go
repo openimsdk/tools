@@ -30,7 +30,8 @@ type CodeError interface {
 	WithDetail(detail string) CodeError
 	// Is 判断是否是某个错误, loose为false时, 只有错误码相同就认为是同一个错误, 默认为true
 	Is(err error, loose ...bool) bool
-	Wrap(msg string, kv ...any) error
+	Wrap() error
+	WrapMsg(msg string, kv ...any) error
 	error
 }
 
@@ -73,8 +74,12 @@ func (e *codeError) WithDetail(detail string) CodeError {
 	}
 }
 
-func (e *codeError) Wrap(msg string, kv ...any) error {
-	return Wrap(e, msg, kv...)
+func (e *codeError) Wrap() error {
+	return Wrap(e)
+}
+
+func (e *codeError) WrapMsg(msg string, kv ...any) error {
+	return WrapMsg(e, msg, kv...)
 }
 
 func (e *codeError) Is(err error, loose ...bool) bool {
@@ -120,7 +125,11 @@ func Unwrap(err error) error {
 	return err
 }
 
-func Wrap(err error, msg string, kv ...any) error {
+func Wrap(err error) error {
+	return errors.WithStack(err)
+}
+
+func WrapMsg(err error, msg string, kv ...any) error {
 	if len(kv) == 0 {
 		if len(msg) == 0 {
 			return errors.WithStack(err)

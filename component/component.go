@@ -63,7 +63,7 @@ func CheckMongo(mongoStu *Mongo) error {
 
 	mongoInfo, err := json.Marshal(mongoStu)
 	if err != nil {
-		return errs.Wrap(errors.New("mongoStu Marshal failed"), "")
+		return errs.Wrap(errors.New("mongoStu Marshal failed"))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
@@ -71,13 +71,13 @@ func CheckMongo(mongoStu *Mongo) error {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoStu.URL))
 	if err != nil {
-		return errs.Wrap(fmt.Errorf("mongo connect failed, err:%v. %s", err, string(mongoInfo)), "")
+		return errs.Wrap(fmt.Errorf("mongo connect failed, err:%v. %s", err, string(mongoInfo)))
 	}
 	defer client.Disconnect(context.Background())
 	defer cancel()
 
 	if err = client.Ping(ctx, nil); err != nil {
-		return errs.Wrap(fmt.Errorf("ping mongo failed, err:%v. %s", err, string(mongoInfo)), "")
+		return errs.Wrap(fmt.Errorf("ping mongo failed, err:%v. %s", err, string(mongoInfo)))
 	}
 	return nil
 }
@@ -85,7 +85,7 @@ func CheckMongo(mongoStu *Mongo) error {
 func exactIP(urlStr string) (string, error) {
 	u, err := url.Parse(urlStr)
 	if err != nil {
-		return "", errs.Wrap(fmt.Errorf("url parse error, err:%v. url:%s", err, urlStr), "")
+		return "", errs.Wrap(fmt.Errorf("url parse error, err:%v. url:%s", err, urlStr))
 	}
 	host, _, err := net.SplitHostPort(u.Host)
 	if err != nil {
@@ -100,17 +100,17 @@ func exactIP(urlStr string) (string, error) {
 // CheckMinio checks the MinIO connection
 func CheckMinio(minioStu *Minio) error {
 	if minioStu.Endpoint == "" || minioStu.AccessKeyID == "" || minioStu.SecretAccessKey == "" {
-		return errs.Wrap(errors.New("missing configuration for endpoint, accessKeyID, or secretAccessKey"), "")
+		return errs.Wrap(errors.New("missing configuration for endpoint, accessKeyID, or secretAccessKey"))
 	}
 
 	// Parse endpoint URL to determine if SSL is enabled
 	minioInfo, err := json.Marshal(minioStu)
 	if err != nil {
-		return errs.Wrap(errors.New("minioStu Marshal failed"), "")
+		return errs.Wrap(errors.New("minioStu Marshal failed"))
 	}
 	u, err := url.Parse(minioStu.Endpoint)
 	if err != nil {
-		return errs.Wrap(fmt.Errorf("url parse failed, err:%v. %s", err, string(minioInfo)), "")
+		return errs.Wrap(fmt.Errorf("url parse failed, err:%v. %s", err, string(minioInfo)))
 	}
 	secure := u.Scheme == "https" || minioStu.UseSSL == "true"
 
@@ -120,18 +120,18 @@ func CheckMinio(minioStu *Minio) error {
 		Secure: secure,
 	})
 	if err != nil {
-		return errs.Wrap(fmt.Errorf("initialize minio client failed, err:%v. %s", err, string(minioInfo)), "")
+		return errs.Wrap(fmt.Errorf("initialize minio client failed, err:%v. %s", err, string(minioInfo)))
 	}
 
 	// Perform health check
 	cancel, err := minioClient.HealthCheck(time.Duration(minioHealthCheckDuration) * time.Second)
 	if err != nil {
-		return errs.Wrap(fmt.Errorf("minio client health check failed, err:%v. %s", err, string(minioInfo)), "")
+		return errs.Wrap(fmt.Errorf("minio client health check failed, err:%v. %s", err, string(minioInfo)))
 	}
 	defer cancel()
 
 	if minioClient.IsOffline() {
-		return errs.Wrap(fmt.Errorf("minio client is offline. %s", string(minioInfo)), "")
+		return errs.Wrap(fmt.Errorf("minio client is offline. %s", string(minioInfo)))
 	}
 
 	// Check for localhost in API URL and Minio SignEndpoint
@@ -158,7 +158,7 @@ func CheckRedis(redisStu *Redis) error {
 
 	redisInfo, err := json.Marshal(redisStu)
 	if err != nil {
-		return errs.Wrap(errors.New("redisStu Marshal failed"), "")
+		return errs.Wrap(errors.New("redisStu Marshal failed"))
 	}
 
 	var redisClient redis.UniversalClient
@@ -182,7 +182,7 @@ func CheckRedis(redisStu *Redis) error {
 	// Ping Redis to check connectivity
 	_, err = redisClient.Ping(context.Background()).Result()
 	if err != nil {
-		return errs.Wrap(fmt.Errorf("redis ping failed, err:%v. %s", err, string(redisInfo)), "")
+		return errs.Wrap(fmt.Errorf("redis ping failed, err:%v. %s", err, string(redisInfo)))
 	}
 	return nil
 }
@@ -242,11 +242,11 @@ func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// Create Kafka client
 	kafkaInfo, err := json.Marshal(kafkaStu)
 	if err != nil {
-		return nil, errs.Wrap(errors.New("kafkaStu Marshal failed"), "")
+		return nil, errs.Wrap(errors.New("kafkaStu Marshal failed"))
 	}
 	kafkaClient, err := sarama.NewClient(kafkaStu.Addr, cfg)
 	if err != nil {
-		return nil, errs.Wrap(fmt.Errorf("kafaka connected failed, err:%v. %s", err, string(kafkaInfo)), "")
+		return nil, errs.Wrap(fmt.Errorf("kafaka connected failed, err:%v. %s", err, string(kafkaInfo)))
 	}
 
 	return kafkaClient, nil

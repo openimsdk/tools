@@ -63,7 +63,7 @@ func GinParseOperationID() gin.HandlerFunc {
 			operationID := c.Request.Header.Get(constant.OperationID)
 			if operationID == "" {
 				err := errors.New("header must have operationID")
-				apiresp.GinError(c, errs.ErrArgs.Wrap(err.Error()))
+				apiresp.GinError(c, errs.ErrArgs.WrapMsg(err.Error()))
 				c.Abort()
 				return
 			}
