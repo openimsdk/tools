@@ -143,7 +143,7 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 				goto Connected
 			}
 		case <-timeout:
-			return nil, errs.Wrap(errors.New("timeout waiting for Zookeeper connection"), "Zookeeper Addr: "+strings.Join(zkServers, " "))
+			return nil, errs.WrapMsg(errors.New("timeout waiting for Zookeeper connection"), "Zookeeper Addr: "+strings.Join(zkServers, " "))
 		}
 	}
 
@@ -191,12 +191,12 @@ func (s *ZkClient) Close() {
 func (s *ZkClient) ensureAndCreate(node string) error {
 	exists, _, err := s.conn.Exists(node)
 	if err != nil {
-		return errs.Wrap(err, "checking existence for node %s in ZkClient ensureAndCreate", node)
+		return errs.WrapMsg(err, "checking existence for node %s in ZkClient ensureAndCreate", node)
 	}
 	if !exists {
 		_, err = s.conn.Create(node, []byte(""), 0, zk.WorldACL(zk.PermAll))
 		if err != nil && err != zk.ErrNodeExists {
-			return errs.Wrap(err, "creating node %s in ZkClient ensureAndCreate", node)
+			return errs.WrapMsg(err, "creating node %s in ZkClient ensureAndCreate", node)
 		}
 	}
 	return nil

@@ -43,7 +43,7 @@ func RpcClientInterceptor(
 	opts ...grpc.CallOption,
 ) (err error) {
 	if ctx == nil {
-		return errs.ErrInternalServer.Wrap("call rpc request context is nil")
+		return errs.ErrInternalServer.WrapMsg("call rpc request context is nil")
 	}
 	ctx, err = getRpcContext(ctx, method)
 	if err != nil {
@@ -58,20 +58,20 @@ func RpcClientInterceptor(
 	log.ZError(ctx, "rpc resp error", err, "funcName", method)
 	rpcErr, ok := err.(interface{ GRPCStatus() *status.Status })
 	if !ok {
-		return errs.ErrInternalServer.Wrap(err.Error())
+		return errs.ErrInternalServer.WrapMsg(err.Error())
 	}
 	sta := rpcErr.GRPCStatus()
 	if sta.Code() == 0 {
-		return errs.NewCodeError(errs.ServerInternalError, err.Error()).Wrap("")
+		return errs.NewCodeError(errs.ServerInternalError, err.Error()).Wrap()
 	}
 	if details := sta.Details(); len(details) > 0 {
 		errInfo, ok := details[0].(*errinfo.ErrorInfo)
 		if ok {
 			s := strings.Join(errInfo.Warp, "->") + errInfo.Cause
-			return errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap("")
+			return errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap()
 		}
 	}
-	return errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap("")
+	return errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap()
 }
 
 func getRpcContext(ctx context.Context, method string) (context.Context, error) {
@@ -80,10 +80,10 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 		for _, key := range keys {
 			val, ok := ctx.Value(key).([]string)
 			if !ok {
-				return nil, errs.ErrInternalServer.Wrap(fmt.Sprintf("ctx missing key %s", key))
+				return nil, errs.ErrInternalServer.WrapMsg(fmt.Sprintf("ctx missing key %s", key))
 			}
 			if len(val) == 0 {
-				return nil, errs.ErrInternalServer.Wrap(fmt.Sprintf("ctx key %s value is empty", key))
+				return nil, errs.ErrInternalServer.WrapMsg(fmt.Sprintf("ctx key %s value is empty", key))
 			}
 			md.Set(key, val...)
 		}
@@ -92,7 +92,7 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 	operationID, ok := ctx.Value(constant.OperationID).(string)
 	if !ok {
 		log.ZWarn(ctx, "ctx missing operationID", errors.New("ctx missing operationID"), "funcName", method)
-		return nil, errs.ErrArgs.Wrap("ctx missing operationID")
+		return nil, errs.ErrArgs.WrapMsg("ctx missing operationID")
 	}
 	md.Set(constant.OperationID, operationID)
 	var checkArgs []string

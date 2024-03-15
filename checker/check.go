@@ -26,7 +26,7 @@ func Validate(args any) error {
 			if _, ok := errs.Unwrap(err).(errs.CodeError); ok {
 				return err
 			}
-			return errs.ErrArgs.Wrap(err.Error())
+			return errs.ErrArgs.WrapMsg(err.Error())
 		}
 	}
 	return nil

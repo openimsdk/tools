@@ -31,7 +31,7 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 	var req A
 	if err := c.BindJSON(&req); err != nil {
 		log.ZWarn(c, "gin bind json error", err, "req", req)
-		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap("api bind args")) // 参数错误
+		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap()) // 参数错误
 		return
 	}
 	if err := checker.Validate(&req); err != nil {
