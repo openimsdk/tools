@@ -37,7 +37,7 @@ func GrpcClient() grpc.DialOption {
 func RpcClientInterceptor(
 	ctx context.Context,
 	method string,
-	req, resp interface{},
+	req, resp any,
 	cc *grpc.ClientConn,
 	invoker grpc.UnaryInvoker,
 	opts ...grpc.CallOption,
@@ -62,16 +62,16 @@ func RpcClientInterceptor(
 	}
 	sta := rpcErr.GRPCStatus()
 	if sta.Code() == 0 {
-		return errs.NewCodeError(errs.ServerInternalError, err.Error()).Wrap()
+		return errs.NewCodeError(errs.ServerInternalError, err.Error()).Wrap("")
 	}
 	if details := sta.Details(); len(details) > 0 {
 		errInfo, ok := details[0].(*errinfo.ErrorInfo)
 		if ok {
 			s := strings.Join(errInfo.Warp, "->") + errInfo.Cause
-			return errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap()
+			return errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap("")
 		}
 	}
-	return errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap()
+	return errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap("")
 }
 
 func getRpcContext(ctx context.Context, method string) (context.Context, error) {

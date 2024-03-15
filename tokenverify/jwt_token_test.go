@@ -39,7 +39,7 @@ func Test_ParseToken(t *testing.T) {
 }
 
 func secretFun() jwt.Keyfunc {
-	return func(token *jwt.Token) (interface{}, error) {
+	return func(token *jwt.Token) (any, error) {
 		return []byte(secret), nil
 	}
 }

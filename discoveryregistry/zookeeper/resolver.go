@@ -18,12 +18,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/OpenIMSDK/tools/log"
-
 	"google.golang.org/grpc/resolver"
 )
 
 type Resolver struct {
+	client *ZkClient
 	target resolver.Target
 	cc     resolver.ClientConn
 	addrs  []resolver.Address
@@ -32,47 +31,29 @@ type Resolver struct {
 }
 
 func (r *Resolver) ResolveNowZK(o resolver.ResolveNowOptions) {
-	log.ZDebug(
-		context.Background(),
-		"start resolve now",
-		"target",
-		r.target,
-		"serviceName",
-		strings.TrimLeft(r.target.URL.Path, "/"),
-	)
-	newConns, err := r.getConnsRemote(strings.TrimLeft(r.target.URL.Path, "/"))
+	serviceName := strings.TrimLeft(r.target.URL.Path, "/")
+	r.client.logger.Debug(context.Background(), "start resolve now", "target", r.target, "serviceName", serviceName)
+	newConns, err := r.getConnsRemote(serviceName)
 	if err != nil {
-		log.ZError(context.Background(), "resolve now error", err, "target", r.target)
+		r.client.logger.Error(context.Background(), "resolve now error", err, "target", r.target, "serviceName", serviceName)
 		return
 	}
 	r.addrs = newConns
 	if err := r.cc.UpdateState(resolver.State{Addresses: newConns}); err != nil {
-		log.ZError(
-			context.Background(),
-			"UpdateState error, conns is nil from svr",
-			err,
-			"conns",
-			newConns,
-			"zk path",
-			r.target.URL.Path,
-		)
+		r.client.logger.Error(context.Background(), "UpdateState error, conns is nil from svr", err, "conns", newConns, "zk path", r.target.URL.Path, "serviceName", serviceName)
 		return
 	}
-	log.ZDebug(context.Background(), "resolve now finished", "target", r.target, "conns", r.addrs)
+	r.client.logger.Debug(context.Background(), "resolve now finished", "target", r.target, "conns", r.addrs, "serviceName", serviceName)
 }
 
 func (r *Resolver) ResolveNow(o resolver.ResolveNowOptions) {}
 
-func (s *Resolver) Close() {}
+func (r *Resolver) Close() {}
 
-func (s *ZkClient) Build(
-	target resolver.Target,
-	cc resolver.ClientConn,
-	opts resolver.BuildOptions,
-) (resolver.Resolver, error) {
-	s.logger.Printf("build resolver: %+v, cc: %+v", target, cc.UpdateState)
+func (s *ZkClient) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+	s.logger.Debug(context.Background(), "build resolver", "target", target, "cc", cc.UpdateState)
 	serviceName := strings.TrimLeft(target.URL.Path, "/")
-	r := &Resolver{}
+	r := &Resolver{client: s}
 	r.target = target
 	r.cc = cc
 	r.getConnsRemote = s.GetConnsRemote
@@ -80,7 +61,7 @@ func (s *ZkClient) Build(
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.resolvers[serviceName] = r
-	s.logger.Printf("build resolver finished: %+v, cc: %+v, key: %s", target, cc.UpdateState, serviceName)
+	s.logger.Debug(context.Background(), "build resolver finished", "target", target, "cc", cc.UpdateState, "key", serviceName)
 	return r, nil
 }
 
