@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/OpenIMSDK/tools/errs"
+	"github.com/openimsdk/tools/errs"
 )
 
 type Claims struct {

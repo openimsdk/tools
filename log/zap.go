@@ -24,7 +24,7 @@ import (
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 
 	"github.com/OpenIMSDK/protocol/constant"
-	"github.com/OpenIMSDK/tools/mcontext"
+	"github.com/openimsdk/tools/mcontext"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

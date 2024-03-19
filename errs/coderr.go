@@ -131,27 +131,27 @@ func Wrap(err error) error {
 }
 
 func WrapMsg(err error, msg string, kv ...any) error {
-	if len(kv) == 0 {
-		if len(msg) == 0 {
-			return errors.WithStack(err)
-		} else {
-			return errors.WithMessage(err, msg)
-		}
+	if err == nil {
+		return nil
 	}
 	var buf bytes.Buffer
 	if len(msg) > 0 {
 		buf.WriteString(msg)
-		buf.WriteString(" ")
 	}
 	for i := 0; i < len(kv); i += 2 {
-		if i > 0 {
+		if buf.Len() > 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString(toString(kv[i]))
+		buf.WriteString(fmt.Sprint(kv[i]))
 		buf.WriteString("=")
-		buf.WriteString(toString(kv[i+1]))
+		if i+1 < len(kv) {
+			buf.WriteString(fmt.Sprint(kv[i+1]))
+		} else {
+			buf.WriteString(fmt.Sprint("MISSING"))
+		}
 	}
-	return errors.WithMessage(err, buf.String())
+	withMessage := errors.WithMessage(err, buf.String())
+	return errors.WithStack(withMessage)
 }
 
 func toString(v any) string {
