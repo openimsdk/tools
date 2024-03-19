@@ -21,14 +21,14 @@ import (
 
 	"github.com/openimsdk/tools/checker"
 
-	"github.com/OpenIMSDK/protocol/constant"
+	"github.com/openimsdk/protocol/constant"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/OpenIMSDK/protocol/errinfo"
+	"github.com/openimsdk/protocol/errinfo"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"

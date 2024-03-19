@@ -20,7 +20,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/OpenIMSDK/protocol/constant"
+	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/apiresp"
 	"github.com/openimsdk/tools/errs"
 )
