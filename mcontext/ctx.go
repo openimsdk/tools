@@ -83,16 +83,6 @@ func GetConnID(ctx context.Context) string {
 	return ""
 }
 
-func GetVersion(ctx context.Context) string {
-	if ctx.Value("version") != "" {
-		s, ok := ctx.Value("version").(string)
-		if ok {
-			return s
-		}
-	}
-	return ""
-}
-
 func GetTriggerID(ctx context.Context) string {
 	if ctx.Value(constant.TriggerID) != "" {
 		s, ok := ctx.Value(constant.TriggerID).(string)

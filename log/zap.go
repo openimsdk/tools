@@ -33,7 +33,6 @@ import (
 var (
 	pkgLogger   Logger
 	osStdout    Logger
-	osStderr    Logger
 	sp          = string(filepath.Separator)
 	logLevelMap = map[int]zapcore.Level{
 		6: zapcore.DebugLevel,
@@ -55,8 +54,10 @@ func InitFromConfig(
 	logLocation string,
 	rotateCount uint,
 	rotationTime uint,
+	moduleVersion string,
 ) error {
-	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime)
+	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation,
+		rotateCount, rotationTime, moduleVersion)
 	if err != nil {
 		return err
 	}
@@ -70,22 +71,14 @@ func InitFromConfig(
 // InitConsoleLogger init osStdout and osStderr
 func InitConsoleLogger(moduleName string,
 	logLevel int,
-	isJson bool) error {
-	l, err := NewConsoleZapLogger(moduleName, logLevel, isJson, os.Stdout)
+	isJson bool, moduleVersion string) error {
+	l, err := NewConsoleZapLogger(moduleName, logLevel, isJson, moduleVersion, os.Stdout)
 	if err != nil {
 		return err
 	}
 	osStdout = l.WithCallDepth(2)
 	if isJson {
 		osStdout = osStdout.WithName(moduleName)
-	}
-	l, err = NewConsoleZapLogger(moduleName, logLevel, isJson, os.Stderr)
-	if err != nil {
-		return err
-	}
-	osStderr = l.WithCallDepth(2)
-	if isJson {
-		osStderr = osStderr.WithName(moduleName)
 	}
 	return nil
 
@@ -124,17 +117,12 @@ func CInfo(ctx context.Context, msg string, keysAndValues ...any) {
 	}
 	osStdout.Info(ctx, msg, keysAndValues...)
 }
-func CError(ctx context.Context, msg string, keysAndValues ...any) {
-	if osStderr == nil {
-		return
-	}
-	osStderr.Info(ctx, msg, keysAndValues...)
-}
 
 type ZapLogger struct {
 	zap              *zap.SugaredLogger
 	level            zapcore.Level
 	moduleName       string
+	moduleVersion    string
 	loggerPrefixName string
 	rotationTime     time.Duration
 }
@@ -147,6 +135,7 @@ func NewZapLogger(
 	logLocation string,
 	rotateCount uint,
 	rotationTime uint,
+	moduleVersion string,
 ) (*ZapLogger, error) {
 	zapConfig := zap.Config{
 		Level:             zap.NewAtomicLevelAt(logLevelMap[logLevel]),
@@ -157,7 +146,8 @@ func NewZapLogger(
 	} else {
 		zapConfig.Encoding = "console"
 	}
-	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, loggerPrefixName: loggerPrefixName, rotationTime: time.Duration(rotationTime) * time.Hour}
+	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, loggerPrefixName: loggerPrefixName,
+		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion}
 	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
 	if err != nil {
 		return nil, err
@@ -174,6 +164,7 @@ func NewConsoleZapLogger(
 	moduleName string,
 	logLevel int,
 	isJson bool,
+	moduleVersion string,
 	outPut *os.File) (*ZapLogger, error) {
 	zapConfig := zap.Config{
 		Level:             zap.NewAtomicLevelAt(logLevelMap[logLevel]),
@@ -184,7 +175,7 @@ func NewConsoleZapLogger(
 	} else {
 		zapConfig.Encoding = "console"
 	}
-	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName}
+	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, moduleVersion: moduleVersion}
 	opts, err := zl.consoleCores(outPut, isJson)
 	if err != nil {
 		return nil, err
@@ -251,6 +242,7 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 		c.EncodeLevel = zapcore.CapitalLevelEncoder
 		fileEncoder = zapcore.NewJSONEncoder(c)
 		fileEncoder.AddInt("PID", os.Getpid())
+		fileEncoder.AddString("version", l.moduleVersion)
 	} else {
 		c.EncodeLevel = l.capitalColorLevelEncoder
 		c.EncodeCaller = l.customCallerEncoder
@@ -312,6 +304,9 @@ func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.Pr
 	if l.moduleName != "" {
 		enc.AppendString(color.Add(l.moduleName))
 	}
+	if l.moduleVersion != "" {
+		enc.AppendString(l.moduleVersion)
+	}
 }
 
 func (l *ZapLogger) ToZap() *zap.SugaredLogger {
@@ -366,7 +361,6 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	triggerID := mcontext.GetTriggerID(ctx)
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
-	version := mcontext.GetVersion(ctx)
 	if opUserID != "" {
 		keysAndValues = append([]any{constant.OpUserID, opUserID}, keysAndValues...)
 	}
@@ -384,9 +378,6 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	}
 	if remoteAddr != "" {
 		keysAndValues = append([]any{constant.RemoteAddr, remoteAddr}, keysAndValues...)
-	}
-	if version != "" {
-		keysAndValues = append([]any{"version", version}, keysAndValues...)
 	}
 	return keysAndValues
 }
