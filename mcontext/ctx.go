@@ -17,7 +17,7 @@ package mcontext
 import (
 	"context"
 
-	"github.com/OpenIMSDK/protocol/constant"
+	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/errs"
 )
 
@@ -76,16 +76,6 @@ func GetOpUserID(ctx context.Context) string {
 func GetConnID(ctx context.Context) string {
 	if ctx.Value(constant.ConnID) != "" {
 		s, ok := ctx.Value(constant.ConnID).(string)
-		if ok {
-			return s
-		}
-	}
-	return ""
-}
-
-func GetVersion(ctx context.Context) string {
-	if ctx.Value("version") != "" {
-		s, ok := ctx.Value("version").(string)
 		if ok {
 			return s
 		}

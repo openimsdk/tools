@@ -23,7 +23,7 @@ import (
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 
-	"github.com/OpenIMSDK/protocol/constant"
+	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/mcontext"
 
 	"go.uber.org/zap"
@@ -361,7 +361,6 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	triggerID := mcontext.GetTriggerID(ctx)
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
-	version := mcontext.GetVersion(ctx)
 	if opUserID != "" {
 		keysAndValues = append([]any{constant.OpUserID, opUserID}, keysAndValues...)
 	}
@@ -379,9 +378,6 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	}
 	if remoteAddr != "" {
 		keysAndValues = append([]any{constant.RemoteAddr, remoteAddr}, keysAndValues...)
-	}
-	if version != "" {
-		keysAndValues = append([]any{"version", version}, keysAndValues...)
 	}
 	return keysAndValues
 }

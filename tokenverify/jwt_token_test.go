@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/OpenIMSDK/protocol/constant"
+	"github.com/openimsdk/protocol/constant"
 )
 
 var secret = "OpenIM_server"
