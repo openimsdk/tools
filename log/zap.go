@@ -201,6 +201,7 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 		c.EncodeLevel = zapcore.CapitalLevelEncoder
 		fileEncoder = zapcore.NewJSONEncoder(c)
 		fileEncoder.AddInt("PID", os.Getpid())
+		fileEncoder.AddString("version", l.moduleVersion)
 	} else {
 		c.EncodeLevel = l.capitalColorLevelEncoder
 		c.EncodeCaller = l.customCallerEncoder
