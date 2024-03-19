@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/OpenIMSDK/tools/checker"
+	"github.com/openimsdk/tools/checker"
 
 	"github.com/OpenIMSDK/protocol/constant"
 
@@ -29,9 +29,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/OpenIMSDK/protocol/errinfo"
-	"github.com/OpenIMSDK/tools/errs"
-	"github.com/OpenIMSDK/tools/log"
-	"github.com/OpenIMSDK/tools/mw/specialerror"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
+	"github.com/openimsdk/tools/mw/specialerror"
 )
 
 func rpcString(v any) string {

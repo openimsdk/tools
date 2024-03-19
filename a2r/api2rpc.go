@@ -17,14 +17,14 @@ package a2r
 import (
 	"context"
 
-	"github.com/OpenIMSDK/tools/checker"
+	"github.com/openimsdk/tools/checker"
 
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 
-	"github.com/OpenIMSDK/tools/apiresp"
-	"github.com/OpenIMSDK/tools/errs"
-	"github.com/OpenIMSDK/tools/log"
+	"github.com/openimsdk/tools/apiresp"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
 )
 
 func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context) {

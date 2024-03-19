@@ -15,7 +15,7 @@
 package network
 
 import (
-	"github.com/OpenIMSDK/tools/utils"
+	"github.com/openimsdk/tools/utils"
 
 	"github.com/OpenIMSDK/protocol/constant"
 )

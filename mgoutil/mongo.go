@@ -2,8 +2,8 @@ package mgoutil
 
 import (
 	"context"
-	"github.com/OpenIMSDK/tools/errs"
-	"github.com/OpenIMSDK/tools/pagination"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/pagination"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

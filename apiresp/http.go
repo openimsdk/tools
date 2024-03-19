@@ -15,7 +15,7 @@
 package apiresp
 
 import (
-	"github.com/OpenIMSDK/tools/utils"
+	"github.com/openimsdk/tools/utils"
 	"net/http"
 )
 

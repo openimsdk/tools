@@ -16,10 +16,10 @@ package apiresp
 
 import (
 	"encoding/json"
-	"github.com/OpenIMSDK/tools/utils"
+	"github.com/openimsdk/tools/utils"
 	"reflect"
 
-	"github.com/OpenIMSDK/tools/errs"
+	"github.com/openimsdk/tools/errs"
 )
 
 type ApiResponse struct {
