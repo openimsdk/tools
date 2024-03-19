@@ -20,15 +20,23 @@ var (
 )
 
 func JsonMarshal(v any) ([]byte, error) {
-	if m, ok := v.(proto.Message); ok {
-		return protoMarshalOptions.Marshal(m)
+	switch o := v.(type) {
+	case json.Marshaler:
+		return o.MarshalJSON()
+	case proto.Message:
+		return protoMarshalOptions.Marshal(o)
+	default:
+		return json.Marshal(o)
 	}
-	return json.Marshal(v)
 }
 
 func JsonUnmarshal(b []byte, v any) error {
-	if m, ok := v.(proto.Message); ok {
-		return protoUnmarshalOptions.Unmarshal(b, m)
+	switch o := v.(type) {
+	case json.Unmarshaler:
+		return o.UnmarshalJSON(b)
+	case proto.Message:
+		return protoUnmarshalOptions.Unmarshal(b, o)
+	default:
+		return json.Unmarshal(b, v)
 	}
-	return json.Unmarshal(b, v)
 }
