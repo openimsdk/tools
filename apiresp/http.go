@@ -15,12 +15,12 @@
 package apiresp
 
 import (
-	"encoding/json"
+	"github.com/OpenIMSDK/tools/utils"
 	"net/http"
 )
 
 func httpJson(w http.ResponseWriter, data any) {
-	body, err := json.Marshal(data)
+	body, err := utils.JsonMarshal(data)
 	if err != nil {
 		http.Error(w, "json marshal error: "+err.Error(), http.StatusInternalServerError)
 		return

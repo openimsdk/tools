@@ -15,7 +15,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"github.com/jinzhu/copier"
 	"math/rand"
 	"reflect"
@@ -493,7 +492,7 @@ func OrderPtr[E comparable, T any](es []E, ts *[]T, fn func(t T) E) []T {
 }
 
 func UniqueJoin(s ...string) string {
-	data, _ := json.Marshal(s)
+	data, _ := JsonMarshal(s)
 	return string(data)
 }
 
@@ -627,7 +626,7 @@ func SetSwitchFromOptions(options map[string]bool, key string, value bool) {
 }
 
 func StructToJsonString(param any) string {
-	dataType, _ := json.Marshal(param)
+	dataType, _ := JsonMarshal(param)
 	dataString := string(dataType)
 	return dataString
 }

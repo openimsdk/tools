@@ -15,6 +15,8 @@
 package apiresp
 
 import (
+	"encoding/json"
+	"github.com/OpenIMSDK/tools/utils"
 	"reflect"
 
 	"github.com/OpenIMSDK/tools/errs"
@@ -27,12 +29,23 @@ type ApiResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
+func (r *ApiResponse) MarshalJSON() ([]byte, error) {
+	if r.Data != nil {
+		data, err := utils.JsonMarshal(r.Data)
+		if err != nil {
+			return nil, err
+		}
+		r.Data = json.RawMessage(data)
+	}
+	return utils.JsonMarshal(r)
+}
+
 func isAllFieldsPrivate(v any) bool {
 	typeOf := reflect.TypeOf(v)
 	if typeOf == nil {
 		return false
 	}
-	if typeOf.Kind() == reflect.Ptr {
+	for typeOf.Kind() == reflect.Ptr {
 		typeOf = typeOf.Elem()
 	}
 	if typeOf.Kind() != reflect.Struct {
@@ -53,11 +66,9 @@ func ApiSuccess(data any) *ApiResponse {
 		format.ApiFormat()
 	}
 	if isAllFieldsPrivate(data) {
-		return &ApiResponse{}
+		return &ApiResponse{Data: json.RawMessage(nil)}
 	}
-	return &ApiResponse{
-		Data: data,
-	}
+	return &ApiResponse{Data: data}
 }
 
 func ParseError(err error) *ApiResponse {

@@ -16,18 +16,18 @@ package component
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/OpenIMSDK/tools/errs"
+	"github.com/OpenIMSDK/tools/utils"
 	"github.com/go-zookeeper/zk"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/url"
@@ -61,7 +61,7 @@ func CheckMongo(mongoStu *Mongo) error {
 		}
 	}
 
-	mongoInfo, err := json.Marshal(mongoStu)
+	mongoInfo, err := utils.JsonMarshal(mongoStu)
 	if err != nil {
 		return errs.Wrap(errors.New("mongoStu Marshal failed"))
 	}
@@ -104,7 +104,7 @@ func CheckMinio(minioStu *Minio) error {
 	}
 
 	// Parse endpoint URL to determine if SSL is enabled
-	minioInfo, err := json.Marshal(minioStu)
+	minioInfo, err := utils.JsonMarshal(minioStu)
 	if err != nil {
 		return errs.Wrap(errors.New("minioStu Marshal failed"))
 	}
@@ -156,7 +156,7 @@ func CheckMinio(minioStu *Minio) error {
 func CheckRedis(redisStu *Redis) error {
 	// Split address to handle multiple addresses for cluster setup
 
-	redisInfo, err := json.Marshal(redisStu)
+	redisInfo, err := utils.JsonMarshal(redisStu)
 	if err != nil {
 		return errs.Wrap(errors.New("redisStu Marshal failed"))
 	}
@@ -188,14 +188,14 @@ func CheckRedis(redisStu *Redis) error {
 }
 
 func CheckZookeeper(zkStu *Zookeeper) error {
-	zkStuInfo, err := json.Marshal(zkStu)
+	zkStuInfo, err := utils.JsonMarshal(zkStu)
 	if err != nil {
 		return fmt.Errorf("zkStu Marshal failed: %w", err)
 	}
 
 	// Temporary disable logging
 	originalLogger := log.Default().Writer()
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 	defer log.SetOutput(originalLogger) // Ensure logging is restored
 
 	// Connect to Zookeeper
@@ -240,7 +240,7 @@ func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// kafka.SetupTLSConfig(cfg)
 
 	// Create Kafka client
-	kafkaInfo, err := json.Marshal(kafkaStu)
+	kafkaInfo, err := utils.JsonMarshal(kafkaStu)
 	if err != nil {
 		return nil, errs.Wrap(errors.New("kafkaStu Marshal failed"))
 	}
