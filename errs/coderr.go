@@ -28,7 +28,8 @@ type CodeError interface {
 	Msg() string
 	Detail() string
 	WithDetail(detail string) CodeError
-	// Is 判断是否是某个错误, loose为false时, 只有错误码相同就认为是同一个错误, 默认为true
+	// Is checks if the error is of a certain type, when loose is false,
+	//only the error code is the same is considered the same error, default is true
 	Is(err error, loose ...bool) bool
 	Wrap() error
 	WrapMsg(msg string, kv ...any) error
