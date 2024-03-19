@@ -386,7 +386,7 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 		keysAndValues = append([]any{constant.RemoteAddr, remoteAddr}, keysAndValues...)
 	}
 	if version != "" {
-		keysAndValues = append([]any{"version", remoteAddr}, keysAndValues...)
+		keysAndValues = append([]any{"version", version}, keysAndValues...)
 	}
 	return keysAndValues
 }
