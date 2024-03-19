@@ -15,6 +15,7 @@
 package utils
 
 import (
+	"github.com/jinzhu/copier"
 	"math/rand"
 	"reflect"
 	"sort"
@@ -637,4 +638,9 @@ func GetMsgID(sendID string) string {
 
 func int64ToString(i int64) string {
 	return strconv.FormatInt(i, 10)
+}
+
+// copy a by b  b->a
+func CopyStructFields(a interface{}, b interface{}, fields ...string) (err error) {
+	return copier.Copy(a, b)
 }
