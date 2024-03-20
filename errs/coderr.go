@@ -97,9 +97,8 @@ func (e *codeError) Is(err error, loose ...bool) bool {
 	if ok {
 		if allowSubclasses {
 			return Relation.Is(e.code, codeErr.Code())
-		} else {
-			return codeErr.Code() == e.code
 		}
+		return codeErr.Code() == e.code
 	}
 	return false
 }
@@ -107,9 +106,11 @@ func (e *codeError) Is(err error, loose ...bool) bool {
 func (e *codeError) Error() string {
 	v := make([]string, 0, 3)
 	v = append(v, strconv.Itoa(e.code), e.msg)
+
 	if e.detail != "" {
 		v = append(v, e.detail)
 	}
+
 	return strings.Join(v, " ")
 }
 
