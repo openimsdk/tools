@@ -38,7 +38,7 @@ type RedisConfig struct {
 
 func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalClient, error) {
 	if len(config.Address) == 0 {
-		return nil, errors.New("redis address is empty")
+		return nil, errs.Wrap(errors.New("redis address is empty"))
 	}
 
 	var client redis.UniversalClient
