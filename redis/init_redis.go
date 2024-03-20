@@ -27,8 +27,8 @@ import (
 )
 
 var (
-	once        sync.Once
 	redisClient redis.UniversalClient
+	once        sync.Once
 )
 
 type RedisConfig struct {
@@ -38,6 +38,8 @@ type RedisConfig struct {
 	Password       string
 	EnablePipeline bool
 	MaxRetries     int
+	DB             int
+	PoolSize       int
 }
 
 func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalClient, error) {
@@ -51,20 +53,28 @@ func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalCl
 
 		var client redis.UniversalClient
 		if len(config.Address) > 1 || config.ClusterMode {
+			if config.PoolSize == 0 {
+				config.PoolSize = 50
+			}
+
 			client = redis.NewClusterClient(&redis.ClusterOptions{
 				Addrs:      config.Address,
 				Username:   config.Username,
 				Password:   config.Password,
-				PoolSize:   50,
+				PoolSize:   config.PoolSize,
 				MaxRetries: config.MaxRetries,
 			})
 		} else {
+			if config.PoolSize == 0 {
+				config.PoolSize = 100
+			}
+
 			client = redis.NewClient(&redis.Options{
 				Addr:       config.Address[0],
 				Username:   config.Username,
 				Password:   config.Password,
-				DB:         0,
-				PoolSize:   100,
+				DB:         config.DB,
+				PoolSize:   config.PoolSize,
 				MaxRetries: config.MaxRetries,
 			})
 		}
@@ -79,7 +89,6 @@ func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalCl
 
 		redisClient = client
 		log.CInfo(ctx, "Redis connected successfully")
-
 	})
 
 	if initErr != nil {
