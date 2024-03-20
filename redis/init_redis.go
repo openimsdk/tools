@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openimsdk/tools/errs"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -65,7 +66,7 @@ func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalCl
 
 	if err := client.Ping(cCtx).Err(); err != nil {
 		errMsg := fmt.Sprintf("Redis connection failed. Address: %v, Username: %s, ClusterMode: %t", config.Address, config.Username, config.ClusterMode)
-		return nil, fmt.Errorf("%s, Error: %v", errMsg, err)
+		return nil, errs.Wrap(fmt.Errorf("%s, Error: %v", errMsg, err))
 	}
 
 	return client, nil
