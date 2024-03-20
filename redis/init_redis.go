@@ -17,55 +17,74 @@ package cache
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/openimsdk/tools/errs"
 	"github.com/redis/go-redis/v9"
 )
 
+// RedisConfig defines the configuration parameters for a Redis client.
 type RedisConfig struct {
-	ClusterMode       bool
-	Address           []string
-	Username          string
-	Password          string
-	EnablePipeline    bool
-	MaxRetries        int
-	DB                int
-	PoolSize          int
-	ConnectionTimeout time.Duration
+	ClusterMode       bool          // Whether to use Redis in cluster mode.
+	Address           []string      // List of Redis server addresses (host:port).
+	Username          string        // Username for Redis authentication (Redis 6 ACL).
+	Password          string        // Password for Redis authentication.
+	EnablePipeline    bool          // Enable pipelining of commands for efficiency.
+	MaxRetries        int           // Maximum number of retries for a command.
+	DB                int           // Database number to connect to, for non-cluster mode.
+	PoolSize          int           // Number of connections to pool.
+	ConnectionTimeout time.Duration // Timeout for connecting to Redis servers.
 }
 
+// Global variables
+var (
+	redisClient redis.UniversalClient // Singleton instance of the Redis client.
+	once        sync.Once             // Ensures the client is initialized only once.
+)
+
+// NewRedisClient creates a new Redis client.
 func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalClient, error) {
-	if len(config.Address) == 0 {
-		return nil, errs.Wrap(errors.New("redis address is empty"))
+	var initErr error
+
+	// Use sync.Once to ensure that the client initialization logic runs only once.
+	once.Do(func() {
+		if len(config.Address) == 0 {
+			initErr = errs.Wrap(errors.New("redis address is empty"))
+			return
+		}
+
+		if len(config.Address) > 1 || config.ClusterMode {
+			redisClient = redis.NewClusterClient(&redis.ClusterOptions{
+				Addrs:      config.Address,
+				Username:   config.Username,
+				Password:   config.Password,
+				PoolSize:   config.PoolSize,
+				MaxRetries: config.MaxRetries,
+			})
+		} else {
+			redisClient = redis.NewClient(&redis.Options{
+				Addr:       config.Address[0],
+				Username:   config.Username,
+				Password:   config.Password,
+				DB:         config.DB,
+				PoolSize:   config.PoolSize,
+				MaxRetries: config.MaxRetries,
+			})
+		}
+
+		cCtx, cancel := context.WithTimeout(ctx, config.ConnectionTimeout)
+		defer cancel()
+
+		if err := redisClient.Ping(cCtx).Err(); err != nil {
+			initErr = errs.WrapMsg(err, "Redis Ping failed.", "Address", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)
+			return
+		}
+	})
+
+	if initErr != nil {
+		return nil, initErr
 	}
 
-	var client redis.UniversalClient
-	if len(config.Address) > 1 || config.ClusterMode {
-		client = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:      config.Address,
-			Username:   config.Username,
-			Password:   config.Password,
-			PoolSize:   config.PoolSize,
-			MaxRetries: config.MaxRetries,
-		})
-	} else {
-		client = redis.NewClient(&redis.Options{
-			Addr:       config.Address[0],
-			Username:   config.Username,
-			Password:   config.Password,
-			DB:         config.DB,
-			PoolSize:   config.PoolSize,
-			MaxRetries: config.MaxRetries,
-		})
-	}
-
-	cCtx, cancel := context.WithTimeout(ctx, config.ConnectionTimeout)
-	defer cancel()
-
-	if err := client.Ping(cCtx).Err(); err != nil {
-		return nil, errs.WrapMsg(err, "Redis Ping failed.", "Address", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)
-	}
-
-	return client, nil
+	return redisClient, nil
 }
