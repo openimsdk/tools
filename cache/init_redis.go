@@ -39,8 +39,16 @@ const (
 	maxRetry = 10 // number of retries
 )
 
+type Redis struct {
+	ClusterMode    bool
+	Address        []string
+	Username       string
+	Password       string
+	EnablePipeline bool
+}
+
 // NewRedis Initialize redis connection.
-func NewRedis(ctx context.Context, redisConf *config.Redis) (redis.UniversalClient, error) {
+func NewRedis(ctx context.Context, redisConf *Redis) (redis.UniversalClient, error) {
 	if redisClient != nil {
 		return redisClient, nil
 	}
