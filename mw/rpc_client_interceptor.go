@@ -34,14 +34,8 @@ func GrpcClient() grpc.DialOption {
 	return grpc.WithChainUnaryInterceptor(RpcClientInterceptor)
 }
 
-func RpcClientInterceptor(
-	ctx context.Context,
-	method string,
-	req, resp any,
-	cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker,
-	opts ...grpc.CallOption,
-) (err error) {
+func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 	if ctx == nil {
 		return errs.ErrInternalServer.WrapMsg("call rpc request context is nil")
 	}

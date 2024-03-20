@@ -207,14 +207,12 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 		c.EncodeCaller = l.customCallerEncoder
 		fileEncoder = zapcore.NewConsoleEncoder(c)
 	}
+	fileEncoder = &alignEncoder{Encoder: fileEncoder}
 	writer, err := l.getWriter(logLocation, rotateCount)
 	if err != nil {
 		return nil, err
 	}
 	var cores []zapcore.Core
-	// if logLocation == "" && !isStdout {
-	// 	return nil, errors.New("log storage location is empty and not stdout")
-	// }
 	if logLocation != "" {
 		cores = []zapcore.Core{
 			zapcore.NewCore(fileEncoder, writer, zap.NewAtomicLevelAt(l.level)),
