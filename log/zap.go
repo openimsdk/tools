@@ -207,6 +207,7 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 		c.EncodeCaller = l.customCallerEncoder
 		fileEncoder = zapcore.NewConsoleEncoder(c)
 	}
+	fileEncoder = &alignEncoder{Encoder: fileEncoder}
 	writer, err := l.getWriter(logLocation, rotateCount)
 	if err != nil {
 		return nil, err
