@@ -18,74 +18,70 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
-	"github.com/openimsdk/tools/log"
 	"github.com/redis/go-redis/v9"
-
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/mw/specialerror"
 )
 
 var (
-	// Singleton pattern.
+	once        sync.Once
 	redisClient redis.UniversalClient
 )
 
-const (
-	maxRetry = 10 // number of retries
-)
-
-type Redis struct {
+type RedisConfig struct {
 	ClusterMode    bool
 	Address        []string
 	Username       string
 	Password       string
 	EnablePipeline bool
+	MaxRetries     int
 }
 
-// NewRedis Initialize redis connection.
-func NewRedis(ctx context.Context, redisConf *Redis) (redis.UniversalClient, error) {
-	if redisClient != nil {
-		return redisClient, nil
+func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalClient, error) {
+	var initErr error
+
+	once.Do(func() {
+		if len(config.Address) == 0 {
+			initErr = errors.New("redis address is empty")
+			return
+		}
+
+		var client redis.UniversalClient
+		if len(config.Address) > 1 || config.ClusterMode {
+			client = redis.NewClusterClient(&redis.ClusterOptions{
+				Addrs:      config.Address,
+				Username:   config.Username,
+				Password:   config.Password,
+				PoolSize:   50,
+				MaxRetries: config.MaxRetries,
+			})
+		} else {
+			client = redis.NewClient(&redis.Options{
+				Addr:       config.Address[0],
+				Username:   config.Username,
+				Password:   config.Password,
+				DB:         0,
+				PoolSize:   100,
+				MaxRetries: config.MaxRetries,
+			})
+		}
+		cCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		if err := client.Ping(cCtx).Err(); err != nil {
+			errMsg := fmt.Sprintf("Redis connection failed. Address: %v, Username: %s, ClusterMode: %t", config.Address, config.Username, config.ClusterMode)
+			initErr = fmt.Errorf("%s, Error: %v", errMsg, err)
+			return
+		}
+
+		redisClient = client
+		fmt.Println("Redis connected successfully")
+	})
+
+	if initErr != nil {
+		return nil, initErr
 	}
 
-	if len(redisConf.Address) == 0 {
-		return nil, errs.Wrap(errors.New("redis address is empty"))
-	}
-
-	specialerror.AddReplace(redis.Nil, errs.ErrRecordNotFound)
-	var rdb redis.UniversalClient
-	if len(redisConf.Address) > 1 || redisConf.ClusterMode {
-		rdb = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:      redisConf.Address,
-			Username:   redisConf.Username,
-			Password:   redisConf.Password, // no password set
-			PoolSize:   50,
-			MaxRetries: maxRetry,
-		})
-	} else {
-		rdb = redis.NewClient(&redis.Options{
-			Addr:       redisConf.Address[0],
-			Username:   redisConf.Username,
-			Password:   redisConf.Password,
-			DB:         0,   // use default DB
-			PoolSize:   100, // connection pool size
-			MaxRetries: maxRetry,
-		})
-	}
-
-	var err error
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
-
-	if err = rdb.Ping(ctx).Err(); err != nil {
-		errMsg := fmt.Sprintf("address:%s, username:%s, password:%s, clusterMode:%t, enablePipeline:%t", redisConf.Address, redisConf.Username,
-			redisConf.Password, redisConf.ClusterMode, redisConf.EnablePipeline)
-		return nil, errs.WrapMsg(err, "redis connect failed", "errMsg", errMsg)
-	}
-
-	redisClient = rdb
-	log.CInfo(ctx, "REDIS connected successfully", "address", redisConf.Address, "username", redisConf.Username, "password", redisConf.Password, "clusterMode", redisConf.ClusterMode, "enablePipeline", redisConf.EnablePipeline)
-	return rdb, err
+	return redisClient, nil
 }
