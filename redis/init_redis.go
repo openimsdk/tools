@@ -53,6 +53,7 @@ func NewRedis(ctx context.Context, redisConf *Redis) (redis.UniversalClient, err
 	if len(redisConf.Address) == 0 {
 		return nil, errs.Wrap(errors.New("redis address is empty"))
 	}
+
 	specialerror.AddReplace(redis.Nil, errs.ErrRecordNotFound)
 	var rdb redis.UniversalClient
 	if len(redisConf.Address) > 1 || redisConf.ClusterMode {
