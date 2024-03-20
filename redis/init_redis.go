@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -76,11 +78,12 @@ func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalCl
 		}
 
 		redisClient = client
-		fmt.Println("Redis connected successfully")
+		log.CInfo(ctx, "Redis connected successfully")
+
 	})
 
 	if initErr != nil {
-		return nil, initErr
+		return nil, errs.Wrap(initErr)
 	}
 
 	return redisClient, nil
