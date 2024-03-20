@@ -17,7 +17,6 @@ package cache
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/openimsdk/tools/errs"
@@ -65,8 +64,7 @@ func NewRedisClient(ctx context.Context, config *RedisConfig) (redis.UniversalCl
 	defer cancel()
 
 	if err := client.Ping(cCtx).Err(); err != nil {
-		errMsg := fmt.Sprintf("Redis connection failed. Address: %v, Username: %s, ClusterMode: %t", config.Address, config.Username, config.ClusterMode)
-		return nil, errs.Wrap(fmt.Errorf("%s, Error: %v", errMsg, err))
+		return nil, errs.WrapMsg(err, "Redis Ping failed.", "Address", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)
 	}
 
 	return client, nil
