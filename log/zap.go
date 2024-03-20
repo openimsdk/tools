@@ -256,8 +256,14 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 }
 
 func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-	s := "[" + caller.TrimmedPath() + "]"
-	enc.AppendString(s)
+	fixedLength := 60
+	trimmedPath := caller.TrimmedPath()
+	s := fmt.Sprintf("%-*s", fixedLength, trimmedPath)
+
+	if len(s) > fixedLength {
+		s = s[:fixedLength]
+	}
+	enc.AppendString("[" + s + "]")
 }
 
 func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
