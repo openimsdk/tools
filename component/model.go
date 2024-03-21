@@ -18,12 +18,6 @@ type Minio struct {
 	UseSSL          string `json:"useSSL"`
 }
 
-type Redis struct {
-	Address  []string `json:"address"`
-	Username string   `json:"username"`
-	Password string   `json:"password"`
-}
-
 type Zookeeper struct {
 	Schema   string   `json:"schema"`
 	ZkAddr   []string `json:"zkAddr"`

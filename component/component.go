@@ -18,21 +18,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/IBM/sarama"
-	"github.com/go-zookeeper/zk"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/utils"
-	"github.com/redis/go-redis/v9"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"log"
 	"net"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/IBM/sarama"
+	"github.com/go-zookeeper/zk"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/utils"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -148,41 +148,6 @@ func CheckMinio(minioStu *Minio) error {
 	}
 	if signEndPoint == "127.0.0.1" {
 		ErrorPrint(fmt.Sprintf("Warning, minioStu.signEndPoint(%s) contain 127.0.0.1.", minioStu.SignEndpoint))
-	}
-	return nil
-}
-
-// CheckRedis checks the Redis connection
-func CheckRedis(redisStu *Redis) error {
-	// Split address to handle multiple addresses for cluster setup
-
-	redisInfo, err := utils.JsonMarshal(redisStu)
-	if err != nil {
-		return errs.Wrap(errors.New("redisStu Marshal failed"))
-	}
-
-	var redisClient redis.UniversalClient
-	if len(redisStu.Address) > 1 {
-		// Use cluster client for multiple addresses
-		redisClient = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    redisStu.Address,
-			Username: redisStu.Username,
-			Password: redisStu.Password,
-		})
-	} else {
-		// Use regular client for single address
-		redisClient = redis.NewClient(&redis.Options{
-			Addr:     redisStu.Address[0],
-			Username: redisStu.Username,
-			Password: redisStu.Password,
-		})
-	}
-	defer redisClient.Close()
-
-	// Ping Redis to check connectivity
-	_, err = redisClient.Ping(context.Background()).Result()
-	if err != nil {
-		return errs.Wrap(fmt.Errorf("redis ping failed, err:%v. %s", err, string(redisInfo)))
 	}
 	return nil
 }
