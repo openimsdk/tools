@@ -15,14 +15,15 @@
 package utils
 
 import (
-	"github.com/jinzhu/copier"
 	"math/rand"
 	"reflect"
 	"sort"
 	"strconv"
+
+	"github.com/jinzhu/copier"
 )
 
-// SliceSub a中存在,b中不存在 (a-b)
+// SliceSub returns elements in slice a that are not present in slice b (a - b).
 func SliceSub[E comparable](a, b []E) []E {
 	if len(b) == 0 {
 		return a
@@ -47,12 +48,14 @@ func SliceSub[E comparable](a, b []E) []E {
 	return rs
 }
 
-// SliceSubAny a中存在,b中不存在 (a-b)
+// SliceSubAny returns elements in slice a that are not present in slice b (a - b).
+// fn is a function that converts elements of slice b to elements comparable with those in slice a.
 func SliceSubAny[E comparable, T any](a []E, b []T, fn func(t T) E) []E {
 	return SliceSub(a, Slice(b, fn))
 }
 
-// SliceAnySub a中存在,b中不存在 (a-b) fn 返回的是uuid
+// SliceAnySub returns elements in slice a that are not present in slice b (a - b).
+// fn is a function that extracts a comparable value from elements of slice a.
 func SliceAnySub[E any, T comparable](a, b []E, fn func(t E) T) []E {
 	m := make(map[T]E)
 	for i := 0; i < len(b); i++ {
@@ -69,7 +72,7 @@ func SliceAnySub[E any, T comparable](a, b []E, fn func(t E) T) []E {
 	return es
 }
 
-// DistinctAny 去重
+// DistinctAny duplicate removal.
 func DistinctAny[E any, K comparable](es []E, fn func(e E) K) []E {
 	v := make([]E, 0, len(es))
 	tmp := map[K]struct{}{}
@@ -98,7 +101,6 @@ func DistinctAnyGetComparable[E any, K comparable](es []E, fn func(e E) K) []K {
 	return v
 }
 
-// Distinct 去重
 func Distinct[T comparable](ts []T) []T {
 	if len(ts) < 2 {
 		return ts
@@ -114,7 +116,7 @@ func Distinct[T comparable](ts []T) []T {
 	})
 }
 
-// Delete 删除切片元素, 支持负数删除倒数第几个
+// Delete Delete slice elements, support negative number to delete the reciprocal number
 func Delete[E any](es []E, index ...int) []E {
 	switch len(index) {
 	case 0:
@@ -146,7 +148,7 @@ func Delete[E any](es []E, index ...int) []E {
 	}
 }
 
-// DeleteAt 删除切片元素, 支持负数删除倒数第几个
+// DeleteAt Delete slice elements, support negative number to delete the reciprocal number
 func DeleteAt[E any](es *[]E, index ...int) []E {
 	v := Delete(*es, index...)
 	*es = v
@@ -171,12 +173,12 @@ func IndexOf[E comparable](e E, es ...E) int {
 	})
 }
 
-// Contain 是否包含
+// Contain Whether to include
 func Contain[E comparable](e E, es ...E) bool {
 	return IndexOf(e, es...) >= 0
 }
 
-// DuplicateAny 是否有重复的
+// DuplicateAny Whether there are duplicates
 func DuplicateAny[E any, K comparable](es []E, fn func(e E) K) bool {
 	t := make(map[K]struct{})
 	for _, e := range es {
@@ -189,14 +191,14 @@ func DuplicateAny[E any, K comparable](es []E, fn func(e E) K) bool {
 	return false
 }
 
-// Duplicate 是否有重复的
+// Duplicate Whether there are duplicates
 func Duplicate[E comparable](es []E) bool {
 	return DuplicateAny(es, func(e E) E {
 		return e
 	})
 }
 
-// SliceToMapOkAny slice to map (自定义类型, 筛选)
+// SliceToMapOkAny slice to map (Custom type, filter)
 func SliceToMapOkAny[E any, K comparable, V any](es []E, fn func(e E) (K, V, bool)) map[K]V {
 	kv := make(map[K]V)
 	for i := 0; i < len(es); i++ {
@@ -208,7 +210,7 @@ func SliceToMapOkAny[E any, K comparable, V any](es []E, fn func(e E) (K, V, boo
 	return kv
 }
 
-// SliceToMapAny slice to map (自定义类型)
+// SliceToMapAny slice to map (Custom type)
 func SliceToMapAny[E any, K comparable, V any](es []E, fn func(e E) (K, V)) map[K]V {
 	return SliceToMapOkAny(es, func(e E) (K, V, bool) {
 		k, v := fn(e)
@@ -242,7 +244,7 @@ func Filter[E, T any](es []E, fn func(e E) (T, bool)) []T {
 	return rs
 }
 
-// Slice 批量转换切片类型
+// Slice Converts slice types in batches
 func Slice[E any, T any](es []E, fn func(e E) T) []T {
 	v := make([]T, len(es))
 	for i := 0; i < len(es); i++ {
@@ -307,7 +309,7 @@ func Paginate[E any](es []E, pageNumber int, showNumber int) []E {
 	return es[start:end]
 }
 
-// BothExistAny 获取切片中共同存在的元素(交集)
+// BothExistAny gets elements that are common in the slice (intersection)
 func BothExistAny[E any, K comparable](es [][]E, fn func(e E) K) []E {
 	if len(es) == 0 {
 		return []E{}
@@ -350,14 +352,13 @@ func BothExistAny[E any, K comparable](es [][]E, fn func(e E) K) []E {
 	return v
 }
 
-// BothExist 获取切片中共同存在的元素(交集)
+// BothExist Gets the common elements in the slice (intersection)
 func BothExist[E comparable](es ...[]E) []E {
 	return BothExistAny(es, func(e E) E {
 		return e
 	})
 }
 
-//// CompleteAny a中存在b的所有元素, 同时b中的所有元素a
 //func CompleteAny[K comparable, E any](ks []K, es []E, fn func(e E) K) bool {
 //	if len(ks) == 0 && len(es) == 0 {
 //		return true
@@ -377,7 +378,7 @@ func BothExist[E comparable](es ...[]E) []E {
 //	return true
 //}
 
-// Complete a和b去重后是否相等(忽略顺序)
+// Complete whether a and b are equal after deduplication (ignore order)
 func Complete[E comparable](a []E, b []E) bool {
 	return len(Single(a, b)) == 0
 }
@@ -432,7 +433,7 @@ func ToPtr[T any](t T) *T {
 	return &t
 }
 
-// Equal 比较切片是否相对(包括元素顺序)
+// Equal Compares slices to each other (including element order)
 func Equal[E comparable](a []E, b []E) bool {
 	if len(a) != len(b) {
 		return false
@@ -445,7 +446,7 @@ func Equal[E comparable](a []E, b []E) bool {
 	return true
 }
 
-// Single a中存在,b中不存在 或 b中存在,a中不存在
+// Single exists in a and does not exist in b or exists in b and does not exist in a
 func Single[E comparable](a, b []E) []E {
 	kn := make(map[E]uint8)
 	for _, e := range Distinct(a) {
@@ -463,7 +464,7 @@ func Single[E comparable](a, b []E) []E {
 	return v
 }
 
-// Order 将ts按es排序
+// Order sorts ts by es
 func Order[E comparable, T any](es []E, ts []T, fn func(t T) E) []T {
 	if len(es) == 0 || len(ts) == 0 {
 		return ts
@@ -531,7 +532,7 @@ func Unwrap(err error) error {
 	return err
 }
 
-// NotNilReplace 当new_不为空时, 将old设置为new_
+// NotNilReplace sets old to new_ when new_ is not null
 func NotNilReplace[T any](old, new_ *T) {
 	if new_ == nil {
 		return
