@@ -51,6 +51,14 @@ func UpdateOne(ctx context.Context, coll *mongo.Collection, filter any, update a
 	return nil
 }
 
+func UpdateOneResult(ctx context.Context, coll *mongo.Collection, filter any, update any, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
+	res, err := coll.UpdateOne(ctx, filter, update, opts...)
+	if err != nil {
+		return nil, errs.WrapMsg(err, "mongo update one")
+	}
+	return res, nil
+}
+
 func UpdateMany(ctx context.Context, coll *mongo.Collection, filter any, update any, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
 	res, err := coll.UpdateMany(ctx, filter, update, opts...)
 	if err != nil {
