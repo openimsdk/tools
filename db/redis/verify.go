@@ -22,7 +22,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CheckRedis checks the Redis connection
+// CheckRedis checks the Redis connection.
 func CheckRedis(ctx context.Context, config *RedisConfig) error {
 
 	redisInfo, err := utils.JsonMarshal(config)

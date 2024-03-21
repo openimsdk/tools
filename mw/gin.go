@@ -19,7 +19,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/apiresp"
 	"github.com/openimsdk/tools/errs"

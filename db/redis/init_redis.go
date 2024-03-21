@@ -64,7 +64,7 @@ func NewRedisClient(ctx context.Context, config *RedisConfig) (RedisClient, erro
 		defer cancel()
 
 		if pingErr := clientInstance.Ping(cCtx).Err(); pingErr != nil {
-			err = errs.WrapMsg(pingErr, "Redis Ping failed.", "Address", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)	
+			err = errs.WrapMsg(pingErr, "Redis Ping failed.", "Address", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)
 			return
 		}
 	})

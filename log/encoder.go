@@ -16,6 +16,7 @@ package log
 
 import (
 	"fmt"
+
 	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
 )

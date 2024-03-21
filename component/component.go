@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	// defaultCfgPath is the default path of the configuration file.
+	// DefaultCfgPath is the default path of the configuration file.
 	minioHealthCheckDuration = 1
 	mongoConnTimeout         = 5 * time.Second
 	MaxRetry                 = 300
@@ -60,7 +60,7 @@ func exactIP(urlStr string) (string, error) {
 	return host, nil
 }
 
-// CheckMinio checks the MinIO connection
+// CheckMinio checks the MinIO connection.
 func CheckMinio(minioStu *Minio) error {
 	if minioStu.Endpoint == "" || minioStu.AccessKeyID == "" || minioStu.SecretAccessKey == "" {
 		return errs.Wrap(errors.New("missing configuration for endpoint, accessKeyID, or secretAccessKey"))
@@ -155,7 +155,7 @@ func CheckZookeeper(zkStu *Zookeeper) error {
 	}
 }
 
-// CheckKafka checks the Kafka connection
+// CheckKafka checks the Kafka connection.
 func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// Configure Kafka client
 	cfg := sarama.NewConfig()
