@@ -1,14 +1,5 @@
 package component
 
-type Mongo struct {
-	URL         string   `json:"url"`
-	Address     []string `json:"address"`
-	Database    string   `json:"database"`
-	Username    string   `json:"username"`
-	Password    string   `json:"password"`
-	MaxPoolSize int      `json:"maxPoolSize"`
-}
-
 type Minio struct {
 	ApiURL          string `json:"apiURL"`
 	Endpoint        string `json:"endpoint"`

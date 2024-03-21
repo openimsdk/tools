@@ -15,7 +15,6 @@
 package component
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -31,8 +30,6 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/utils"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -47,40 +44,6 @@ const (
 	colorGreen  = 32
 	colorYellow = 33
 )
-
-// CheckMongo checks the MongoDB connection without retries
-func CheckMongo(mongoStu *Mongo) error {
-	mongodbHosts := strings.Join(mongoStu.Address, ",")
-	if mongoStu.URL == "" {
-		if mongoStu.Username != "" && mongoStu.Password != "" {
-			mongoStu.URL = fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
-				mongoStu.Username, mongoStu.Password, mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
-		} else {
-			mongoStu.URL = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
-				mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
-		}
-	}
-
-	mongoInfo, err := utils.JsonMarshal(mongoStu)
-	if err != nil {
-		return errs.Wrap(errors.New("mongoStu Marshal failed"))
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoStu.URL))
-	if err != nil {
-		return errs.Wrap(fmt.Errorf("mongo connect failed, err:%v. %s", err, string(mongoInfo)))
-	}
-	defer client.Disconnect(context.Background())
-	defer cancel()
-
-	if err = client.Ping(ctx, nil); err != nil {
-		return errs.Wrap(fmt.Errorf("ping mongo failed, err:%v. %s", err, string(mongoInfo)))
-	}
-	return nil
-}
 
 func exactIP(urlStr string) (string, error) {
 	u, err := url.Parse(urlStr)
