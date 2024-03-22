@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cache
+package redis
 
 import (
 	"fmt"
@@ -53,18 +53,4 @@ func getClientOptions(config *RedisConfig) interface{} {
 		PoolSize:   config.PoolSize,
 		MaxRetries: config.MaxRetries,
 	}
-}
-
-// validateAddress checks the format of the given Redis address.
-func validateAddress(address string) error {
-	parts := strings.Split(address, ":")
-	if len(parts) != 2 {
-		return errs.WrapMsg(fmt.Errorf("invalid address format: %s", address), "invalid address format", "address", address)
-	}
-
-	port, err := strconv.Atoi(parts[1])
-	if err != nil || port <= 0 || port > 65535 {
-		return errs.WrapMsg(err, "invalid port in address", "address", address)
-	}
-	return nil
 }

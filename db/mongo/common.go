@@ -46,26 +46,3 @@ func shouldRetry(err error) bool {
 	}
 	return true
 }
-
-// ValidateAndSetDefaults validates the configuration and sets default values.
-func (c *MongoConfig) ValidateAndSetDefaults() error {
-	if c.Uri == "" && len(c.Address) == 0 {
-		return errs.Wrap(errors.New("either Uri or Address must be provided"))
-	}
-	if c.Database == "" {
-		return errs.Wrap(errors.New("database is required"))
-	}
-	if c.MaxPoolSize <= 0 {
-		c.MaxPoolSize = DefaultMaxPoolSize
-	}
-	if c.MaxRetry < 0 {
-		c.MaxRetry = DefaultMaxRetry
-	}
-	if c.ConnTimeout <= 0 {
-		c.ConnTimeout = DefaultConnTimeout
-	}
-	if c.Uri == "" {
-		c.Uri = buildMongoURI(c)
-	}
-	return nil
-}
