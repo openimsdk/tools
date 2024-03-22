@@ -127,6 +127,10 @@ func Unwrap(err error) error {
 	return err
 }
 
+func New(msg string, kv ...any) error {
+	return WrapMsg(errors.New(msg), msg, kv...)
+}
+
 func Wrap(err error) error {
 	return errors.WithStack(err)
 }
