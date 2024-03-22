@@ -20,7 +20,7 @@ import (
 	"crypto/cipher"
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
+	"github.com/openimsdk/tools/errs"
 )
 
 func Md5(s string, salt ...string) string {
@@ -36,7 +36,7 @@ func Md5(s string, salt ...string) string {
 func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, errs.WrapMsg(err, "aes new cipher failed", "key", key)
 	}
 	blockSize := block.BlockSize()
 	encryptBytes := pkcs7Padding(data, blockSize)
@@ -49,7 +49,7 @@ func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, errs.WrapMsg(err, "aes new cipher failed", "key", key)
 	}
 	blockSize := block.BlockSize()
 	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
@@ -71,7 +71,7 @@ func pkcs7Padding(data []byte, blockSize int) []byte {
 func pkcs7UnPadding(data []byte) ([]byte, error) {
 	length := len(data)
 	if length == 0 {
-		return nil, errors.New("encrypt error")
+		return nil, errs.New("data is nil")
 	}
 	unPadding := int(data[length-1])
 	return data[:(length - unPadding)], nil
