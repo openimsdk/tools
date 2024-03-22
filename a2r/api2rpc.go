@@ -17,21 +17,19 @@ package a2r
 import (
 	"context"
 
-	"github.com/openimsdk/tools/checker"
-
 	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
-
 	"github.com/openimsdk/tools/apiresp"
+	"github.com/openimsdk/tools/checker"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
+	"google.golang.org/grpc"
 )
 
 func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context) {
 	var req A
 	if err := c.BindJSON(&req); err != nil {
 		log.ZWarn(c, "gin bind json error", err, "req", req)
-		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap()) //args error
+		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap()) // args error
 		return
 	}
 	if err := checker.Validate(&req); err != nil {

@@ -29,7 +29,7 @@ type CodeError interface {
 	Detail() string
 	WithDetail(detail string) CodeError
 	// Is checks if the error is of a certain type, when loose is false,
-	//only the error code is the same is considered the same error, default is true
+	// only the error code is the same is considered the same error, default is true
 	Is(err error, loose ...bool) bool
 	Wrap() error
 	WrapMsg(msg string, kv ...any) error

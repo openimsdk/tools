@@ -20,17 +20,17 @@ import (
 )
 
 var (
-	// auth rpc.
+	// Auth rpc.
 	UserLoginCounter    prometheus.Counter
 	UserRegisterCounter prometheus.Counter
 
-	// seg.
+	// Seg.
 	SeqGetSuccessCounter prometheus.Counter
 	SeqGetFailedCounter  prometheus.Counter
 	SeqSetSuccessCounter prometheus.Counter
 	SeqSetFailedCounter  prometheus.Counter
 
-	// msg-db.
+	// Msg-db.
 	MsgInsertRedisSuccessCounter   prometheus.Counter
 	MsgInsertRedisFailedCounter    prometheus.Counter
 	MsgInsertMongoSuccessCounter   prometheus.Counter
@@ -40,7 +40,7 @@ var (
 	MsgPullFromMongoSuccessCounter prometheus.Counter
 	MsgPullFromMongoFailedCounter  prometheus.Counter
 
-	// msg-ws.
+	// Msg-ws.
 	MsgRecvTotalCounter          prometheus.Counter
 	GetNewestSeqTotalCounter     prometheus.Counter
 	PullMsgBySeqListTotalCounter prometheus.Counter
@@ -50,7 +50,7 @@ var (
 	WorkSuperGroupChatMsgRecvSuccessCounter prometheus.Counter
 	OnlineUserGauge                         prometheus.Gauge
 
-	// msg-msg.
+	// Msg-msg.
 	SingleChatMsgProcessSuccessCounter         prometheus.Counter
 	SingleChatMsgProcessFailedCounter          prometheus.Counter
 	GroupChatMsgProcessSuccessCounter          prometheus.Counter
@@ -58,23 +58,23 @@ var (
 	WorkSuperGroupChatMsgProcessSuccessCounter prometheus.Counter
 	WorkSuperGroupChatMsgProcessFailedCounter  prometheus.Counter
 
-	// msg-push.
+	// Msg-push.
 	MsgOnlinePushSuccessCounter  prometheus.Counter
 	MsgOfflinePushSuccessCounter prometheus.Counter
 	MsgOfflinePushFailedCounter  prometheus.Counter
-	// api.
+	// Api.
 	ApiRequestCounter        prometheus.Counter
 	ApiRequestSuccessCounter prometheus.Counter
 	ApiRequestFailedCounter  prometheus.Counter
 
-	// grpc.
+	// Grpc.
 	GrpcRequestCounter        prometheus.Counter
 	GrpcRequestSuccessCounter prometheus.Counter
 	GrpcRequestFailedCounter  prometheus.Counter
 
 	SendMsgCounter prometheus.Counter
 
-	// conversation.
+	// Conversation.
 	ConversationCreateSuccessCounter prometheus.Counter
 	ConversationCreateFailedCounter  prometheus.Counter
 )

@@ -15,28 +15,25 @@
 package component
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"github.com/IBM/sarama"
-	"github.com/go-zookeeper/zk"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/utils"
-	"github.com/redis/go-redis/v9"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"log"
 	"net"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/IBM/sarama"
+	"github.com/go-zookeeper/zk"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/utils"
 )
 
 const (
-	// defaultCfgPath is the default path of the configuration file.
+	// DefaultCfgPath is the default path of the configuration file.
 	minioHealthCheckDuration = 1
 	mongoConnTimeout         = 5 * time.Second
 	MaxRetry                 = 300
@@ -47,40 +44,6 @@ const (
 	colorGreen  = 32
 	colorYellow = 33
 )
-
-// CheckMongo checks the MongoDB connection without retries
-func CheckMongo(mongoStu *Mongo) error {
-	mongodbHosts := strings.Join(mongoStu.Address, ",")
-	if mongoStu.URL == "" {
-		if mongoStu.Username != "" && mongoStu.Password != "" {
-			mongoStu.URL = fmt.Sprintf("mongodb://%s:%s@%s/%s?maxPoolSize=%d",
-				mongoStu.Username, mongoStu.Password, mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
-		} else {
-			mongoStu.URL = fmt.Sprintf("mongodb://%s/%s?maxPoolSize=%d",
-				mongodbHosts, mongoStu.Database, mongoStu.MaxPoolSize)
-		}
-	}
-
-	mongoInfo, err := utils.JsonMarshal(mongoStu)
-	if err != nil {
-		return errs.Wrap(errors.New("mongoStu Marshal failed"))
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), mongoConnTimeout)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoStu.URL))
-	if err != nil {
-		return errs.Wrap(fmt.Errorf("mongo connect failed, err:%v. %s", err, string(mongoInfo)))
-	}
-	defer client.Disconnect(context.Background())
-	defer cancel()
-
-	if err = client.Ping(ctx, nil); err != nil {
-		return errs.Wrap(fmt.Errorf("ping mongo failed, err:%v. %s", err, string(mongoInfo)))
-	}
-	return nil
-}
 
 func exactIP(urlStr string) (string, error) {
 	u, err := url.Parse(urlStr)
@@ -97,7 +60,7 @@ func exactIP(urlStr string) (string, error) {
 	return host, nil
 }
 
-// CheckMinio checks the MinIO connection
+// CheckMinio checks the MinIO connection.
 func CheckMinio(minioStu *Minio) error {
 	if minioStu.Endpoint == "" || minioStu.AccessKeyID == "" || minioStu.SecretAccessKey == "" {
 		return errs.Wrap(errors.New("missing configuration for endpoint, accessKeyID, or secretAccessKey"))
@@ -152,41 +115,6 @@ func CheckMinio(minioStu *Minio) error {
 	return nil
 }
 
-// CheckRedis checks the Redis connection
-func CheckRedis(redisStu *Redis) error {
-	// Split address to handle multiple addresses for cluster setup
-
-	redisInfo, err := utils.JsonMarshal(redisStu)
-	if err != nil {
-		return errs.Wrap(errors.New("redisStu Marshal failed"))
-	}
-
-	var redisClient redis.UniversalClient
-	if len(redisStu.Address) > 1 {
-		// Use cluster client for multiple addresses
-		redisClient = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    redisStu.Address,
-			Username: redisStu.Username,
-			Password: redisStu.Password,
-		})
-	} else {
-		// Use regular client for single address
-		redisClient = redis.NewClient(&redis.Options{
-			Addr:     redisStu.Address[0],
-			Username: redisStu.Username,
-			Password: redisStu.Password,
-		})
-	}
-	defer redisClient.Close()
-
-	// Ping Redis to check connectivity
-	_, err = redisClient.Ping(context.Background()).Result()
-	if err != nil {
-		return errs.Wrap(fmt.Errorf("redis ping failed, err:%v. %s", err, string(redisInfo)))
-	}
-	return nil
-}
-
 func CheckZookeeper(zkStu *Zookeeper) error {
 	zkStuInfo, err := utils.JsonMarshal(zkStu)
 	if err != nil {
@@ -227,7 +155,7 @@ func CheckZookeeper(zkStu *Zookeeper) error {
 	}
 }
 
-// CheckKafka checks the Kafka connection
+// CheckKafka checks the Kafka connection.
 func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// Configure Kafka client
 	cfg := sarama.NewConfig()
