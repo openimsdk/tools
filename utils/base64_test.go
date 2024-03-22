@@ -26,7 +26,11 @@ func TestBase64EncodeDecode(t *testing.T) {
 	}
 
 	// Decode
-	decoded := Base64Decode(encoded)
+	decoded, err := Base64Decode(encoded)
+	if err != nil {
+		t.Errorf("Base64Decode returned an error: %v", err)
+	}
+
 	if decoded != originalText {
 		t.Errorf("Base64Decode = %v, want %v", decoded, originalText)
 	}
@@ -34,11 +38,8 @@ func TestBase64EncodeDecode(t *testing.T) {
 
 func TestBase64DecodeErrorHandling(t *testing.T) {
 	malformedBase64 := "This is not base64!"
-
-	// Decode with intentional error to test error handling.
-	// The function as written does not return an error, but it's a good practice to do so.
-	decoded := Base64Decode(malformedBase64)
-	if decoded != "" {
-		t.Errorf("Base64Decode with malformed input should return an error or an empty string, got %v", decoded)
+	_, err := Base64Decode(malformedBase64)
+	if err == nil {
+		t.Errorf("Expected an error for malformed base64 input, but none was returned")
 	}
 }
