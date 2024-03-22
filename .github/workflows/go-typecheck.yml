@@ -3,11 +3,11 @@ name: Go Typecheck Workflow Test
 on: [push, pull_request]
 
 jobs:
-  comment-language-detector:
+  go-language-typecheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Code Language Detector
+      - name: Go Code Language typecheck
         uses: kubecub/typecheck@main
