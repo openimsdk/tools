@@ -17,6 +17,7 @@ package component
 import (
 	"errors"
 	"fmt"
+	"github.com/openimsdk/tools/utils/dataformat"
 	"io"
 	"log"
 	"net"
@@ -29,7 +30,6 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/utils"
 )
 
 const (
@@ -67,7 +67,7 @@ func CheckMinio(minioStu *Minio) error {
 	}
 
 	// Parse endpoint URL to determine if SSL is enabled
-	minioInfo, err := utils.JsonMarshal(minioStu)
+	minioInfo, err := dataformat.JsonMarshal(minioStu)
 	if err != nil {
 		return errs.Wrap(errors.New("minioStu Marshal failed"))
 	}
@@ -116,7 +116,7 @@ func CheckMinio(minioStu *Minio) error {
 }
 
 func CheckZookeeper(zkStu *Zookeeper) error {
-	zkStuInfo, err := utils.JsonMarshal(zkStu)
+	zkStuInfo, err := dataformat.JsonMarshal(zkStu)
 	if err != nil {
 		return fmt.Errorf("zkStu Marshal failed: %w", err)
 	}
@@ -168,7 +168,7 @@ func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// kafka.SetupTLSConfig(cfg)
 
 	// Create Kafka client
-	kafkaInfo, err := utils.JsonMarshal(kafkaStu)
+	kafkaInfo, err := dataformat.JsonMarshal(kafkaStu)
 	if err != nil {
 		return nil, errs.Wrap(errors.New("kafkaStu Marshal failed"))
 	}

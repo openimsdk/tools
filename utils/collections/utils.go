@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package collections
 
 import (
+	"github.com/openimsdk/tools/utils/dataformat"
+	"github.com/openimsdk/tools/utils/encrypt"
+	"github.com/openimsdk/tools/utils/timeutil"
 	"math/rand"
 	"reflect"
 	"sort"
@@ -493,7 +496,7 @@ func OrderPtr[E comparable, T any](es []E, ts *[]T, fn func(t T) E) []T {
 }
 
 func UniqueJoin(s ...string) string {
-	data, _ := JsonMarshal(s)
+	data, _ := dataformat.JsonMarshal(s)
 	return string(data)
 }
 
@@ -627,14 +630,14 @@ func SetSwitchFromOptions(options map[string]bool, key string, value bool) {
 }
 
 func StructToJsonString(param any) string {
-	dataType, _ := JsonMarshal(param)
+	dataType, _ := dataformat.JsonMarshal(param)
 	dataString := string(dataType)
 	return dataString
 }
 
 func GetMsgID(sendID string) string {
-	t := int64ToString(GetCurrentTimestampByNano())
-	return Md5(t + sendID + int64ToString(rand.Int63n(GetCurrentTimestampByNano())))
+	t := int64ToString(timeutil.GetCurrentTimestampByNano())
+	return encrypt.Md5(t + sendID + int64ToString(rand.Int63n(timeutil.GetCurrentTimestampByNano())))
 }
 
 func int64ToString(i int64) string {
