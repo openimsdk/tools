@@ -15,12 +15,10 @@
 package mongo
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/openimsdk/tools/errs"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

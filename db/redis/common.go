@@ -15,12 +15,8 @@
 package redis
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
-	"github.com/openimsdk/tools/errs"
 	"github.com/redis/go-redis/v9"
 )
 
