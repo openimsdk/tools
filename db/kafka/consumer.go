@@ -18,7 +18,7 @@ func BuildConsumerGroupConfig(conf Config, initial int64) (*sarama.Config, error
 	if conf.TLS != nil {
 		tls, err := newTLSConfig(conf.TLS.ClientCrt, conf.TLS.ClientKey, conf.TLS.CACrt, []byte(conf.TLS.ClientKeyPwd), conf.TLS.InsecureSkipVerify)
 		if err != nil {
-			return nil, errs.WrapMsg(err, "kafka read tls")
+			return nil, err
 		}
 		kfk.Net.TLS.Config = tls
 		kfk.Net.TLS.Enable = true
@@ -29,7 +29,7 @@ func BuildConsumerGroupConfig(conf Config, initial int64) (*sarama.Config, error
 func NewConsumerGroup(conf *sarama.Config, addr []string, groupID string) (sarama.ConsumerGroup, error) {
 	cg, err := sarama.NewConsumerGroup(addr, groupID, conf)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "kafka consumer group")
+		return nil, errs.WrapMsg(err, "kafka consumer group", "addr", addr, "groupID", groupID)
 	}
 	return cg, nil
 }
