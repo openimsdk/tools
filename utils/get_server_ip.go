@@ -17,14 +17,14 @@ package utils
 import (
 	"errors"
 	"net"
-)
 
-var ServerIP = ""
+	"github.com/openimsdk/tools/errs"
+)
 
 func GetLocalIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return "", err
+		return "", errs.WrapMsg(err, "get ip failed", "addrs", addrs)
 	}
 	for _, address := range addrs {
 
