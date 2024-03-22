@@ -66,7 +66,7 @@ func RpcServerInterceptor(
 	//		}
 	//		err = sta.Err()
 	//	}
-	//}()
+	// }()
 	funcName := info.FullMethod
 	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -123,7 +123,7 @@ func RpcServerInterceptor(
 	}
 	grpcStatus := status.New(codes.Code(code), codeErr.Msg())
 	// var errInfo *errinfo.ErrorInfo
-	//if config.Config.Log.WithStack {
+	// if config.Config.Log.WithStack {
 	//	if unwrap != err {
 	//		sti, ok := err.(interface{ StackTrace() errors.StackTrace })
 	//		if ok {

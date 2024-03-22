@@ -138,10 +138,23 @@ lint: tools.verify.golangci-lint
 test: 
 	@$(GO) test ./... 
 
-## cover: Run unit test with coverage.
+## cover: Run unit tests with coverage and enforce a minimum coverage requirement.
 .PHONY: cover
-cover: test
-	@$(GO) test -cover
+cover:
+	@echo "Running tests with coverage..."
+	@$(GO) test -coverprofile=coverage.out ./...
+	@echo "Checking coverage..."
+	@$(GO) tool cover -func=coverage.out | grep total: | awk '{print $$3}' | sed 's/%//g' | { \
+		read coverage; \
+		echo "Total coverage: $$coverage%"; \
+		minCoverage=75; \
+		if [ `echo "$$coverage < $$minCoverage" | bc` -eq 1 ]; then \
+			echo "Coverage ($$coverage%) is below the minimum required ($$minCoverage%). Failing."; \
+			exit 1; \
+		else \
+			echo "Coverage meets minimum requirement ($$minCoverage%)."; \
+		fi; \
+	}
 
 ## copyright-verify: Validate boilerplate headers for assign files.
 .PHONY: copyright-verify

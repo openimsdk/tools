@@ -2,9 +2,10 @@ package kafka
 
 import (
 	"bytes"
+	"strings"
+
 	"github.com/IBM/sarama"
 	"github.com/openimsdk/tools/errs"
-	"strings"
 )
 
 func BuildProducerConfig(conf Config) (*sarama.Config, error) {

@@ -15,8 +15,9 @@
 package network
 
 import (
-	"github.com/pkg/errors"
 	"net"
+
+	"github.com/pkg/errors"
 )
 
 func GetLocalIP() (string, error) {

@@ -5,8 +5,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"github.com/openimsdk/tools/errs"
 	"os"
+
+	"github.com/openimsdk/tools/errs"
 )
 
 // decryptPEM decrypts a PEM block using a password.

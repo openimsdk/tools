@@ -64,9 +64,6 @@ jobs:
       run: sudo make lint
       continue-on-error: true
 
-    - name: Cleanup Build
-      run: sudo make clean
-
     - name: test
       run: sudo make test
 
