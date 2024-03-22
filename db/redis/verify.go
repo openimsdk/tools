@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cache
+package redis
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/utils"
@@ -42,5 +45,19 @@ func CheckRedis(ctx context.Context, config *RedisConfig) error {
 		return errs.WrapMsg(err, "Redis ping failed.", "Config", string(redisInfo))
 	}
 
+	return nil
+}
+
+// validateAddress checks the format of the given Redis address.
+func ValidateAddress(address string) error {
+	parts := strings.Split(address, ":")
+	if len(parts) != 2 {
+		return errs.WrapMsg(fmt.Errorf("invalid address format: %s", address), "invalid address format", "address", address)
+	}
+
+	port, err := strconv.Atoi(parts[1])
+	if err != nil || port <= 0 || port > 65535 {
+		return errs.WrapMsg(err, "invalid port in address", "address", address)
+	}
 	return nil
 }
