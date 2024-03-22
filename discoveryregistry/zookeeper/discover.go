@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/go-zookeeper/zk"
 	"github.com/openimsdk/tools/errs"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 )
@@ -105,7 +104,7 @@ func (s *ZkClient) GetConnsRemote(serviceName string) (conns []resolver.Address,
 	return conns, nil
 }
 func (s *ZkClient) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
-	s.logger.Warn(ctx, "not impliment", errors.New("zkclinet not impliment GetUserIdHashGatewayHost method"))
+	s.logger.Warn(ctx, "not implement", errors.New("zkclinet not implement GetUserIdHashGatewayHost method"))
 	return "", nil
 }
 func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {

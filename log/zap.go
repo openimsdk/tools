@@ -22,10 +22,8 @@ import (
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/mcontext"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -68,7 +66,7 @@ func InitFromConfig(
 	return nil
 }
 
-// InitConsoleLogger init osStdout and osStderr
+// InitConsoleLogger init osStdout and osStderr.
 func InitConsoleLogger(moduleName string,
 	logLevel int,
 	isJson bool, moduleVersion string) error {

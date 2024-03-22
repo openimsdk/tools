@@ -19,19 +19,16 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/openimsdk/tools/checker"
-
 	"github.com/openimsdk/protocol/constant"
-
+	"github.com/openimsdk/protocol/errinfo"
+	"github.com/openimsdk/tools/checker"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
+	"github.com/openimsdk/tools/mw/specialerror"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-
-	"github.com/openimsdk/protocol/errinfo"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/log"
-	"github.com/openimsdk/tools/mw/specialerror"
 )
 
 func rpcString(v any) string {
@@ -47,7 +44,7 @@ func RpcServerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (resp any, err error) {
-	//defer func() {
+	// defer func() {
 	//	if r := recover(); r != nil {
 	// 		log.ZError(ctx, "rpc panic", nil, "FullMethod", info.FullMethod, "type:", fmt.Sprintf("%T", r), "panic:", r)
 	//		fmt.Printf("panic: %+v\nstack info: %s\n", r, string(debug.Stack()))
@@ -125,7 +122,7 @@ func RpcServerInterceptor(
 		code = errs.ServerInternalError
 	}
 	grpcStatus := status.New(codes.Code(code), codeErr.Msg())
-	//var errInfo *errinfo.ErrorInfo
+	// var errInfo *errinfo.ErrorInfo
 	//if config.Config.Log.WithStack {
 	//	if unwrap != err {
 	//		sti, ok := err.(interface{ StackTrace() errors.StackTrace })

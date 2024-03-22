@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-
 	"github.com/openimsdk/tools/errs"
 )
 

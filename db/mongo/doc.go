@@ -1,4 +1,4 @@
-// Copyright © 2024 OpenIM. All rights reserved.
+// Copyright © 2024 OpenIM open source community. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cache // import "github.com/openimsdk/tools/cache"
+package mongo
