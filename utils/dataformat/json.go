@@ -16,6 +16,7 @@ package dataformat
 
 import (
 	"encoding/json"
+
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
