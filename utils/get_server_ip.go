@@ -15,12 +15,13 @@
 package utils
 
 import (
-	"errors"
 	"net"
 
 	"github.com/openimsdk/tools/errs"
 )
 
+// GetLocalIP retrieves the first non-loopback IP address of the machine's network interfaces.
+// It returns the IP address as a string and any error encountered.
 func GetLocalIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -35,5 +36,5 @@ func GetLocalIP() (string, error) {
 		}
 	}
 
-	return "", errors.New("no ip")
+	return "", errs.New("no local ip", "addrs", addrs)
 }

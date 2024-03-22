@@ -12,28 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package network
+package utils
 
-import (
-	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/utils"
-)
+import "testing"
 
-func GetRpcRegisterIP(configIP string) (string, error) {
-	registerIP := configIP
-	if registerIP == "" {
-		ip, err := utils.GetLocalIP()
-		if err != nil {
-			return "", err
-		}
-		registerIP = ip
+func TestGetLocalIP(t *testing.T) {
+	ip, err := GetLocalIP()
+	if err != nil {
+		t.Errorf("GetLocalIP() error = %v, wantErr false", err)
 	}
-	return registerIP, nil
-}
-
-func GetListenIP(configIP string) string {
-	if configIP == "" {
-		return constant.LocalHost
+	if ip == "" {
+		t.Error("GetLocalIP() returned an empty string, expected a non-empty IP address")
 	}
-	return configIP
 }
