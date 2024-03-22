@@ -28,3 +28,4 @@ func NewZkLogger() *ZkLogger {
 func (l *ZkLogger) Printf(format string, a ...interface{}) {
 	ZInfo(context.Background(), "zookeeper output", "msg", fmt.Sprintf(format, a...))
 }
+
