@@ -58,9 +58,8 @@ func PrometheusMiddleware(c *gin.Context) {
 	c.Next()
 	if c.Writer.Status() == http.StatusOK {
 		Inc(ApiRequestSuccessCounter)
-	} else {
-		Inc(ApiRequestFailedCounter)
 	}
+	Inc(ApiRequestFailedCounter)
 }
 
 func Inc(counter prometheus.Counter) {
