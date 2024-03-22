@@ -15,14 +15,29 @@
 package network
 
 import (
-	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/utils"
+	"github.com/pkg/errors"
+	"net"
 )
+
+func GetLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", errors.New("no ip")
+}
 
 func GetRpcRegisterIP(configIP string) (string, error) {
 	registerIP := configIP
 	if registerIP == "" {
-		ip, err := utils.GetLocalIP()
+		ip, err := GetLocalIP()
 		if err != nil {
 			return "", err
 		}
@@ -33,7 +48,7 @@ func GetRpcRegisterIP(configIP string) (string, error) {
 
 func GetListenIP(configIP string) string {
 	if configIP == "" {
-		return constant.LocalHost
+		return "0.0.0.0"
 	} else {
 		return configIP
 	}
