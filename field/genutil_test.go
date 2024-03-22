@@ -1,4 +1,4 @@
-// Copyright © 2023 OpenIM. All rights reserved.
+// Copyright © 2024 OpenIM. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package field
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
-func TestGetLocalIP(t *testing.T) {
-	ip, err := GetLocalIP()
-	if err != nil {
-		t.Errorf("GetLocalIP() error = %v, wantErr false", err)
-	}
-	if ip == "" {
-		t.Error("GetLocalIP() returned an empty string, expected a non-empty IP address")
+// TestGetProcessName tests the GetProcessName function to ensure it returns the expected process name.
+func TestGetProcessName(t *testing.T) {
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	expected := "testprog"
+	os.Args = []string{"/path/to/" + expected}
+
+	got := GetProcessName()
+	if got != expected {
+		t.Errorf("GetProcessName() = %q, want %q", got, expected)
 	}
 }
