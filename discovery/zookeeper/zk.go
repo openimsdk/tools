@@ -16,10 +16,8 @@ package zookeeper
 
 import (
 	"context"
-	"errors"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,7 +34,7 @@ const (
 )
 
 type ZkClient struct {
-	zkServers []string
+	ZkServers []string
 	zkRoot    string
 	userName  string
 	password  string
@@ -64,9 +62,10 @@ type ZkClient struct {
 	logger log.Logger
 }
 
-func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClient, error) {
+// NewZkClient initializes a new ZkClient with provided options and establishes a Zookeeper connection.
+func NewZkClient(ZkServers []string, zkRoot string, options ...ZkOption) (*ZkClient, error) {
 	client := &ZkClient{
-		zkServers:  zkServers,
+		ZkServers:  ZkServers,
 		zkRoot:     "/",
 		scheme:     zkRoot,
 		timeout:    timeout,
@@ -75,39 +74,26 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 		lock:       &sync.Mutex{},
 		logger:     nilLog{},
 	}
-	baseCtx, cancel := context.WithCancel(context.Background())
-	client.cancel = cancel
-	client.ticker = time.NewTicker(defaultFreq)
 	for _, option := range options {
 		option(client)
 	}
-	conn, eventChan, err := zk.Connect(
-		zkServers,
-		time.Duration(client.timeout)*time.Second,
-	)
+
+	// Establish a Zookeeper connection with a specified timeout and handle authentication.
+	conn, eventChan, err := zk.Connect(ZkServers, time.Duration(client.timeout)*time.Second)
 	if err != nil {
-		return nil, errs.Wrap(err)
+		return nil, errs.WrapMsg(err, "failed to connect to Zookeeper", "ZkServers", ZkServers)
 	}
 
-	// wait for successfully connect
-	timeout := time.After(5 * time.Second)
-	for {
-		select {
-		case event := <-eventChan:
-			if event.State == zk.StateConnected {
+	ctx, cancel := context.WithCancel(context.Background())
+	client.cancel = cancel
+	client.ticker = time.NewTicker(defaultFreq)
 
-				goto Connected
-			}
-		case <-timeout:
-			return nil, errs.WrapMsg(errors.New("timeout waiting for Zookeeper connection"), "Zookeeper Addr: "+strings.Join(zkServers, " "))
-		}
-	}
-
-Connected:
-
+	// Ensure authentication is set if credentials are provided.
 	if client.userName != "" && client.password != "" {
-		if err := conn.AddAuth("digest", []byte(client.userName+":"+client.password)); err != nil {
-			return nil, errs.WrapMsg(err, "zk addAuth failed", "userName", client.userName, "password", client.password)
+		auth := []byte(client.userName + ":" + client.password)
+		if err := conn.AddAuth("digest", auth); err != nil {
+			conn.Close()
+			return nil, errs.WrapMsg(err, "failed to authenticate with Zookeeper", "userName", client.userName)
 		}
 	}
 
@@ -115,21 +101,16 @@ Connected:
 	client.eventChan = eventChan
 	client.conn = conn
 
-	var errZK error
-	for i := 0; i < 300; i++ {
-		if errZK = client.ensureRoot(); errZK != nil {
-			time.Sleep(time.Second * 1)
-		} else {
-			break
-		}
+	// Verify root node existence and create if missing.
+	if err := client.ensureRoot(); err != nil {
+		conn.Close()
+		return nil, errs.WrapMsg(err, "failed to ensure root node", "zkRoot", client.zkRoot)
 	}
-	if errZK != nil {
-		return nil, errZK
-	}
+
 	resolver.Register(client)
-	go client.refresh(baseCtx)
-	go client.watch(baseCtx)
-	time.Sleep(time.Millisecond * 50)
+	go client.refresh(ctx)
+	go client.watch(ctx)
+
 	return client, nil
 }
 

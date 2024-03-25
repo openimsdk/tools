@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"os"
 
 	"github.com/openimsdk/tools/errs"
@@ -61,7 +60,7 @@ func newTLSConfig(clientCertFile, clientKeyFile, caCertFile string, keyPwd []byt
 		}
 		caCertPool := x509.NewCertPool()
 		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
-			return nil, errs.Wrap(errors.New("NewTLSConfig: not a valid CA cert"))
+			return nil, errs.New("NewTLSConfig: not a valid CA cert")
 		}
 		tlsConfig.RootCAs = caCertPool
 	}

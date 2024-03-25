@@ -17,6 +17,8 @@ package field
 import (
 	"errors"
 	"os"
+
+	"github.com/openimsdk/tools/errs"
 )
 
 // LinkTreatment is the base type for constants used by Exists that indicate
@@ -54,7 +56,7 @@ func Exists(linkBehavior LinkTreatment, filename string) (bool, error) {
 	if os.IsNotExist(err) {
 		return false, nil
 	} else if err != nil {
-		return false, err
+		return false, errs.WrapMsg(err, "failed to check if file exists", "file", filename)
 	}
 	return true, nil
 }
@@ -68,7 +70,7 @@ func ReadDirNoStat(dirname string) ([]string, error) {
 
 	f, err := os.Open(dirname)
 	if err != nil {
-		return nil, err
+		return nil, errs.WrapMsg(err, "failed to open directory", "dir", dirname)
 	}
 	defer f.Close()
 

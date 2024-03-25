@@ -16,7 +16,6 @@ package redis
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/openimsdk/tools/errs"
@@ -49,7 +48,7 @@ func NewRedisClient(ctx context.Context, config *RedisConfig) (RedisClient, erro
 	var err error
 	once.Do(func() {
 		if len(config.Address) == 0 {
-			err = errs.Wrap(errors.New("redis address is empty"))
+			err = errs.New("redis address is empty")
 			return
 		}
 

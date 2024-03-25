@@ -119,7 +119,7 @@ func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grp
 		}
 		if len(addrs) == 0 {
 			return nil, errs.New("addr is empty").WrapMsg("no conn for service", "serviceName",
-				serviceName, "local conn", s.localConns, "zkServers", s.zkServers, "zkRoot", s.zkRoot)
+				serviceName, "local conn", s.localConns, "ZkServers", s.ZkServers, "zkRoot", s.zkRoot)
 		}
 		for _, addr := range addrs {
 			cc, err := grpc.DialContext(ctx, addr.Addr, append(s.options, opts...)...)
