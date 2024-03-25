@@ -15,6 +15,7 @@
 package zookeeper
 
 import (
+	"github.com/openimsdk/tools/errs"
 	"time"
 
 	"github.com/go-zookeeper/zk"
@@ -31,11 +32,15 @@ func (s *ZkClient) CreateRpcRootNodes(serviceNames []string) error {
 }
 
 func (s *ZkClient) CreateTempNode(rpcRegisterName, addr string) (node string, err error) {
-	return s.conn.CreateProtectedEphemeralSequential(
+	node, err = s.conn.CreateProtectedEphemeralSequential(
 		s.getPath(rpcRegisterName)+"/"+addr+"_",
 		[]byte(addr),
 		zk.WorldACL(zk.PermAll),
 	)
+	if err != nil {
+		return "", errs.Wrap(err)
+	}
+	return node, nil
 }
 
 func (s *ZkClient) Register(rpcRegisterName, host string, port int, opts ...grpc.DialOption) error {
@@ -45,7 +50,7 @@ func (s *ZkClient) Register(rpcRegisterName, host string, port int, opts ...grpc
 	addr := s.getAddr(host, port)
 	_, err := grpc.Dial(addr, opts...)
 	if err != nil {
-		return err
+		return errs.Wrap(err)
 	}
 	node, err := s.CreateTempNode(rpcRegisterName, addr)
 	if err != nil {
@@ -63,7 +68,7 @@ func (s *ZkClient) UnRegister() error {
 	defer s.lock.Unlock()
 	err := s.conn.Delete(s.node, -1)
 	if err != nil {
-		return err
+		return errs.Wrap(err)
 	}
 	time.Sleep(time.Second)
 	s.node = ""

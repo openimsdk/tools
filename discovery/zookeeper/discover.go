@@ -27,27 +27,27 @@ import (
 )
 
 var (
-	ErrConnIsNil               = errors.New("conn is nil")
-	ErrConnIsNilButLocalNotNil = errors.New("conn is nil, but local is not nil")
+	ErrConnIsNil               = errs.New("conn is nil")
+	ErrConnIsNilButLocalNotNil = errs.New("conn is nil, but local is not nil")
 )
 
 func (s *ZkClient) watch(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			s.logger.Debug(context.Background(), "zk watch ctx done")
+			s.logger.Info(ctx, "zk watch ctx done")
 			return
 		case event := <-s.eventChan:
-			s.logger.Debug(context.Background(), "zk eventChan recv new event", "event", event)
+			s.logger.Debug(ctx, "zk eventChan recv new event", "event", event)
 			switch event.Type {
 			case zk.EventSession:
 				switch event.State {
 				case zk.StateHasSession:
 					if s.isRegistered && !s.isStateDisconnected {
-						s.logger.Debug(context.Background(), "zk session event stateHasSession, client prepare to create new temp node", "event", event)
+						s.logger.Debug(ctx, "zk session event stateHasSession, client prepare to create new temp node", "event", event)
 						node, err := s.CreateTempNode(s.rpcRegisterName, s.rpcRegisterAddr)
 						if err != nil {
-							s.logger.Error(context.Background(), "zk session event stateHasSession, create temp node error", err, "event", event)
+							s.logger.Error(ctx, "zk session event stateHasSession, create temp node error", err, "event", event)
 						} else {
 							s.node = node
 						}
@@ -57,10 +57,10 @@ func (s *ZkClient) watch(ctx context.Context) {
 				case zk.StateConnected:
 					s.isStateDisconnected = false
 				default:
-					s.logger.Debug(context.Background(), "zk session event", "event", event)
+					s.logger.Debug(ctx, "zk session event", "event", event)
 				}
 			case zk.EventNodeChildrenChanged:
-				s.logger.Debug(context.Background(), "zk event", "event", event)
+				s.logger.Debug(ctx, "zk event", "event", event)
 				l := strings.Split(event.Path, "/")
 				if len(l) > 1 {
 					serviceName := l[len(l)-1]
@@ -68,7 +68,7 @@ func (s *ZkClient) watch(ctx context.Context) {
 					s.flushResolverAndDeleteLocal(serviceName)
 					s.lock.Unlock()
 				}
-				s.logger.Debug(context.Background(), "zk event handle success", "path", event.Path)
+				s.logger.Debug(ctx, "zk event handle success", "path", event.Path)
 			case zk.EventNodeDataChanged:
 			case zk.EventNodeCreated:
 			case zk.EventNodeDeleted:
@@ -78,26 +78,23 @@ func (s *ZkClient) watch(ctx context.Context) {
 	}
 }
 
-func (s *ZkClient) GetConnsRemote(serviceName string) (conns []resolver.Address, err error) {
+func (s *ZkClient) GetConnsRemote(ctx context.Context, serviceName string) (conns []resolver.Address, err error) {
 	path := s.getPath(serviceName)
 	_, _, _, err = s.conn.ChildrenW(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "children watch error")
+		return nil, errs.WrapMsg(err, "children watch error")
 	}
 	childNodes, _, err := s.conn.Children(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "get children error")
+		return nil, errs.WrapMsg(err, "get children error")
 	} else {
 		for _, child := range childNodes {
 			fullPath := path + "/" + child
 			data, _, err := s.conn.Get(fullPath)
 			if err != nil {
-				if err == zk.ErrNoNode {
-					return nil, errors.Wrap(err, "this is zk ErrNoNode")
-				}
-				return nil, errors.Wrap(err, "get children error")
+				return nil, errs.WrapMsg(err, "get children error")
 			}
-			s.logger.Debug(context.Background(), "get addrs from remote", "conn", string(data))
+			s.logger.Debug(ctx, "get addr from remote", "conn", string(data))
 			conns = append(conns, resolver.Address{Addr: string(data), ServerName: serviceName})
 		}
 	}
@@ -110,19 +107,19 @@ func (s *ZkClient) GetUserIdHashGatewayHost(ctx context.Context, userId string) 
 }
 
 func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
-	s.logger.Debug(context.Background(), "get conns from client", "serviceName", serviceName)
+	s.logger.Debug(ctx, "get conns from client", "serviceName", serviceName)
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	conns := s.localConns[serviceName]
 	if len(conns) == 0 {
-		var err error
-		s.logger.Debug(context.Background(), "get conns from zk remote", "serviceName", serviceName)
-		addrs, err := s.GetConnsRemote(serviceName)
+		s.logger.Debug(ctx, "get conns from zk remote", "serviceName", serviceName)
+		addrs, err := s.GetConnsRemote(ctx, serviceName)
 		if err != nil {
 			return nil, err
 		}
 		if len(addrs) == 0 {
-			return nil, fmt.Errorf("no conn for service %s, grpc server may not exist, local conn is %v, please check zookeeper server %v, path: %s", serviceName, s.localConns, s.zkServers, s.zkRoot)
+			return nil, errs.New("addr is empty").WrapMsg("no conn for service", "serviceName",
+				serviceName, "local conn", s.localConns, "zkServers", s.zkServers, "zkRoot", s.zkRoot)
 		}
 		for _, addr := range addrs {
 			cc, err := grpc.DialContext(ctx, addr.Addr, append(s.options, opts...)...)

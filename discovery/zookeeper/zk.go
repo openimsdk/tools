@@ -17,7 +17,6 @@ package zookeeper
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -65,45 +64,6 @@ type ZkClient struct {
 	logger log.Logger
 }
 
-type ZkOption func(*ZkClient)
-
-func WithRoundRobin() ZkOption {
-	return func(client *ZkClient) {
-		client.balancerName = "round_robin"
-	}
-}
-
-func WithUserNameAndPassword(userName, password string) ZkOption {
-	return func(client *ZkClient) {
-		client.userName = userName
-		client.password = password
-	}
-}
-
-func WithOptions(opts ...grpc.DialOption) ZkOption {
-	return func(client *ZkClient) {
-		client.options = opts
-	}
-}
-
-func WithFreq(freq time.Duration) ZkOption {
-	return func(client *ZkClient) {
-		client.ticker = time.NewTicker(freq)
-	}
-}
-
-func WithTimeout(timeout int) ZkOption {
-	return func(client *ZkClient) {
-		client.timeout = timeout
-	}
-}
-
-func WithLogger(logger log.Logger) ZkOption {
-	return func(client *ZkClient) {
-		client.logger = logger
-	}
-}
-
 func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClient, error) {
 	client := &ZkClient{
 		zkServers:  zkServers,
@@ -124,12 +84,9 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 	conn, eventChan, err := zk.Connect(
 		zkServers,
 		time.Duration(client.timeout)*time.Second,
-		zk.WithLogInfo(true),
-		zk.WithLogger(client),
 	)
 	if err != nil {
-		client.logger.Error(context.Background(), "zk connect", err)
-		return nil, err
+		return nil, errs.Wrap(err)
 	}
 
 	// wait for successfully connect
@@ -150,10 +107,8 @@ Connected:
 
 	if client.userName != "" && client.password != "" {
 		if err := conn.AddAuth("digest", []byte(client.userName+":"+client.password)); err != nil {
-			client.logger.Error(context.Background(), "zk addAuth", err)
-			return nil, err
+			return nil, errs.WrapMsg(err, "zk addAuth failed", "userName", client.userName, "password", client.password)
 		}
-
 	}
 
 	client.zkRoot += zkRoot
@@ -163,18 +118,16 @@ Connected:
 	var errZK error
 	for i := 0; i < 300; i++ {
 		if errZK = client.ensureRoot(); errZK != nil {
-			client.logger.Warn(context.Background(), "zk client ensure root bug: ", errZK, "try: ", i)
 			time.Sleep(time.Second * 1)
 		} else {
 			break
 		}
 	}
 	if errZK != nil {
-		client.logger.Error(context.Background(), "zk client ensure root bug", errZK)
 		return nil, errZK
 	}
 	resolver.Register(client)
-	go client.refresh()
+	go client.refresh(baseCtx)
 	go client.watch(baseCtx)
 	time.Sleep(time.Millisecond * 50)
 	return client, nil
@@ -190,24 +143,20 @@ func (s *ZkClient) Close() {
 func (s *ZkClient) ensureAndCreate(node string) error {
 	exists, _, err := s.conn.Exists(node)
 	if err != nil {
-		return errs.WrapMsg(err, "checking existence for node %s in ZkClient ensureAndCreate", node)
+		return errs.WrapMsg(err, "checking existence for node %s in ZkClient ensureAndCreate", "node", node)
 	}
 	if !exists {
 		_, err = s.conn.Create(node, []byte(""), 0, zk.WorldACL(zk.PermAll))
 		if err != nil && err != zk.ErrNodeExists {
-			return errs.WrapMsg(err, "creating node %s in ZkClient ensureAndCreate", node)
+			return errs.WrapMsg(err, "creating node %s in ZkClient ensureAndCreate", "node", node)
 		}
 	}
 	return nil
 }
 
-func (s *ZkClient) Printf(format string, a ...any) {
-	s.logger.Debug(context.Background(), "zk internal info", "msg", fmt.Sprintf(format, a...))
-}
-
-func (s *ZkClient) refresh() {
+func (s *ZkClient) refresh(ctx context.Context) {
 	for range s.ticker.C {
-		s.logger.Debug(context.Background(), "zk refresh local conns")
+		s.logger.Debug(ctx, "zk refresh local conns")
 		s.lock.Lock()
 		for rpcName := range s.resolvers {
 			s.flushResolver(rpcName)
@@ -216,7 +165,7 @@ func (s *ZkClient) refresh() {
 			delete(s.localConns, rpcName)
 		}
 		s.lock.Unlock()
-		s.logger.Debug(context.Background(), "zk refresh local conns success")
+		s.logger.Debug(ctx, "zk refresh local conns success")
 	}
 }
 
