@@ -16,7 +16,6 @@ package stringutil
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"hash/crc32"
 	"math/rand"
 	"runtime"
@@ -24,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func IntToString(i int) string {

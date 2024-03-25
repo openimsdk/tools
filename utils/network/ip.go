@@ -16,14 +16,23 @@ package network
 
 import (
 	"net"
+	"net/http"
 
+	"github.com/openimsdk/tools/errs"
 	"github.com/pkg/errors"
+)
+
+// Define http headers.
+const (
+	XForwardedFor = "X-Forwarded-For"
+	XRealIP       = "X-Real-IP"
+	XClientIP     = "x-client-ip"
 )
 
 func GetLocalIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return "", err
+		return "", errs.WrapMsg(err, "failed to get local ip", "addrs", addrs)
 	}
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
@@ -50,7 +59,26 @@ func GetRpcRegisterIP(configIP string) (string, error) {
 func GetListenIP(configIP string) string {
 	if configIP == "" {
 		return "0.0.0.0"
-	} else {
-		return configIP
 	}
+	return configIP
+}
+
+// RemoteIP returns the remote ip of the request.
+func RemoteIP(req *http.Request) string {
+	remoteAddr := req.RemoteAddr
+	if ip := req.Header.Get(XClientIP); ip != "" {
+		remoteAddr = ip
+	} else if ip := req.Header.Get(XRealIP); ip != "" {
+		remoteAddr = ip
+	} else if ip = req.Header.Get(XForwardedFor); ip != "" {
+		remoteAddr = ip
+	} else {
+		remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
+	}
+
+	if remoteAddr == "::1" {
+		remoteAddr = "127.0.0.1"
+	}
+
+	return remoteAddr
 }

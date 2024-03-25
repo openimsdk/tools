@@ -16,8 +16,9 @@ package apiresp
 
 import (
 	"encoding/json"
-	"github.com/openimsdk/tools/utils/dataformat"
 	"reflect"
+
+	"github.com/openimsdk/tools/utils/jsonutil"
 
 	"github.com/openimsdk/tools/errs"
 )
@@ -31,13 +32,13 @@ type ApiResponse struct {
 
 func (r *ApiResponse) MarshalJSON() ([]byte, error) {
 	if r.Data != nil {
-		data, err := dataformat.JsonMarshal(r.Data)
+		data, err := jsonutil.JsonMarshal(r.Data)
 		if err != nil {
 			return nil, err
 		}
 		r.Data = json.RawMessage(data)
 	}
-	return dataformat.JsonMarshal(r)
+	return jsonutil.JsonMarshal(r)
 }
 
 func isAllFieldsPrivate(v any) bool {

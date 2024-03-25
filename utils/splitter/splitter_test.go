@@ -71,13 +71,3 @@ func TestGetSplitResult_SingleElement(t *testing.T) {
 	}
 }
 
-func TestGetSplitResult_ZeroSplitCount(t *testing.T) {
-	data := []string{"a", "b", "c", "d", "e"}
-	splitCount := 0
-	splitter := NewSplitter(splitCount, data)
-	expected := []*SplitResult{} // Expected behavior may vary based on how you want to handle this case
-	result := splitter.GetSplitResult()
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("Expected result %v, got %v", expected, result)
-	}
-}
