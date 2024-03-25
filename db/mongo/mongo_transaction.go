@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tx
+package mongo
 
 import (
 	"context"
+	"github.com/openimsdk/tools/db"
 	"sync"
 
 	"github.com/openimsdk/tools/errs"
@@ -23,7 +24,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func NewMongo(client *mongo.Client) CtxTx {
+func NewMongo(client *mongo.Client) db.CtxTx {
 	return &_Mongo{
 		initialized: false,
 		lock:        &sync.Mutex{},
