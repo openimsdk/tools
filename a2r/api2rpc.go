@@ -16,19 +16,22 @@ package a2r
 
 import (
 	"context"
+	"errors"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/openimsdk/tools/utils/dataformat"
+	"io"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openimsdk/tools/apiresp"
 	"github.com/openimsdk/tools/checker"
 	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
 )
 
 func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context) {
 	var req A
-	if err := c.BindJSON(&req); err != nil {
-		log.ZWarn(c, "gin bind json error", err, "req", req)
+	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
 		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap()) // args error
 		return
 	}
@@ -42,4 +45,33 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 		return
 	}
 	apiresp.GinSuccess(c, data) // rpc call success
+}
+
+var jsonBind binding.Binding = jsonBinding{}
+
+type jsonBinding struct{}
+
+func (jsonBinding) Name() string {
+	return "json"
+}
+
+func (b jsonBinding) Bind(req *http.Request, obj any) error {
+	if req == nil || req.Body == nil {
+		return errors.New("invalid request")
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+	return b.BindBody(body, obj)
+}
+
+func (jsonBinding) BindBody(body []byte, obj any) error {
+	if err := dataformat.JsonUnmarshal(body, obj); err != nil {
+		return err
+	}
+	if binding.Validator == nil {
+		return nil
+	}
+	return binding.Validator.ValidateStruct(obj)
 }
