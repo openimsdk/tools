@@ -26,13 +26,13 @@ type Resolver struct {
 	target         resolver.Target
 	cc             resolver.ClientConn
 	addrs          []resolver.Address
-	getConnsRemote func(serviceName string) (conns []resolver.Address, err error)
+	getConnsRemote func(ctx context.Context, serviceName string) (conns []resolver.Address, err error)
 }
 
 func (r *Resolver) ResolveNowZK(o resolver.ResolveNowOptions) {
 	serviceName := strings.TrimLeft(r.target.URL.Path, "/")
 	r.client.logger.Debug(context.Background(), "start resolve now", "target", r.target, "serviceName", serviceName)
-	newConns, err := r.getConnsRemote(serviceName)
+	newConns, err := r.getConnsRemote(context.Background(), serviceName)
 	if err != nil {
 		r.client.logger.Error(context.Background(), "resolve now error", err, "target", r.target, "serviceName", serviceName)
 		return
