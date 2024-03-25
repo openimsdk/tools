@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jsonutil
+package goassist
 
 import (
-	"github.com/openimsdk/tools/utils/dataformat"
-	"github.com/openimsdk/tools/utils/encrypt"
-	"github.com/openimsdk/tools/utils/timeutil"
 	"math/rand"
 	"reflect"
 	"sort"
 	"strconv"
+
+	"github.com/openimsdk/tools/utils/encrypt"
+	"github.com/openimsdk/tools/utils/jsonutil"
+	"github.com/openimsdk/tools/utils/timeutil"
 
 	"github.com/jinzhu/copier"
 )
@@ -496,7 +497,7 @@ func OrderPtr[E comparable, T any](es []E, ts *[]T, fn func(t T) E) []T {
 }
 
 func UniqueJoin(s ...string) string {
-	data, _ := dataformat.JsonMarshal(s)
+	data, _ := jsonutil.JsonMarshal(s)
 	return string(data)
 }
 
@@ -630,7 +631,7 @@ func SetSwitchFromOptions(options map[string]bool, key string, value bool) {
 }
 
 func StructToJsonString(param any) string {
-	dataType, _ := dataformat.JsonMarshal(param)
+	dataType, _ := jsonutil.JsonMarshal(param)
 	dataString := string(dataType)
 	return dataString
 }
