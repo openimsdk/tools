@@ -17,10 +17,11 @@ package a2r
 import (
 	"context"
 	"errors"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/openimsdk/tools/utils/dataformat"
 	"io"
 	"net/http"
+
+	"github.com/gin-gonic/gin/binding"
+	"github.com/openimsdk/tools/utils/jsonutil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openimsdk/tools/apiresp"
@@ -67,7 +68,7 @@ func (b jsonBinding) Bind(req *http.Request, obj any) error {
 }
 
 func (jsonBinding) BindBody(body []byte, obj any) error {
-	if err := dataformat.JsonUnmarshal(body, obj); err != nil {
+	if err := jsonutil.JsonUnmarshal(body, obj); err != nil {
 		return err
 	}
 	if binding.Validator == nil {

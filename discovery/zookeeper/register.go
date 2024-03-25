@@ -50,7 +50,7 @@ func (s *ZkClient) Register(rpcRegisterName, host string, port int, opts ...grpc
 	addr := s.getAddr(host, port)
 	_, err := grpc.Dial(addr, opts...)
 	if err != nil {
-		return errs.Wrap(err)
+		return errs.WrapMsg(err, "grpc dial error", "addr", addr)
 	}
 	node, err := s.CreateTempNode(rpcRegisterName, addr)
 	if err != nil {
@@ -68,7 +68,7 @@ func (s *ZkClient) UnRegister() error {
 	defer s.lock.Unlock()
 	err := s.conn.Delete(s.node, -1)
 	if err != nil {
-		return errs.Wrap(err)
+		return errs.WrapMsg(err, "delete node error", "node", s.node)
 	}
 	time.Sleep(time.Second)
 	s.node = ""
