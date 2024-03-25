@@ -17,13 +17,14 @@ package component
 import (
 	"errors"
 	"fmt"
-	"github.com/openimsdk/tools/utils/dataformat"
 	"io"
 	"log"
 	"net"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/openimsdk/tools/utils/jsonutil"
 
 	"github.com/IBM/sarama"
 	"github.com/go-zookeeper/zk"
@@ -67,7 +68,7 @@ func CheckMinio(minioStu *Minio) error {
 	}
 
 	// Parse endpoint URL to determine if SSL is enabled
-	minioInfo, err := dataformat.JsonMarshal(minioStu)
+	minioInfo, err := jsonutil.JsonMarshal(minioStu)
 	if err != nil {
 		return errs.Wrap(errors.New("minioStu Marshal failed"))
 	}
@@ -116,7 +117,7 @@ func CheckMinio(minioStu *Minio) error {
 }
 
 func CheckZookeeper(zkStu *Zookeeper) error {
-	zkStuInfo, err := dataformat.JsonMarshal(zkStu)
+	zkStuInfo, err := jsonutil.JsonMarshal(zkStu)
 	if err != nil {
 		return fmt.Errorf("zkStu Marshal failed: %w", err)
 	}
@@ -168,7 +169,7 @@ func CheckKafka(kafkaStu *Kafka) (sarama.Client, error) {
 	// kafka.SetupTLSConfig(cfg)
 
 	// Create Kafka client
-	kafkaInfo, err := dataformat.JsonMarshal(kafkaStu)
+	kafkaInfo, err := jsonutil.JsonMarshal(kafkaStu)
 	if err != nil {
 		return nil, errs.Wrap(errors.New("kafkaStu Marshal failed"))
 	}

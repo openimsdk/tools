@@ -17,9 +17,10 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/openimsdk/tools/utils/dataformat"
 	"strconv"
 	"strings"
+
+	"github.com/openimsdk/tools/utils/jsonutil"
 
 	"github.com/openimsdk/tools/errs"
 	"github.com/redis/go-redis/v9"
@@ -28,7 +29,7 @@ import (
 // CheckRedis checks the Redis connection.
 func CheckRedis(ctx context.Context, config *RedisConfig) error {
 
-	redisInfo, err := dataformat.JsonMarshal(config)
+	redisInfo, err := jsonutil.JsonMarshal(config)
 	if err != nil {
 		return errs.WrapMsg(err, "Failed to marshal Redis config.")
 	}

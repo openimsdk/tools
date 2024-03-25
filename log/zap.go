@@ -109,6 +109,7 @@ func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	}
 	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
+
 func CInfo(ctx context.Context, msg string, keysAndValues ...any) {
 	if osStdout == nil {
 		return

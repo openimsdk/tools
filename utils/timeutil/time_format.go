@@ -17,6 +17,8 @@ package timeutil
 import (
 	"strconv"
 	"time"
+
+	"github.com/openimsdk/tools/errs"
 )
 
 const (
@@ -38,6 +40,8 @@ func UnixSecondToTime(second int64) time.Time {
 func UnixNanoSecondToTime(nanoSecond int64) time.Time {
 	return time.Unix(0, nanoSecond)
 }
+
+// UnixMillSecondToTime convert millSecond to time.Time type
 func UnixMillSecondToTime(millSecond int64) time.Time {
 	return time.Unix(0, millSecond*1e6)
 }
@@ -74,6 +78,8 @@ func GetCurDayZeroTimeFormat() string {
 func GetCurDayHalfTimeFormat() string {
 	return time.Unix(GetCurDayZeroTimestamp()+HalfOffset, 0).Format("2006-01-02_15-04-05")
 }
+
+// GetTimeStampByFormat convert string to unix timestamp
 func GetTimeStampByFormat(datetime string) string {
 	timeLayout := "2006-01-02 15:04:05"
 	loc, _ := time.LoadLocation("Local")
@@ -82,16 +88,19 @@ func GetTimeStampByFormat(datetime string) string {
 	return strconv.FormatInt(timestamp, 10)
 }
 
+// TimeStringFormatTimeUnix convert string to unix timestamp
 func TimeStringFormatTimeUnix(timeFormat string, timeSrc string) int64 {
 	tm, _ := time.Parse(timeFormat, timeSrc)
 	return tm.Unix()
 }
 
+// TimeStringToTime convert string to time.Time
 func TimeStringToTime(timeString string) (time.Time, error) {
 	t, err := time.Parse("2006-01-02", timeString)
-	return t, err
+	return t, errs.WrapMsg(err, "timeStringToTime failed", "timeString", timeString)
 }
 
+// TimeToString convert time.Time to string
 func TimeToString(t time.Time) string {
 	return t.Format("2006-01-02")
 }

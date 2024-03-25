@@ -40,28 +40,32 @@ func Get() Info {
 	}
 }
 
-// GetClientVersion returns the git version of the OpenIM client repository.
-func GetClientVersion() (*OpenIMClientVersion, error) {
-	clientVersion, err := getClientVersion()
+// GetClientVersion returns the git version of the OpenIM client repository given a repository URL.
+func GetClientVersion(repoURL string) (*OpenIMClientVersion, error) {
+	clientVersion, err := getClientVersion(repoURL)
 	if err != nil {
-		return nil, err
+		return nil, errs.WrapMsg(err, "failed to get client version", "repoURL", repoURL)
 	}
 	return &OpenIMClientVersion{
 		ClientVersion: clientVersion,
 	}, nil
 }
 
-func getClientVersion() (string, error) {
-	repo, err := git.PlainClone("/tmp/openim-sdk-core", false, &git.CloneOptions{
-		URL: "https://github.com/openimsdk/openim-sdk-core",
+func getClientVersion(repoURL string) (string, error) {
+	// Temp directory for cloning could be made more unique or cleaned up after use
+	tempDir := "/tmp/openim-sdk-core"
+
+	// Consider checking if the repo already exists and just fetch updates instead of cloning every time
+	repo, err := git.PlainClone(tempDir, false, &git.CloneOptions{
+		URL: repoURL,
 	})
 	if err != nil {
-		return "", errs.WrapMsg(err, "Failed to clone OpenIM client repository.", "URL", repo)
+		return "", errs.WrapMsg(err, "failed to clone OpenIM client repository", "repoURL", repoURL)
 	}
 
 	ref, err := repo.Head()
 	if err != nil {
-		return "", errs.WrapMsg(err, "Failed to get head reference.")
+		return "", errs.WrapMsg(err, "failed to get head reference", "repoURL", repoURL)
 	}
 
 	return ref.Hash().String(), nil
