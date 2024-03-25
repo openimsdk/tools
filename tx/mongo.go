@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/openimsdk/tools/errs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -65,7 +66,7 @@ func (m *_Mongo) init(ctx context.Context) (err error) {
 		_, err = sess.WithTransaction(fnctx, func(sessCtx mongo.SessionContext) (any, error) {
 			return nil, fn(sessCtx)
 		})
-		return err
+		return errs.WrapMsg(err, "MongoDB transaction failed")
 	}
 	return nil
 }
