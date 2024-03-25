@@ -15,8 +15,33 @@
 package mongo
 
 import (
+	"context"
+
 	"github.com/openimsdk/tools/errs"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// CheckMongo tests the MongoDB connection without retries.
+func CheckMongo(ctx context.Context, config *MongoConfig) error {
+
+	if err := config.ValidateAndSetDefaults(); err != nil {
+		return err
+	}
+
+	clientOpts := options.Client().ApplyURI(config.Uri)
+	mongoClient, err := mongo.Connect(ctx, clientOpts)
+	if err != nil {
+		return errs.WrapMsg(err, "MongoDB connect failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
+	}
+	defer mongoClient.Disconnect(ctx)
+
+	if err = mongoClient.Ping(ctx, nil); err != nil {
+		return errs.WrapMsg(err, "MongoDB ping failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
+	}
+
+	return nil
+}
 
 // ValidateAndSetDefaults validates the configuration and sets default values.
 func (c *MongoConfig) ValidateAndSetDefaults() error {

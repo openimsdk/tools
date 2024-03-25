@@ -44,4 +44,3 @@ func shouldRetry(err error) bool {
 	}
 	return true
 }
-

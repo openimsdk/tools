@@ -83,24 +83,3 @@ func connectWithRetry(ctx context.Context, clientOpts *options.ClientOptions, ma
 
 	return nil, errs.WrapMsg(err, "failed to connect to MongoDB", "URI", clientOpts.GetURI())
 }
-
-// CheckMongo tests the MongoDB connection without retries.
-func CheckMongo(ctx context.Context, config *MongoConfig) error {
-
-	if err := config.ValidateAndSetDefaults(); err != nil {
-		return err
-	}
-
-	clientOpts := options.Client().ApplyURI(config.Uri)
-	mongoClient, err := mongo.Connect(ctx, clientOpts)
-	if err != nil {
-		return errs.WrapMsg(err, "MongoDB connect failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
-	}
-	defer mongoClient.Disconnect(ctx)
-
-	if err = mongoClient.Ping(ctx, nil); err != nil {
-		return errs.WrapMsg(err, "MongoDB ping failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
-	}
-
-	return nil
-}
