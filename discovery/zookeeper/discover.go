@@ -16,19 +16,19 @@ package zookeeper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/go-zookeeper/zk"
 	"github.com/openimsdk/tools/errs"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 )
 
 var (
-	ErrConnIsNil               = errors.New("conn is nil")
-	ErrConnIsNilButLocalNotNil = errors.New("conn is nil, but local is not nil")
+	ErrConnIsNil               = errs.New("conn is nil")
+	ErrConnIsNilButLocalNotNil = errs.New("conn is nil, but local is not nil")
 )
 
 func (s *ZkClient) watch(ctx context.Context) {
@@ -82,20 +82,20 @@ func (s *ZkClient) GetConnsRemote(serviceName string) (conns []resolver.Address,
 	path := s.getPath(serviceName)
 	_, _, _, err = s.conn.ChildrenW(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "children watch error")
+		return nil, errs.WrapMsg(err, "children watch error")
 	}
 	childNodes, _, err := s.conn.Children(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "get children error")
+		return nil, errs.WrapMsg(err, "get children error")
 	} else {
 		for _, child := range childNodes {
 			fullPath := path + "/" + child
 			data, _, err := s.conn.Get(fullPath)
 			if err != nil {
 				if err == zk.ErrNoNode {
-					return nil, errors.Wrap(err, "this is zk ErrNoNode")
+					return nil, errs.WrapMsg(err, "this is zk ErrNoNode")
 				}
-				return nil, errors.Wrap(err, "get children error")
+				return nil, errs.WrapMsg(err, "get children error")
 			}
 			s.logger.Debug(context.Background(), "get addrs from remote", "conn", string(data))
 			conns = append(conns, resolver.Address{Addr: string(data), ServerName: serviceName})

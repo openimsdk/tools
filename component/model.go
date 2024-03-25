@@ -30,13 +30,6 @@ type Zookeeper struct {
 	Password string   `json:"password"`
 }
 
-type MySQL struct {
-	Address  []string `json:"address"`
-	Username string   `json:"username"`
-	Password string   `json:"password"`
-	Database string   `json:"database"`
-}
-
 type Kafka struct {
 	Username string   `json:"username"`
 	Password string   `json:"password"`

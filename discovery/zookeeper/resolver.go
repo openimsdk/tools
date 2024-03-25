@@ -22,11 +22,10 @@ import (
 )
 
 type Resolver struct {
-	client *ZkClient
-	target resolver.Target
-	cc     resolver.ClientConn
-	addrs  []resolver.Address
-
+	client         *ZkClient
+	target         resolver.Target
+	cc             resolver.ClientConn
+	addrs          []resolver.Address
 	getConnsRemote func(serviceName string) (conns []resolver.Address, err error)
 }
 

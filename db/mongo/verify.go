@@ -15,18 +15,16 @@
 package mongo
 
 import (
-	"errors"
-
 	"github.com/openimsdk/tools/errs"
 )
 
 // ValidateAndSetDefaults validates the configuration and sets default values.
 func (c *MongoConfig) ValidateAndSetDefaults() error {
 	if c.Uri == "" && len(c.Address) == 0 {
-		return errs.Wrap(errors.New("either Uri or Address must be provided"))
+		return errs.New("either Uri or Address must be provided")
 	}
 	if c.Database == "" {
-		return errs.Wrap(errors.New("database is required"))
+		return errs.New("database is required")
 	}
 	if c.MaxPoolSize <= 0 {
 		c.MaxPoolSize = DefaultMaxPoolSize

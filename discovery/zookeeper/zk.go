@@ -129,7 +129,7 @@ func NewClient(zkServers []string, zkRoot string, options ...ZkOption) (*ZkClien
 	)
 	if err != nil {
 		client.logger.Error(context.Background(), "zk connect", err)
-		return nil, err
+		return nil, errs.WrapMsg(err, "zk connect error", "Zookeeper Addr", strings.Join(zkServers, " "))
 	}
 
 	// wait for successfully connect
