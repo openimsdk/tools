@@ -19,7 +19,7 @@ type EnvVarSource struct {
 func (e *EnvVarSource) Read() ([]byte, error) {
 	value, exists := os.LookupEnv(e.VarName)
 	if !exists {
-		return nil, errs.New("environment variable %s not set", e.VarName)
+		return nil, errs.New("environment variable not set")
 	}
 	return []byte(value), nil
 }
