@@ -35,6 +35,7 @@ func Md5(s string, salt ...string) string {
 	return hex.EncodeToString(cipher)
 }
 
+// AesEncrypt encrypts the data with the key using AES encryption.
 func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -48,6 +49,7 @@ func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 	return crypted, nil
 }
 
+// AesDecrypt decrypts the data with the key using AES encryption.
 func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -64,12 +66,14 @@ func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 	return crypted, nil
 }
 
+// pkcs7Padding PKCS7 padding
 func pkcs7Padding(data []byte, blockSize int) []byte {
 	padding := blockSize - len(data)%blockSize
 	padText := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(data, padText...)
 }
 
+// pkcs7UnPadding PKCS7 unpadding
 func pkcs7UnPadding(data []byte) ([]byte, error) {
 	length := len(data)
 	if length == 0 {

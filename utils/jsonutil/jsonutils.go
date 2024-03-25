@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package collections
+package jsonutil
 
 import (
 	"github.com/openimsdk/tools/utils/dataformat"
