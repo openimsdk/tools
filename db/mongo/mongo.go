@@ -37,13 +37,13 @@ type Config struct {
 }
 
 // MongoDB represents a MongoDB client.
-type DBClient struct {
+type Client struct {
 	Client *mongo.Client
 	Config *Config
 }
 
 // NewMongoDB initializes a new MongoDB connection.
-func NewMongoDB(ctx context.Context, config *Config) (*DBClient, error) {
+func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 	specialerror.AddReplace(mongo.ErrNoDocuments, errs.ErrRecordNotFound)
 
 	if err := config.ValidateAndSetDefaults(); err != nil {
@@ -57,7 +57,7 @@ func NewMongoDB(ctx context.Context, config *Config) (*DBClient, error) {
 		return nil, err
 	}
 
-	return &DBClient{Client: mongoClient, Config: config}, nil
+	return &Client{Client: mongoClient, Config: config}, nil
 }
 
 // connectWithRetry attempts to connect to MongoDB with retries on failure.
