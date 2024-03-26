@@ -156,7 +156,7 @@ func RpcServerInterceptor(
 	//		}
 	//	}
 	//}
-	//if errInfo == nil {
+	// if errInfo == nil {
 	//	errInfo = &errinfo.ErrorInfo{Cause: err.Error()}
 	//}
 	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}

@@ -1,9 +1,10 @@
 package zookeeper
 
 import (
+	"time"
+
 	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
-	"time"
 )
 
 type ZkOption func(*ZkClient)

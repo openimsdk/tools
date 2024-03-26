@@ -15,9 +15,10 @@
 package env
 
 import (
-	"github.com/openimsdk/tools/errs"
 	"os"
 	"strconv"
+
+	"github.com/openimsdk/tools/errs"
 )
 
 // GetString returns the env variable for the given key

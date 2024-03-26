@@ -16,9 +16,10 @@ package field
 
 import (
 	"fmt"
-	"github.com/openimsdk/tools/errs"
 	"os"
 	"path/filepath"
+
+	"github.com/openimsdk/tools/errs"
 )
 
 // OutDir creates the absolute path name from path and checks if the path exists and is a directory.
