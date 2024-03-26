@@ -2,7 +2,7 @@ package jsonutil
 
 type Json interface {
 	// Interface returns the underlying data
-	Interface() interface{}
+	Interface() any
 	// Encode returns its marshaled data as `[]byte`
 	Encode() ([]byte, error)
 	// EncodePretty returns its marshaled data as `[]byte` with indentation
@@ -11,10 +11,10 @@ type Json interface {
 	MarshalJSON() ([]byte, error)
 	// Set modifies `Json` map by `key` and `value`
 	// Useful for changing single key/value in a `Json` object easily.
-	Set(key string, val interface{})
+	Set(key string, val any)
 	// SetPath modifies `Json`, recursively checking/creating map keys for the supplied path,
 	// and then finally writing in the value
-	SetPath(branch []string, val interface{})
+	SetPath(branch []string, val any)
 	// Del modifies `Json` map by deleting `key` if it is present.
 	Del(key string)
 	// Get returns a pointer to a new `Json` object
@@ -37,9 +37,9 @@ type Json interface {
 	//    }
 	CheckGet(key string) (Json, bool)
 	// Map type asserts to `map`
-	Map() (map[string]interface{}, error)
+	Map() (map[string]any, error)
 	// Array type asserts to an `array`
-	Array() ([]interface{}, error)
+	Array() ([]any, error)
 	// Bool type asserts to `bool`
 	Bool() (bool, error)
 	// String type asserts to `string`

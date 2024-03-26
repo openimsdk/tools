@@ -45,15 +45,15 @@ func (l *SqlLogger) LogMode(logLevel gormLogger.LogLevel) gormLogger.Interface {
 	return &newLogger
 }
 
-func (SqlLogger) Info(ctx context.Context, msg string, args ...interface{}) {
+func (SqlLogger) Info(ctx context.Context, msg string, args ...any) {
 	ZInfo(ctx, msg, args)
 }
 
-func (SqlLogger) Warn(ctx context.Context, msg string, args ...interface{}) {
+func (SqlLogger) Warn(ctx context.Context, msg string, args ...any) {
 	ZWarn(ctx, msg, nil, args)
 }
 
-func (SqlLogger) Error(ctx context.Context, msg string, args ...interface{}) {
+func (SqlLogger) Error(ctx context.Context, msg string, args ...any) {
 	ZError(ctx, msg, nil, args)
 }
 

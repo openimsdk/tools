@@ -77,20 +77,20 @@ func IsContainInt(target int, List []int) bool {
 	}
 	return false
 }
-func InterfaceArrayToStringArray(data []interface{}) (i []string) {
+func InterfaceArrayToStringArray(data []any) (i []string) {
 	for _, param := range data {
 		i = append(i, param.(string))
 	}
 	return i
 }
 
-func StructToJsonBytes(param interface{}) []byte {
+func StructToJsonBytes(param any) []byte {
 	dataType, _ := json.Marshal(param)
 	return dataType
 }
 
 // The incoming parameter must be a pointer
-func JsonStringToStruct(s string, args interface{}) error {
+func JsonStringToStruct(s string, args any) error {
 	err := json.Unmarshal([]byte(s), args)
 	return err
 }

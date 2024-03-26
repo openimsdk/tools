@@ -64,7 +64,7 @@ func TestHTTPClient_Post(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	var expected, actual map[string]interface{}
+	var expected, actual map[string]any
 	if err := json.Unmarshal([]byte(`{"key":"value"}`), &expected); err != nil {
 		t.Fatalf("Error unmarshaling expected JSON: %v", err)
 	}

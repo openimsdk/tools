@@ -15,7 +15,7 @@ func (cm *Manager) AddSource(source ConfigSource) {
 	cm.sources = append(cm.sources, source)
 }
 
-func (cm *Manager) Load(config interface{}) error {
+func (cm *Manager) Load(config any) error {
 	for _, source := range cm.sources {
 		if data, err := source.Read(); err == nil {
 			if err := cm.parser.Parse(data, config); err != nil {

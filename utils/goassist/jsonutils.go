@@ -646,6 +646,6 @@ func int64ToString(i int64) string {
 }
 
 // copy a by b  b->a
-func CopyStructFields(a interface{}, b interface{}, fields ...string) (err error) {
+func CopyStructFields(a any, b any, fields ...string) (err error) {
 	return copier.Copy(a, b)
 }
