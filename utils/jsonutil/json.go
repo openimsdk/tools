@@ -16,6 +16,7 @@ package jsonutil
 
 import (
 	"encoding/json"
+	"github.com/openimsdk/tools/errs"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -37,21 +38,24 @@ var (
 func JsonMarshal(v any) ([]byte, error) {
 	switch o := v.(type) {
 	case json.Marshaler:
-		return o.MarshalJSON()
+		m, err := o.MarshalJSON()
+		return m, errs.Wrap(err)
 	case proto.Message:
-		return protoMarshalOptions.Marshal(o)
+		m, err := protoMarshalOptions.Marshal(o)
+		return m, errs.Wrap(err)
 	default:
-		return json.Marshal(o)
+		m, err := json.Marshal(o)
+		return m, err
 	}
 }
 
 func JsonUnmarshal(b []byte, v any) error {
 	switch o := v.(type) {
 	case json.Unmarshaler:
-		return o.UnmarshalJSON(b)
+		return errs.Wrap(o.UnmarshalJSON(b))
 	case proto.Message:
-		return protoUnmarshalOptions.Unmarshal(b, o)
+		return errs.Wrap(protoUnmarshalOptions.Unmarshal(b, o))
 	default:
-		return json.Unmarshal(b, v)
+		return errs.Wrap(json.Unmarshal(b, v))
 	}
 }
