@@ -65,7 +65,7 @@ func CheckZookeeper(ZkServers []string, scheme string, options ...ZkOption) erro
 	// Verify root node existence and create if missing.
 	if err := client.ensureRoot(); err != nil {
 		conn.Close()
-		return errs.WrapMsg(err, "failed to ensure root node", "zkRoot", client.zkRoot)
+		return errs.WrapMsg(err, "ensureRoot failed", "zkRoot", client.zkRoot)
 	}
 	return nil
 }
