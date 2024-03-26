@@ -25,7 +25,7 @@ import (
 )
 
 // MongoConfig represents the MongoDB configuration.
-type MongoConfig struct {
+type Config struct {
 	Uri         string
 	Address     []string
 	Database    string
@@ -37,13 +37,13 @@ type MongoConfig struct {
 }
 
 // MongoDB represents a MongoDB client.
-type MongoDB struct {
+type DBClient struct {
 	Client *mongo.Client
-	Config *MongoConfig
+	Config *Config
 }
 
 // NewMongoDB initializes a new MongoDB connection.
-func NewMongoDB(ctx context.Context, config *MongoConfig) (*MongoDB, error) {
+func NewMongoDB(ctx context.Context, config *Config) (*DBClient, error) {
 	specialerror.AddReplace(mongo.ErrNoDocuments, errs.ErrRecordNotFound)
 
 	if err := config.ValidateAndSetDefaults(); err != nil {
@@ -57,7 +57,7 @@ func NewMongoDB(ctx context.Context, config *MongoConfig) (*MongoDB, error) {
 		return nil, err
 	}
 
-	return &MongoDB{Client: mongoClient, Config: config}, nil
+	return &DBClient{Client: mongoClient, Config: config}, nil
 }
 
 // connectWithRetry attempts to connect to MongoDB with retries on failure.

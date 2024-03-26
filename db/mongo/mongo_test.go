@@ -27,12 +27,12 @@ import (
 func TestNewMongoDB(t *testing.T) {
 	type args struct {
 		ctx    context.Context
-		config *MongoConfig
+		config *Config
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *MongoDB
+		want    *DBClient
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -83,7 +83,7 @@ func Test_connectWithRetry(t *testing.T) {
 func TestCheckMongo(t *testing.T) {
 	type args struct {
 		ctx    context.Context
-		config *MongoConfig
+		config *Config
 	}
 	tests := []struct {
 		name    string

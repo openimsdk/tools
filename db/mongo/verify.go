@@ -23,8 +23,7 @@ import (
 )
 
 // CheckMongo tests the MongoDB connection without retries.
-func CheckMongo(ctx context.Context, config *MongoConfig) error {
-
+func CheckMongo(ctx context.Context, config *Config) error {
 	if err := config.ValidateAndSetDefaults(); err != nil {
 		return err
 	}
@@ -44,7 +43,7 @@ func CheckMongo(ctx context.Context, config *MongoConfig) error {
 }
 
 // ValidateAndSetDefaults validates the configuration and sets default values.
-func (c *MongoConfig) ValidateAndSetDefaults() error {
+func (c *Config) ValidateAndSetDefaults() error {
 	if c.Uri == "" && len(c.Address) == 0 {
 		return errs.New("either Uri or Address must be provided")
 	}
