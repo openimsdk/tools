@@ -15,13 +15,12 @@
 package errs
 
 import (
-	"bytes"
-	"fmt"
+	"github.com/pkg/errors"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
+
+var DefaultCodeRelation = newCodeRelation()
 
 type CodeError interface {
 	Code() int
@@ -79,26 +78,21 @@ func (e *codeError) WrapMsg(msg string, kv ...any) error {
 }
 
 func (e *codeError) Is(err error) bool {
-	return e.is(err, true)
-}
-
-func (e *codeError) is(err error, loose bool) bool {
-	if err == nil {
+	codeErr, ok := Unwrap(err).(CodeError)
+	if !ok {
+		if err == nil && e == nil {
+			return true
+		}
 		return false
 	}
-	var allowSubclasses bool
-	if len(loose) == 0 {
-		allowSubclasses = true
-	} else {
-		allowSubclasses = loose[0]
+	if e == nil {
+		return false
 	}
-	if codeErr, ok := Unwrap(err).(CodeError); ok {
-		if allowSubclasses {
-			return Relation.Is(e.code, codeErr.Code())
-		}
-		return codeErr.Code() == e.code
+	code := codeErr.Code()
+	if e.code == code {
+		return true
 	}
-	return false
+	return DefaultCodeRelation.Is(e.code, code)
 }
 
 func (e *codeError) Error() string {
@@ -133,22 +127,48 @@ func WrapMsg(err error, msg string, kv ...any) error {
 	if err == nil {
 		return nil
 	}
-	var buf bytes.Buffer
-	if len(msg) > 0 {
-		buf.WriteString(msg)
-	}
-	for i := 0; i < len(kv); i += 2 {
-		if buf.Len() > 0 {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(fmt.Sprint(kv[i]))
-		buf.WriteString("=")
-		if i+1 < len(kv) {
-			buf.WriteString(fmt.Sprint(kv[i+1]))
-		} else {
-			buf.WriteString("MISSING")
-		}
-	}
-	withMessage := errors.WithMessage(err, buf.String())
+	withMessage := errors.WithMessage(err, toString(msg, kv))
 	return errors.WithStack(withMessage)
+}
+
+type CodeRelation interface {
+	Add(codes ...int)
+	Is(parent, child int) bool
+}
+
+func newCodeRelation() CodeRelation {
+	return &codeRelation{m: make(map[int]map[int]struct{})}
+}
+
+type codeRelation struct {
+	m map[int]map[int]struct{}
+}
+
+func (r *codeRelation) Add(codes ...int) {
+	if len(codes) < 2 {
+		panic("codes length must be greater than 2")
+	}
+	for i := 1; i < len(codes); i++ {
+		parent := codes[i-1]
+		s, ok := r.m[parent]
+		if !ok {
+			s = make(map[int]struct{})
+			r.m[parent] = s
+		}
+		for _, code := range codes[i:] {
+			s[code] = struct{}{}
+		}
+	}
+}
+
+func (r *codeRelation) Is(parent, child int) bool {
+	if parent == child {
+		return true
+	}
+	s, ok := r.m[parent]
+	if !ok {
+		return false
+	}
+	_, ok = s[child]
+	return ok
 }
