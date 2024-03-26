@@ -17,6 +17,7 @@ package network
 import (
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/openimsdk/tools/errs"
 )
@@ -64,20 +65,22 @@ func GetListenIP(configIP string) string {
 
 // RemoteIP returns the remote ip of the request.
 func RemoteIP(req *http.Request) string {
-	remoteAddr := req.RemoteAddr
 	if ip := req.Header.Get(XClientIP); ip != "" {
-		remoteAddr = ip
+		return ip
 	} else if ip := req.Header.Get(XRealIP); ip != "" {
-		remoteAddr = ip
-	} else if ip = req.Header.Get(XForwardedFor); ip != "" {
-		remoteAddr = ip
-	} else {
-		remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
+		return ip
+	} else if ip := req.Header.Get(XForwardedFor); ip != "" {
+		parts := strings.Split(ip, ",")
+		return strings.TrimSpace(parts[0])
 	}
 
-	if remoteAddr == "::1" {
-		remoteAddr = "127.0.0.1"
+	ip, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		ip = req.RemoteAddr
 	}
 
-	return remoteAddr
+	if ip == "::1" {
+		return "127.0.0.1"
+	}
+	return ip
 }
