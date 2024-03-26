@@ -14,14 +14,6 @@
 
 package errs
 
-var Relation = &relation{m: make(map[int]map[int]struct{})}
-
-func init() {
-	Relation.Add(RecordNotFoundError, UserIDNotFoundError)
-	Relation.Add(RecordNotFoundError, GroupIDNotFoundError)
-	Relation.Add(DuplicateKeyError, GroupIDExisted)
-}
-
 type relation struct {
 	m map[int]map[int]struct{}
 }
