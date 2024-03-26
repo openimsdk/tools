@@ -23,7 +23,7 @@ func NewPathResolver() *defaultPathResolver {
 func (d *defaultPathResolver) GetDefaultConfigPath(relativePath string) (string, error) {
 	executablePath, err := os.Executable()
 	if err != nil {
-		return "", errs.WrapMsg(err, "failed to get executable path")
+		return "", errs.WrapMsg(err, "Executable failed")
 	}
 
 	configPath := filepath.Join(filepath.Dir(executablePath), relativePath)
@@ -35,7 +35,7 @@ func (d *defaultPathResolver) GetDefaultConfigPath(relativePath string) (string,
 func (d *defaultPathResolver) GetProjectRoot(depth int) (string, error) {
 	executablePath, err := os.Executable()
 	if err != nil {
-		return "", errs.WrapMsg(err, "failed to get executable path", "executablePath", "executablePath")
+		return "", errs.WrapMsg(err, "Executable failed")
 	}
 
 	// Move up the specified number of directories to find the project root

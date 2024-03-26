@@ -20,12 +20,12 @@ func NewLoader(pathResolver PathResolver) *Loader {
 func (c *Loader) InitConfig(config any, configName, configFolderPath string) error {
 	configFolderPath, err := c.resolveConfigPath(configName, configFolderPath)
 	if err != nil {
-		return errs.WrapMsg(err, "failed to resolve config path", "configName", configName)
+		return errs.WrapMsg(err, "resolveConfigPath failed", "configName", configName, "configFolderPath", configFolderPath)
 	}
 
 	data, err := os.ReadFile(configFolderPath)
 	if err != nil {
-		return errs.WrapMsg(err, "failed to read config file", "configName", configName)
+		return errs.WrapMsg(err, "ReadFile failed", "configFolderPath", configFolderPath)
 	}
 
 	if err = yaml.Unmarshal(data, config); err != nil {
@@ -40,7 +40,7 @@ func (c *Loader) resolveConfigPath(configName, configFolderPath string) (string,
 		var err error
 		configFolderPath, err = c.PathResolver.GetDefaultConfigPath()
 		if err != nil {
-			return "", errs.WrapMsg(err, "failed to get default config path", "configName", configName)
+			return "", errs.WrapMsg(err, "GetDefaultConfigPath failed", "configName", configName)
 		}
 	}
 

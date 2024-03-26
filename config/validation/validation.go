@@ -48,11 +48,11 @@ func (v *SimpleValidator) Validate(config any) error {
 			// Check if the field has a zero value
 			if isZeroOfUnderlyingType(val.Field(i).Interface()) {
 				// If it has a zero value, return an error indicating which field is unset
-				return errs.New("validation failed: field " + val.Type().Field(i).Name + " is zero value")
+				return errs.New("validation failed: field " + val.Type().Field(i).Name + " is zero value").Wrap()
 			}
 		}
 	} else {
-		return errs.New("validation failed: config must be a struct or a pointer to struct")
+		return errs.New("validation failed: config must be a struct or a pointer to struct").Wrap()
 	}
 
 	return nil

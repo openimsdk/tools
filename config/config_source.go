@@ -19,7 +19,7 @@ type EnvVarSource struct {
 func (e *EnvVarSource) Read() ([]byte, error) {
 	value, exists := os.LookupEnv(e.VarName)
 	if !exists {
-		return nil, errs.New("environment variable not set")
+		return nil, errs.New("environment variable not set").Wrap()
 	}
 	return []byte(value), nil
 }
@@ -30,5 +30,6 @@ type FileSystemSource struct {
 }
 
 func (f *FileSystemSource) Read() ([]byte, error) {
-	return os.ReadFile(f.FilePath)
+	r, err := os.ReadFile(f.FilePath)
+	return r, errs.WrapMsg(err, "ReadFile failed ", "FilePath", f.FilePath)
 }
