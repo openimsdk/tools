@@ -38,7 +38,7 @@ func OutDir(path string) (string, error) {
 	}
 
 	if !stat.IsDir() {
-		return "", errs.Wrap(fmt.Errorf("specified path %s is not a directory", outDir)) // Correctly constructs a new error as 'err' would be nil here
+		return "", errs.WrapMsg(fmt.Errorf("specified path %s is not a directory", outDir), "specified path is not a directory", "path", outDir)
 	}
 	outDir += "/"
 	return outDir, nil

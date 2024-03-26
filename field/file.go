@@ -15,7 +15,6 @@
 package field
 
 import (
-	"errors"
 	"os"
 
 	"github.com/openimsdk/tools/errs"
@@ -37,7 +36,7 @@ const (
 
 // ErrInvalidLinkTreatment indicates that the link treatment behavior requested
 // is not a valid behavior.
-var ErrInvalidLinkTreatment = errors.New("unknown link behavior")
+var ErrInvalidLinkTreatment = errs.New("unknown link behavior")
 
 // Exists checks if specified file, directory, or symlink exists. The behavior
 // of the test depends on the linkBehaviour argument. See LinkTreatment for

@@ -15,16 +15,10 @@
 package goassist
 
 import (
-	"math/rand"
+	"github.com/jinzhu/copier"
+	"github.com/openimsdk/tools/utils/jsonutil"
 	"reflect"
 	"sort"
-	"strconv"
-
-	"github.com/openimsdk/tools/utils/encrypt"
-	"github.com/openimsdk/tools/utils/jsonutil"
-	"github.com/openimsdk/tools/utils/timeutil"
-
-	"github.com/jinzhu/copier"
 )
 
 // SliceSub returns elements in slice a that are not present in slice b (a - b).
@@ -523,19 +517,6 @@ type Ordered interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr | ~float32 | ~float64 | ~string
 }
 
-func Unwrap(err error) error {
-	for err != nil {
-		unwrap, ok := err.(interface {
-			Unwrap() error
-		})
-		if !ok {
-			break
-		}
-		err = unwrap.Unwrap()
-	}
-	return err
-}
-
 // NotNilReplace sets old to new_ when new_ is not null
 func NotNilReplace[T any](old, new_ *T) {
 	if new_ == nil {
@@ -634,15 +615,6 @@ func StructToJsonString(param any) string {
 	dataType, _ := jsonutil.JsonMarshal(param)
 	dataString := string(dataType)
 	return dataString
-}
-
-func GetMsgID(sendID string) string {
-	t := int64ToString(timeutil.GetCurrentTimestampByNano())
-	return encrypt.Md5(t + sendID + int64ToString(rand.Int63n(timeutil.GetCurrentTimestampByNano())))
-}
-
-func int64ToString(i int64) string {
-	return strconv.FormatInt(i, 10)
 }
 
 // copy a by b  b->a

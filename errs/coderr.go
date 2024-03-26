@@ -82,7 +82,7 @@ func (e *codeError) Is(err error) bool {
 	return e.is(err, true)
 }
 
-func (e *codeError) is(err error, loose ...bool) bool {
+func (e *codeError) is(err error, loose bool) bool {
 	if err == nil {
 		return false
 	}

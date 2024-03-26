@@ -16,7 +16,6 @@ package mw
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -84,7 +83,7 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 	}
 	operationID, ok := ctx.Value(constant.OperationID).(string)
 	if !ok {
-		log.ZWarn(ctx, "ctx missing operationID", errors.New("ctx missing operationID"), "funcName", method)
+		log.ZWarn(ctx, "ctx missing operationID", errs.New("ctx missing operationID"), "funcName", method)
 		return nil, errs.ErrArgs.WrapMsg("ctx missing operationID")
 	}
 	md.Set(constant.OperationID, operationID)
