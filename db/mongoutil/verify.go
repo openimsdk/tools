@@ -34,8 +34,11 @@ func CheckMongo(ctx context.Context, config *Config) error {
 		return errs.WrapMsg(err, "MongoDB connect failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
 	}
 
-	// errcheck:ignore
-	defer mongoClient.Disconnect(ctx)
+	defer func() {
+		if err := mongoClient.Disconnect(ctx); err != nil {
+			_ = mongoClient.Disconnect(ctx)
+		}
+	}()
 
 	if err = mongoClient.Ping(ctx, nil); err != nil {
 		return errs.WrapMsg(err, "MongoDB ping failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)

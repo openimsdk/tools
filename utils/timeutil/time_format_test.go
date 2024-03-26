@@ -67,7 +67,6 @@ func TestGetCurrentTimestampByMill(t *testing.T) {
 	}
 }
 
-
 func TestGetCurDayHalfTimestamp(t *testing.T) {
 	expected := GetCurDayZeroTimestamp() + HalfOffset
 	got := GetCurDayHalfTimestamp()

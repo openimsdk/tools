@@ -86,12 +86,12 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 		return nil, errs.ErrArgs.WrapMsg("ctx missing operationID")
 	}
 	md.Set(constant.OperationID, operationID)
-	var checkArgs []string
-	checkArgs = append(checkArgs, constant.OperationID, operationID)
+	// var checkArgs []string
+	// checkArgs = append(checkArgs, constant.OperationID, operationID)
 	opUserID, ok := ctx.Value(constant.OpUserID).(string)
 	if ok {
 		md.Set(constant.OpUserID, opUserID)
-		checkArgs = append(checkArgs, constant.OpUserID, opUserID)
+		// checkArgs = append(checkArgs, constant.OpUserID, opUserID)
 	}
 	opUserIDPlatformID, ok := ctx.Value(constant.OpUserPlatform).(string)
 	if ok {

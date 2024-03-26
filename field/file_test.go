@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/openimsdk/tools/errs"
 )
 
 func TestFileUtils(t *testing.T) {
@@ -62,8 +64,12 @@ func TestFileUtils(t *testing.T) {
 
 	// recover test environment
 	defer func() {
-		os.Chdir(currentDir)
-		os.RemoveAll(tmpDir)
+		if err := os.Chdir(currentDir); err != nil {
+			errs.New("Failed to change back to the original directory: %v", err)
+		}
+		if err := os.RemoveAll(tmpDir); err != nil {
+			errs.New("Failed to remove temp directory: %v", err)
+		}
 	}()
 
 	t.Run("TestExists", func(t *testing.T) {

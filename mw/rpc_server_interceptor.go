@@ -38,78 +38,60 @@ func rpcString(v any) string {
 	return fmt.Sprintf("%+v", v)
 }
 
-func RpcServerInterceptor(
-	ctx context.Context,
-	req any,
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (resp any, err error) {
-	// defer func() {
-	//	if r := recover(); r != nil {
-	// 		log.ZError(ctx, "rpc panic", nil, "FullMethod", info.FullMethod, "type:", fmt.Sprintf("%T", r), "panic:", r)
-	//		fmt.Printf("panic: %+v\nstack info: %s\n", r, string(debug.Stack()))
-	//		pc, file, line, ok := runtime.Caller(4)
-	//		if !ok {
-	//			panic("get runtime.Caller failed")
-	//		}
-	//		errInfo := &errinfo.ErrorInfo{
-	//			Path:  file,
-	//			Line:  uint32(line),
-	//			Name:  runtime.FuncForPC(pc).Name(),
-	//			Cause: fmt.Sprintf("%s", r),
-	//			Warp:  nil,
-	//		}
-	// 		sta, err_ := status.New(codes.Code(errs.ErrInternalServer.Code()),
-	// errs.ErrInternalServer.Msg()).WithDetails(errInfo)
-	//		if err_ != nil {
-	//			panic(err_)
-	//		}
-	//		err = sta.Err()
-	//	}
-	// }()
+func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	funcName := info.FullMethod
-	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
+	logRequest(ctx, funcName, req)
+	if err := validateMetadata(ctx); err != nil {
+		return nil, err
+	}
+	ctx, err := enrichContextWithMetadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := processRequest(ctx, req, handler, funcName)
+	if err != nil {
+		logErrorResponse(ctx, funcName, req, err)
+		return nil, prepareErrorDetail(err)
+	}
+	log.ZInfo(ctx, "rpc server resp", "funcName", funcName, "resp", rpcString(resp))
+	return resp, nil
+}
+
+func validateMetadata(ctx context.Context) error {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, status.New(codes.InvalidArgument, "missing metadata").Err()
+		return status.New(codes.InvalidArgument, "missing metadata").Err()
 	}
-	if keys := md.Get(constant.RpcCustomHeader); len(keys) > 0 {
-		for _, key := range keys {
-			values := md.Get(key)
-			if len(values) == 0 {
-				return nil, status.New(codes.InvalidArgument, fmt.Sprintf("missing metadata key %s", key)).Err()
-			}
-			ctx = context.WithValue(ctx, key, values)
+	if len(md.Get(constant.OperationID)) != 1 {
+		return status.New(codes.InvalidArgument, "operationID error").Err()
+	}
+	return nil
+}
+
+func enrichContextWithMetadata(ctx context.Context) (context.Context, error) {
+	md, _ := metadata.FromIncomingContext(ctx) // Already validated
+	for _, key := range md.Get(constant.RpcCustomHeader) {
+		values := md.Get(key)
+		if len(values) == 0 {
+			return nil, status.Errorf(codes.InvalidArgument, "missing metadata key %s", key)
 		}
+		ctx = context.WithValue(ctx, key, values[0]) // Storing only the first value for simplicity
 	}
-	args := make([]string, 0, 4)
-	if opts := md.Get(constant.OperationID); len(opts) != 1 || opts[0] == "" {
-		return nil, status.New(codes.InvalidArgument, "operationID error").Err()
-	} else {
-		args = append(args, constant.OperationID, opts[0])
-		ctx = context.WithValue(ctx, constant.OperationID, opts[0])
+	return ctx, nil
+}
+
+func processRequest(ctx context.Context, req any, handler grpc.UnaryHandler, funcName string) (resp any, err error) {
+	if err := checker.Validate(req); err != nil {
+		return nil, err
 	}
-	if opts := md.Get(constant.OpUserID); len(opts) == 1 {
-		args = append(args, constant.OpUserID, opts[0])
-		ctx = context.WithValue(ctx, constant.OpUserID, opts[0])
-	}
-	if opts := md.Get(constant.OpUserPlatform); len(opts) == 1 {
-		ctx = context.WithValue(ctx, constant.OpUserPlatform, opts[0])
-	}
-	if opts := md.Get(constant.ConnID); len(opts) == 1 {
-		ctx = context.WithValue(ctx, constant.ConnID, opts[0])
-	}
-	resp, err = func() (any, error) {
-		if err := checker.Validate(req); err != nil {
-			return nil, err
-		}
-		return handler(ctx, req)
-	}()
-	if err == nil {
-		log.ZInfo(ctx, "rpc server resp", "funcName", funcName, "resp", rpcString(resp))
-		return resp, nil
-	}
-	log.ZError(ctx, "rpc server resp", err, "funcName", funcName)
+	return handler(ctx, req)
+}
+
+func logRequest(ctx context.Context, funcName string, req any) {
+	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
+}
+
+func logErrorResponse(ctx context.Context, funcName string, req any, err error) {
 	unwrap := errs.Unwrap(err)
 	codeErr := specialerror.ErrCode(unwrap)
 	if codeErr == nil {
@@ -119,54 +101,20 @@ func RpcServerInterceptor(
 	code := codeErr.Code()
 	if code <= 0 || int64(code) > int64(math.MaxUint32) {
 		log.ZError(ctx, "rpc UnknownError", err, "rpc UnknownCode:", int64(code))
-		code = errs.ServerInternalError
+		// code = errs.ServerInternalError
 	}
-	grpcStatus := status.New(codes.Code(code), codeErr.Msg())
-	// var errInfo *errinfo.ErrorInfo
-	// if config.Config.Log.WithStack {
-	//	if unwrap != err {
-	//		sti, ok := err.(interface{ StackTrace() errors.StackTrace })
-	//		if ok {
-	//			log.ZWarn(
-	//				ctx,
-	//				"rpc server resp",
-	//				err,
-	//				"funcName",
-	//				funcName,
-	//				"unwrap",
-	//				unwrap.Error(),
-	//				"stack",
-	//				fmt.Sprintf("%+v", err),
-	//			)
-	//			if fs := sti.StackTrace(); len(fs) > 0 {
-	//				pc := uintptr(fs[0])
-	//				fn := runtime.FuncForPC(pc)
-	//				file, line := fn.FileLine(pc)
-	//				errInfo = &errinfo.ErrorInfo{
-	//					Path:  file,
-	//					Line:  uint32(line),
-	//					Name:  fn.Name(),
-	//					Cause: unwrap.Error(),
-	//					Warp:  nil,
-	//				}
-	//				if arr := strings.Split(err.Error(), ": "); len(arr) > 1 {
-	//					errInfo.Warp = arr[:len(arr)-1]
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-	// if errInfo == nil {
-	//	errInfo = &errinfo.ErrorInfo{Cause: err.Error()}
-	//}
+	log.ZError(ctx, "rpc server resp", err, "funcName", funcName)
+}
+
+func prepareErrorDetail(err error) error {
+	grpcStatus := status.New(codes.Internal, err.Error())
 	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
-		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
-		return nil, errs.Wrap(err)
+		log.ZWarn(context.Background(), "rpc server resp WithDetails error", err)
+		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
-	log.ZWarn(ctx, "rpc server resp", err, "funcName", funcName)
-	return nil, details.Err()
+	return details.Err()
 }
 
 func GrpcServer() grpc.ServerOption {

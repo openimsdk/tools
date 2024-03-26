@@ -70,4 +70,3 @@ func TestGetSplitResult_SingleElement(t *testing.T) {
 		t.Errorf("Expected result %v, got %v", expected, result)
 	}
 }
-

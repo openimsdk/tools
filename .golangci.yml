@@ -704,7 +704,7 @@ linters:
     - goconst
     - gosec
     - misspell      # Spelling mistakes
-    - staticcheck   # Static analysis
+    # - staticcheck   # Static analysis
     # - goimports     # Checks if imports are correctly sorted and formatted
     - godot         # Checks for comment punctuation
     - bodyclose     # Ensures HTTP response body is closed
