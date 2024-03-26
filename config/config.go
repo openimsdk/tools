@@ -8,16 +8,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ConfigLoader is responsible for loading configuration files.
-type ConfigLoader struct {
+// Loader is responsible for loading configuration files.
+type Loader struct {
 	PathResolver PathResolver
 }
 
-func NewConfigLoader(pathResolver PathResolver) *ConfigLoader {
-	return &ConfigLoader{PathResolver: pathResolver}
+func NewLoader(pathResolver PathResolver) *Loader {
+	return &Loader{PathResolver: pathResolver}
 }
 
-func (c *ConfigLoader) InitConfig(config any, configName, configFolderPath string) error {
+func (c *Loader) InitConfig(config any, configName, configFolderPath string) error {
 	configFolderPath, err := c.resolveConfigPath(configName, configFolderPath)
 	if err != nil {
 		return errs.WrapMsg(err, "failed to resolve config path", "configName", configName)
@@ -35,7 +35,7 @@ func (c *ConfigLoader) InitConfig(config any, configName, configFolderPath strin
 	return nil
 }
 
-func (c *ConfigLoader) resolveConfigPath(configName, configFolderPath string) (string, error) {
+func (c *Loader) resolveConfigPath(configName, configFolderPath string) (string, error) {
 	if configFolderPath == "" {
 		var err error
 		configFolderPath, err = c.PathResolver.GetDefaultConfigPath()
