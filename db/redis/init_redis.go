@@ -26,13 +26,13 @@ import (
 // can be implemented by any Redis client, facilitating testing and different
 // implementations.
 // RedisClient represents a Redis client, providing an interface for operations.
-type RedisClient interface {
+type Client interface {
 	Ping(ctx context.Context) *redis.StatusCmd
 }
 
 // RedisConfig defines the configuration parameters for a Redis client, including
 // options for both single-node and cluster mode connections.
-type RedisConfig struct {
+type Config struct {
 	ClusterMode       bool          // Whether to use Redis in cluster mode.
 	Address           []string      // List of Redis server addresses (host:port).
 	Username          string        // Username for Redis authentication (Redis 6 ACL).
@@ -44,7 +44,7 @@ type RedisConfig struct {
 	ConnectionTimeout time.Duration // Timeout for connecting to Redis servers.
 }
 
-func NewRedisClient(ctx context.Context, config *RedisConfig) (RedisClient, error) {
+func NewRedisClient(ctx context.Context, config *Config) (Client, error) {
 	var err error
 	once.Do(func() {
 		if len(config.Address) == 0 {

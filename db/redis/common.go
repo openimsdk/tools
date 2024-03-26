@@ -31,7 +31,7 @@ var (
 )
 
 // getClientOptions returns the appropriate Redis options based on the configuration.
-func getClientOptions(config *RedisConfig) any {
+func getClientOptions(config *Config) any {
 	if config.ClusterMode || len(config.Address) > 1 {
 		return &redis.ClusterOptions{
 			Addrs:      config.Address,

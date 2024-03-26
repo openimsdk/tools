@@ -29,7 +29,7 @@ const (
 )
 
 // buildMongoURI constructs the MongoDB URI from the provided configuration.
-func buildMongoURI(config *MongoConfig) string {
+func buildMongoURI(config *Config) string {
 	credentials := ""
 	if config.Username != "" && config.Password != "" {
 		credentials = fmt.Sprintf("%s:%s@", config.Username, config.Password)

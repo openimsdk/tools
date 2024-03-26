@@ -5,7 +5,7 @@ import (
 	"github.com/openimsdk/tools/errs"
 )
 
-func BuildConsumerGroupConfig(conf Config, initial int64) (*sarama.Config, error) {
+func BuildConsumerGroupConfig(conf *Config, initial int64) (*sarama.Config, error) {
 	kfk := sarama.NewConfig()
 	kfk.Version = sarama.V2_0_0_0
 	kfk.Consumer.Offsets.Initial = initial
