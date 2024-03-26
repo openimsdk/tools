@@ -33,6 +33,8 @@ func CheckMongo(ctx context.Context, config *Config) error {
 	if err != nil {
 		return errs.WrapMsg(err, "MongoDB connect failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
 	}
+
+	// errcheck:ignore
 	defer mongoClient.Disconnect(ctx)
 
 	if err = mongoClient.Ping(ctx, nil); err != nil {
