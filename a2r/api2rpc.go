@@ -47,9 +47,9 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 	apiresp.GinSuccess(c, data) // rpc call success
 }
 
-var jsonBind binding.Binding = jsonBinding{}
-
 type jsonBinding struct{}
+
+var jsonBind binding.Binding = jsonBinding{}
 
 func (jsonBinding) Name() string {
 	return "json"
