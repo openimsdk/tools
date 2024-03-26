@@ -24,33 +24,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func TestNewMongoDB(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		config *Config
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *DBClient
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewMongoDB(tt.args.ctx, tt.args.config)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewMongoDB() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewMongoDB() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_connectWithRetry(t *testing.T) {
 	type args struct {
 		ctx         context.Context
