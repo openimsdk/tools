@@ -15,9 +15,13 @@
 package errs
 
 var (
-	ErrArgs           = NewCodeError(ArgsError, "ArgsError")
-	ErrNoPermission   = NewCodeError(NoPermissionError, "NoPermissionError")
-	ErrInternalServer = NewCodeError(ServerInternalError, "ServerInternalError")
-	ErrRecordNotFound = NewCodeError(RecordNotFoundError, "RecordNotFoundError")
-	ErrDuplicateKey   = NewCodeError(DuplicateKeyError, "DuplicateKeyError")
+	ErrArgs             = NewCodeError(ArgsError, "ArgsError")
+	ErrNoPermission     = NewCodeError(NoPermissionError, "NoPermissionError")
+	ErrInternalServer   = NewCodeError(ServerInternalError, "ServerInternalError")
+	ErrRecordNotFound   = NewCodeError(RecordNotFoundError, "RecordNotFoundError")
+	ErrDuplicateKey     = NewCodeError(DuplicateKeyError, "DuplicateKeyError")
+	ErrTokenMalformed   = NewCodeError(TokenMalformedError, "TokenMalformedError")     //
+	ErrTokenNotValidYet = NewCodeError(TokenNotValidYetError, "TokenNotValidYetError") //
+	ErrTokenUnknown     = NewCodeError(TokenUnknownError, "TokenUnknownError")
+	ErrTokenExpired     = NewCodeError(TokenExpiredError, "TokenExpiredError")
 )
