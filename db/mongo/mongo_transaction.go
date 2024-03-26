@@ -16,9 +16,9 @@ package mongo
 
 import (
 	"context"
-	"github.com/openimsdk/tools/db"
 	"sync"
 
+	"github.com/openimsdk/tools/db"
 	"github.com/openimsdk/tools/errs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

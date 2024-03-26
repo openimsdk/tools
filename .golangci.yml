@@ -146,6 +146,8 @@ linters-settings:
       - ^fmt.Println.*$
       - ^panic$
       - painc
+      - errors.*
+      - ^errors$
   #     - ginkgo\\.F.* # these are used just for local development
   #   # Exclude godoc examples from forbidigo checks.  Default is true.
   #   exclude_godoc_examples: false
