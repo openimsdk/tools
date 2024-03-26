@@ -16,15 +16,12 @@ package stringutil
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"hash/crc32"
-	"math/rand"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/pkg/errors"
 )
 
 func IntToString(i int) string {
@@ -239,10 +236,6 @@ func Difference(slice1, slice2 []int64) []int64 {
 		}
 	}
 	return n
-}
-
-func OperationIDGenerator() string {
-	return strconv.FormatInt(time.Now().UnixNano()+int64(rand.Uint32()), 10)
 }
 
 func GetHashCode(s string) uint32 {

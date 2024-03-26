@@ -44,7 +44,10 @@ type Client struct {
 
 // NewMongoDB initializes a new MongoDB connection.
 func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
-	specialerror.AddReplace(mongo.ErrNoDocuments, errs.ErrRecordNotFound)
+
+	if err := specialerror.AddReplace(mongo.ErrNoDocuments, errs.ErrRecordNotFound); err != nil {
+		return nil, err
+	}
 
 	if err := config.ValidateAndSetDefaults(); err != nil {
 		return nil, err

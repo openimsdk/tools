@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package goassist
+package datautil
 
 import (
 	"github.com/jinzhu/copier"
