@@ -65,3 +65,9 @@ func StructToJsonString(param any) string {
 	dataString := string(dataType)
 	return dataString
 }
+
+// The incoming parameter must be a pointer
+func JsonStringToStruct(s string, args any) error {
+	err := json.Unmarshal([]byte(s), args)
+	return err
+}

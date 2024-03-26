@@ -19,7 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"hash/crc32"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -84,12 +83,6 @@ func InterfaceArrayToStringArray(data []any) (i []string) {
 func StructToJsonBytes(param any) []byte {
 	dataType, _ := json.Marshal(param)
 	return dataType
-}
-
-// The incoming parameter must be a pointer
-func JsonStringToStruct(s string, args any) error {
-	err := json.Unmarshal([]byte(s), args)
-	return err
 }
 
 func Int64ToString(i int64) string {
@@ -240,44 +233,4 @@ func Difference(slice1, slice2 []int64) []int64 {
 
 func GetHashCode(s string) uint32 {
 	return crc32.ChecksumIEEE([]byte(s))
-}
-
-func GenConversationIDForSingle(sendID, recvID string) string {
-	l := []string{sendID, recvID}
-	sort.Strings(l)
-	return "si_" + strings.Join(l, "_")
-}
-
-func GenConversationUniqueKeyForGroup(groupID string) string {
-	return groupID
-}
-
-func GenGroupConversationID(groupID string) string {
-	return "sg_" + groupID
-}
-
-func GenConversationUniqueKeyForSingle(sendID, recvID string) string {
-	l := []string{sendID, recvID}
-	sort.Strings(l)
-	return strings.Join(l, "_")
-}
-
-func GetNotificationConversationIDByConversationID(conversationID string) string {
-	l := strings.Split(conversationID, "_")
-	if len(l) > 1 {
-		l[0] = "n"
-		return strings.Join(l, "_")
-	}
-	return ""
-}
-
-func GetSelfNotificationConversationID(userID string) string {
-	return "n_" + userID + "_" + userID
-}
-
-func GetSeqsBeginEnd(seqs []int64) (int64, int64) {
-	if len(seqs) == 0 {
-		return 0, 0
-	}
-	return seqs[0], seqs[len(seqs)-1]
 }
