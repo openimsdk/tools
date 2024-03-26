@@ -2,8 +2,8 @@ package config
 
 import "gopkg.in/yaml.v2"
 
-// ConfigParser Configures the parser interface
-type ConfigParser interface {
+// Parser Configures the parser interface
+type Parser interface {
 	Parse(data []byte, out interface{}) error
 }
 
