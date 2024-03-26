@@ -133,7 +133,7 @@ func WrapMsg(err error, msg string, kv ...any) error {
 }
 
 type CodeRelation interface {
-	Add(codes ...int)
+	Add(codes ...int) error
 	Is(parent, child int) bool
 }
 
@@ -145,9 +145,9 @@ type codeRelation struct {
 	m map[int]map[int]struct{}
 }
 
-func (r *codeRelation) Add(codes ...int) {
+func (r *codeRelation) Add(codes ...int) error {
 	if len(codes) < 2 {
-		panic("codes length must be greater than 2")
+		return New("codes length must be greater than 2", "codes", codes).Wrap()
 	}
 	for i := 1; i < len(codes); i++ {
 		parent := codes[i-1]
@@ -160,6 +160,7 @@ func (r *codeRelation) Add(codes ...int) {
 			s[code] = struct{}{}
 		}
 	}
+	return nil
 }
 
 func (r *codeRelation) Is(parent, child int) bool {
