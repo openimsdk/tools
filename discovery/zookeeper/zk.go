@@ -36,7 +36,7 @@ const (
 type ZkClient struct {
 	ZkServers []string
 	zkRoot    string
-	userName  string
+	username  string
 	password  string
 
 	rpcRegisterName string
@@ -63,11 +63,11 @@ type ZkClient struct {
 }
 
 // NewZkClient initializes a new ZkClient with provided options and establishes a Zookeeper connection.
-func NewZkClient(ZkServers []string, zkRoot string, options ...ZkOption) (*ZkClient, error) {
+func NewZkClient(ZkServers []string, scheme string, options ...ZkOption) (*ZkClient, error) {
 	client := &ZkClient{
 		ZkServers:  ZkServers,
 		zkRoot:     "/",
-		scheme:     zkRoot,
+		scheme:     scheme,
 		timeout:    timeout,
 		localConns: make(map[string][]*grpc.ClientConn),
 		resolvers:  make(map[string]*Resolver),
@@ -89,15 +89,15 @@ func NewZkClient(ZkServers []string, zkRoot string, options ...ZkOption) (*ZkCli
 	client.ticker = time.NewTicker(defaultFreq)
 
 	// Ensure authentication is set if credentials are provided.
-	if client.userName != "" && client.password != "" {
-		auth := []byte(client.userName + ":" + client.password)
+	if client.username != "" && client.password != "" {
+		auth := []byte(client.username + ":" + client.password)
 		if err := conn.AddAuth("digest", auth); err != nil {
 			conn.Close()
-			return nil, errs.WrapMsg(err, "failed to authenticate with Zookeeper", "userName", client.userName)
+			return nil, errs.WrapMsg(err, "failed to authenticate with Zookeeper", "username", client.username, "password", client.password)
 		}
 	}
 
-	client.zkRoot += zkRoot
+	client.zkRoot += scheme
 	client.eventChan = eventChan
 	client.conn = conn
 
@@ -124,12 +124,12 @@ func (s *ZkClient) Close() {
 func (s *ZkClient) ensureAndCreate(node string) error {
 	exists, _, err := s.conn.Exists(node)
 	if err != nil {
-		return errs.WrapMsg(err, "checking existence for node %s in ZkClient ensureAndCreate", "node", node)
+		return errs.WrapMsg(err, "Exists failed", "node", node)
 	}
 	if !exists {
 		_, err = s.conn.Create(node, []byte(""), 0, zk.WorldACL(zk.PermAll))
 		if err != nil && err != zk.ErrNodeExists {
-			return errs.WrapMsg(err, "creating node %s in ZkClient ensureAndCreate", "node", node)
+			return errs.WrapMsg(err, "Create failed", "node", node)
 		}
 	}
 	return nil

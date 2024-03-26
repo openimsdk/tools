@@ -16,7 +16,7 @@ func WithRoundRobin() ZkOption {
 
 func WithUserNameAndPassword(userName, password string) ZkOption {
 	return func(client *ZkClient) {
-		client.userName = userName
+		client.username = userName
 		client.password = password
 	}
 }
