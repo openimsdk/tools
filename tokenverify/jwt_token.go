@@ -21,6 +21,8 @@ import (
 	"github.com/openimsdk/tools/errs"
 )
 
+const HoursOneDay = 24
+
 type Claims struct {
 	UserID     string
 	PlatformID int // login platform
@@ -34,9 +36,9 @@ func BuildClaims(uid string, platformID int, ttl int64) Claims {
 		UserID:     uid,
 		PlatformID: platformID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(ttl*24) * time.Hour)), // Expiration time
-			IssuedAt:  jwt.NewNumericDate(now),                                        // Issuing time
-			NotBefore: jwt.NewNumericDate(before),                                     // Begin Effective time
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(ttl*HoursOneDay) * time.Hour)), // Expiration time
+			IssuedAt:  jwt.NewNumericDate(now),                                                 // Issuing time
+			NotBefore: jwt.NewNumericDate(before),                                              // Begin Effective time
 		},
 	}
 }
