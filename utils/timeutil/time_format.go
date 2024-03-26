@@ -104,3 +104,7 @@ func TimeStringToTime(timeString string) (time.Time, error) {
 func TimeToString(t time.Time) string {
 	return t.Format("2006-01-02")
 }
+
+func GetCurrentTimeFormatted() string {
+	return time.Now().Format("2006-01-02 15:04:05")
+}

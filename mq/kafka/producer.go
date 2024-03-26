@@ -32,7 +32,7 @@ func BuildProducerConfig(conf Config) (*sarama.Config, error) {
 		kfk.Producer.Compression = sarama.CompressionNone
 	} else {
 		if err := kfk.Producer.Compression.UnmarshalText(bytes.ToLower([]byte(conf.CompressType))); err != nil {
-			return nil, errs.WrapMsg(err, "kafka producer compression", "compressType", conf.CompressType)
+			return nil, errs.WrapMsg(err, "UnmarshalText failed", "compressType", conf.CompressType)
 		}
 	}
 	if conf.TLS != nil {
@@ -49,7 +49,7 @@ func BuildProducerConfig(conf Config) (*sarama.Config, error) {
 func NewProducer(conf *sarama.Config, addr []string) (sarama.SyncProducer, error) {
 	producer, err := sarama.NewSyncProducer(addr, conf)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "kafka producer", "addr", addr)
+		return nil, errs.WrapMsg(err, "NewSyncProducer failed", "addr", addr, "conf", *conf)
 	}
 	return producer, nil
 }

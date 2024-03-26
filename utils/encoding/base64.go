@@ -30,7 +30,7 @@ func Base64Encode(data string) string {
 func Base64Decode(data string) (string, error) {
 	decodedBytes, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
-		return "", errs.WrapMsg(err, "invalid base64 encoding")
+		return "", errs.WrapMsg(err, "DecodeString failed", "data", data)
 	}
 	return string(decodedBytes), nil
 }

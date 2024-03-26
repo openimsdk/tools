@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+
 	"github.com/IBM/sarama"
 	"github.com/openimsdk/tools/errs"
 )
@@ -13,10 +14,10 @@ func CheckKafka(ctx context.Context, conf Config) error {
 	}
 	cli, err := sarama.NewClient(conf.Addr, kfk)
 	if err != nil {
-		return errs.WrapMsg(err, "addr", conf.Addr)
+		return errs.WrapMsg(err, "NewClient failed", "addr", conf.Addr, "config", *kfk)
 	}
 	if err := cli.Close(); err != nil {
-		return errs.WrapMsg(err, "close kafka")
+		return errs.WrapMsg(err, "Close failed")
 	}
 	return nil
 }

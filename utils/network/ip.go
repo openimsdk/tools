@@ -19,7 +19,6 @@ import (
 	"net/http"
 
 	"github.com/openimsdk/tools/errs"
-	"github.com/pkg/errors"
 )
 
 // Define http headers.
@@ -41,7 +40,7 @@ func GetLocalIP() (string, error) {
 			}
 		}
 	}
-	return "", errors.New("no ip")
+	return "", errs.New("no ip")
 }
 
 func GetRpcRegisterIP(configIP string) (string, error) {

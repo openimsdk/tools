@@ -22,7 +22,7 @@ import (
 
 // Validator defines the interface for configuration validators.
 type Validator interface {
-	Validate(config interface{}) error
+	Validate(config any) error
 }
 
 // SimpleValidator is a basic implementation of the Validator interface,
@@ -36,7 +36,7 @@ func NewSimpleValidator() *SimpleValidator {
 
 // Validate checks if all fields in the given configuration object are set (i.e., non-zero values).
 // This is a very basic implementation and may need to be extended based on specific application requirements.
-func (v *SimpleValidator) Validate(config interface{}) error {
+func (v *SimpleValidator) Validate(config any) error {
 	val := reflect.ValueOf(config)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -59,6 +59,6 @@ func (v *SimpleValidator) Validate(config interface{}) error {
 }
 
 // isZeroOfUnderlyingType checks if a value is the zero value of its type.
-func isZeroOfUnderlyingType(x interface{}) bool {
+func isZeroOfUnderlyingType(x any) bool {
 	return x == reflect.Zero(reflect.TypeOf(x)).Interface()
 }

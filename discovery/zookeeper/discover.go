@@ -21,7 +21,6 @@ import (
 
 	"github.com/go-zookeeper/zk"
 	"github.com/openimsdk/tools/errs"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 )
@@ -82,17 +81,17 @@ func (s *ZkClient) GetConnsRemote(ctx context.Context, serviceName string) (conn
 	path := s.getPath(serviceName)
 	_, _, _, err = s.conn.ChildrenW(path)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "children watch error")
+		return nil, errs.WrapMsg(err, "children watch error", "path", path)
 	}
 	childNodes, _, err := s.conn.Children(path)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "get children error")
+		return nil, errs.WrapMsg(err, "get children error", "path", path)
 	} else {
 		for _, child := range childNodes {
 			fullPath := path + "/" + child
 			data, _, err := s.conn.Get(fullPath)
 			if err != nil {
-				return nil, errs.WrapMsg(err, "get children error")
+				return nil, errs.WrapMsg(err, "get children error", "fullPath", fullPath)
 			}
 			s.logger.Debug(ctx, "get addr from remote", "conn", string(data))
 			conns = append(conns, resolver.Address{Addr: string(data), ServerName: serviceName})
@@ -102,7 +101,7 @@ func (s *ZkClient) GetConnsRemote(ctx context.Context, serviceName string) (conn
 }
 
 func (s *ZkClient) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
-	s.logger.Warn(ctx, "not implement", errors.New("zkclinet not implement GetUserIdHashGatewayHost method"))
+	s.logger.Warn(ctx, "not implement", errs.New("zkclinet not implement GetUserIdHashGatewayHost method"))
 	return "", nil
 }
 
@@ -119,13 +118,13 @@ func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grp
 		}
 		if len(addrs) == 0 {
 			return nil, errs.New("addr is empty").WrapMsg("no conn for service", "serviceName",
-				serviceName, "local conn", s.localConns, "zkServers", s.zkServers, "zkRoot", s.zkRoot)
+				serviceName, "local conn", s.localConns, "ZkServers", s.ZkServers, "zkRoot", s.zkRoot)
 		}
 		for _, addr := range addrs {
 			cc, err := grpc.DialContext(ctx, addr.Addr, append(s.options, opts...)...)
 			if err != nil {
 				s.logger.Error(context.Background(), "dialContext failed", err, "addr", addr.Addr, "opts", append(s.options, opts...))
-				return nil, errs.Wrap(err)
+				return nil, errs.WrapMsg(err, "DialContext failed", "addr.Addr", addr.Addr)
 			}
 			conns = append(conns, cc)
 		}

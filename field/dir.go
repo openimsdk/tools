@@ -16,12 +16,9 @@ package field
 
 import (
 	"fmt"
+	"github.com/openimsdk/tools/errs"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
-
-	"github.com/openimsdk/tools/errs"
 )
 
 // OutDir creates the absolute path name from path and checks if the path exists and is a directory.
@@ -41,38 +38,8 @@ func OutDir(path string) (string, error) {
 	}
 
 	if !stat.IsDir() {
-		return "", errs.Wrap(fmt.Errorf("specified path %s is not a directory", outDir)) // Correctly constructs a new error as 'err' would be nil here
+		return "", errs.WrapMsg(fmt.Errorf("specified path %s is not a directory", outDir), "specified path is not a directory", "path", outDir)
 	}
 	outDir += "/"
 	return outDir, nil
-}
-
-func GetCurrentTimeFormatted() string {
-	return time.Now().Format("2006-01-02 15:04:05")
-}
-
-func ExitWithError(err error) {
-	progName := filepath.Base(os.Args[0])
-	fmt.Fprintf(os.Stderr, "%s exit -1: %+v\n", progName, err)
-	os.Exit(-1)
-}
-
-// GetProcessName retrieves the name of the currently running process.
-// It achieves this by parsing os.Args[0], which typically contains the full path to the program.
-// If os.Args[0] is empty or unset for some reason, the function returns an empty string.
-// Note: This function assumes that os.Args contains at least the program name. This is a safe assumption under normal circumstances.
-func GetProcessName() string {
-	args := os.Args
-	if len(args) > 0 {
-		segments := strings.Split(args[0], "/")
-		if len(segments) > 0 {
-			return segments[len(segments)-1]
-		}
-	}
-	return ""
-}
-
-func SIGTERMExit() {
-	progName := filepath.Base(os.Args[0])
-	fmt.Fprintf(os.Stderr, "Warning %s receive process terminal SIGTERM exit 0\n", progName)
 }

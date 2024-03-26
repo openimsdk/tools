@@ -29,7 +29,7 @@ func BuildConsumerGroupConfig(conf Config, initial int64) (*sarama.Config, error
 func NewConsumerGroup(conf *sarama.Config, addr []string, groupID string) (sarama.ConsumerGroup, error) {
 	cg, err := sarama.NewConsumerGroup(addr, groupID, conf)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "kafka consumer group", "addr", addr, "groupID", groupID)
+		return nil, errs.WrapMsg(err, "NewConsumerGroup failed", "addr", addr, "groupID", groupID, "conf", *conf)
 	}
 	return cg, nil
 }

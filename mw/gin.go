@@ -15,7 +15,6 @@
 package mw
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -61,7 +60,7 @@ func GinParseOperationID() gin.HandlerFunc {
 		if c.Request.Method == http.MethodPost {
 			operationID := c.Request.Header.Get(constant.OperationID)
 			if operationID == "" {
-				err := errors.New("header must have operationID")
+				err := errs.New("header must have operationID")
 				apiresp.GinError(c, errs.ErrArgs.WrapMsg(err.Error()))
 				c.Abort()
 				return

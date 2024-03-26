@@ -39,7 +39,7 @@ func Md5(s string, salt ...string) string {
 func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "aes new cipher failed", "key", key)
+		return nil, errs.WrapMsg(err, "NewCipher failed", "key", key)
 	}
 	blockSize := block.BlockSize()
 	encryptBytes := pkcs7Padding(data, blockSize)
@@ -53,7 +53,7 @@ func AesEncrypt(data []byte, key []byte) ([]byte, error) {
 func AesDecrypt(data []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "aes new cipher failed", "key", key)
+		return nil, errs.WrapMsg(err, "NewCipher failed", "key", key)
 	}
 	blockSize := block.BlockSize()
 	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])

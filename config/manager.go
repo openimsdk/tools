@@ -1,21 +1,21 @@
 package config
 
-type ConfigManager struct {
+type Manager struct {
 	sources []ConfigSource
-	parser  ConfigParser
+	parser  Parser
 }
 
-func NewConfigManager(parser ConfigParser) *ConfigManager {
-	return &ConfigManager{
+func NewManager(parser Parser) *Manager {
+	return &Manager{
 		parser: parser,
 	}
 }
 
-func (cm *ConfigManager) AddSource(source ConfigSource) {
+func (cm *Manager) AddSource(source ConfigSource) {
 	cm.sources = append(cm.sources, source)
 }
 
-func (cm *ConfigManager) Load(config interface{}) error {
+func (cm *Manager) Load(config any) error {
 	for _, source := range cm.sources {
 		if data, err := source.Read(); err == nil {
 			if err := cm.parser.Parse(data, config); err != nil {
