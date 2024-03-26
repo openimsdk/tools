@@ -15,10 +15,10 @@
 package zookeeper
 
 import (
-	"github.com/openimsdk/tools/errs"
 	"time"
 
 	"github.com/go-zookeeper/zk"
+	"github.com/openimsdk/tools/errs"
 	"google.golang.org/grpc"
 )
 
