@@ -49,7 +49,7 @@ func Exists(linkBehavior LinkTreatment, filename string) (bool, error) {
 	} else if linkBehavior == CheckSymlinkOnly {
 		_, err = os.Lstat(filename)
 	} else {
-		return false, ErrInvalidLinkTreatment
+		return false, errs.Wrap(ErrInvalidLinkTreatment)
 	}
 
 	if os.IsNotExist(err) {

@@ -16,7 +16,6 @@ package mw
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/openimsdk/protocol/constant"
@@ -72,10 +71,10 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 		for _, key := range keys {
 			val, ok := ctx.Value(key).([]string)
 			if !ok {
-				return nil, errs.ErrInternalServer.WrapMsg(fmt.Sprintf("ctx missing key %s", key))
+				return nil, errs.ErrInternalServer.WrapMsg("ctx missing key", "key", key)
 			}
 			if len(val) == 0 {
-				return nil, errs.ErrInternalServer.WrapMsg(fmt.Sprintf("ctx key %s value is empty", key))
+				return nil, errs.ErrInternalServer.WrapMsg("ctx key value is empty", "key", key)
 			}
 			md.Set(key, val...)
 		}

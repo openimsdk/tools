@@ -29,7 +29,7 @@ func CheckKafka(ctx context.Context, conf *Config, topics []string) error {
 
 	for _, topic := range topics {
 		if !existingTopicsMap[topic] {
-			return errs.New("topic not exist").WrapMsg("topic not exist", "topic", topic)
+			return errs.New("topic not exist", "topic", topic).Wrap()
 		}
 	}
 	return nil
