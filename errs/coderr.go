@@ -15,9 +15,10 @@
 package errs
 
 import (
-	"github.com/pkg/errors"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 var DefaultCodeRelation = newCodeRelation()

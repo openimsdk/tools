@@ -16,12 +16,12 @@ package zookeeper
 
 import (
 	"context"
-	"google.golang.org/grpc"
 	"sync"
 	"time"
 
 	"github.com/go-zookeeper/zk"
 	"github.com/openimsdk/tools/errs"
+	"google.golang.org/grpc"
 )
 
 func CheckZookeeper(ZkServers []string, scheme string, options ...ZkOption) error {

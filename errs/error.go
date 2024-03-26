@@ -3,6 +3,7 @@ package errs
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 

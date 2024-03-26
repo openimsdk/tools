@@ -7,4 +7,9 @@ const (
 	NoPermissionError   = 1002 // Insufficient permission
 	DuplicateKeyError   = 1003
 	RecordNotFoundError = 1004 // Record does not exist
+
+	TokenExpiredError     = 1501
+	TokenMalformedError   = 1503
+	TokenNotValidYetError = 1504
+	TokenUnknownError     = 1505
 )
