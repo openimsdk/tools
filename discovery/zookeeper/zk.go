@@ -81,7 +81,7 @@ func NewZkClient(ZkServers []string, scheme string, options ...ZkOption) (*ZkCli
 	// Establish a Zookeeper connection with a specified timeout and handle authentication.
 	conn, eventChan, err := zk.Connect(ZkServers, time.Duration(client.timeout)*time.Second)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "failed to connect to Zookeeper", "ZkServers", ZkServers)
+		return nil, errs.WrapMsg(err, "connect failed", "ZkServers", ZkServers)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -93,7 +93,7 @@ func NewZkClient(ZkServers []string, scheme string, options ...ZkOption) (*ZkCli
 		auth := []byte(client.username + ":" + client.password)
 		if err := conn.AddAuth("digest", auth); err != nil {
 			conn.Close()
-			return nil, errs.WrapMsg(err, "failed to authenticate with Zookeeper", "username", client.username, "password", client.password)
+			return nil, errs.WrapMsg(err, "AddAuth failed", "username", client.username, "password", client.password)
 		}
 	}
 
@@ -104,7 +104,7 @@ func NewZkClient(ZkServers []string, scheme string, options ...ZkOption) (*ZkCli
 	// Verify root node existence and create if missing.
 	if err := client.ensureRoot(); err != nil {
 		conn.Close()
-		return nil, errs.WrapMsg(err, "failed to ensure root node", "zkRoot", client.zkRoot)
+		return nil, errs.WrapMsg(err, "ensureRoot failed", "zkRoot", client.zkRoot)
 	}
 
 	resolver.Register(client)

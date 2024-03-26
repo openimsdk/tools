@@ -15,6 +15,7 @@
 package env
 
 import (
+	"github.com/openimsdk/tools/errs"
 	"os"
 	"strconv"
 )
@@ -36,7 +37,7 @@ func GetInt(key string, defaultValue int) (int, error) {
 	if ok {
 		value, err := strconv.Atoi(v)
 		if err != nil {
-			return defaultValue, err
+			return defaultValue, errs.WrapMsg(err, "Atoi failed", "value", v)
 		}
 		return value, nil
 	}
@@ -50,7 +51,7 @@ func GetFloat64(key string, defaultValue float64) (float64, error) {
 	if ok {
 		value, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return defaultValue, err
+			return defaultValue, errs.WrapMsg(err, "ParseFloat failed", "value", v)
 		}
 		return value, nil
 	}
@@ -64,7 +65,7 @@ func GetBool(key string, defaultValue bool) (bool, error) {
 	if ok {
 		value, err := strconv.ParseBool(v)
 		if err != nil {
-			return defaultValue, err
+			return defaultValue, errs.WrapMsg(err, "ParseBool failed", "value", v)
 		}
 		return value, nil
 	}
