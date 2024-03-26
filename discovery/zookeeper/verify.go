@@ -42,7 +42,7 @@ func CheckZookeeper(ZkServers []string, scheme string, options ...ZkOption) erro
 	// Establish a Zookeeper connection with a specified timeout and handle authentication.
 	conn, eventChan, err := zk.Connect(ZkServers, time.Duration(client.timeout)*time.Second)
 	if err != nil {
-		return errs.WrapMsg(err, "failed to connect to Zookeeper", "ZkServers", ZkServers)
+		return errs.WrapMsg(err, "connect failed", "ZkServers", ZkServers)
 	}
 
 	_, cancel := context.WithCancel(context.Background())

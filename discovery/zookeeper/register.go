@@ -38,7 +38,7 @@ func (s *ZkClient) CreateTempNode(rpcRegisterName, addr string) (node string, er
 		zk.WorldACL(zk.PermAll),
 	)
 	if err != nil {
-		return "", errs.Wrap(err)
+		return "", errs.WrapMsg(err, "CreateProtectedEphemeralSequential failed", "path", s.getPath(rpcRegisterName)+"/"+addr+"_")
 	}
 	return node, nil
 }
