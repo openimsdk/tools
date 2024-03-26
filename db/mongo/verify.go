@@ -51,13 +51,13 @@ func (c *Config) ValidateAndSetDefaults() error {
 		return errs.New("database is required")
 	}
 	if c.MaxPoolSize <= 0 {
-		c.MaxPoolSize = DefaultMaxPoolSize
+		c.MaxPoolSize = defaultMaxPoolSize
 	}
 	if c.MaxRetry < 0 {
-		c.MaxRetry = DefaultMaxRetry
+		c.MaxRetry = defaultMaxRetry
 	}
 	if c.ConnTimeout <= 0 {
-		c.ConnTimeout = DefaultConnTimeout
+		c.ConnTimeout = defaultConnTimeout
 	}
 	if c.Uri == "" {
 		c.Uri = buildMongoURI(c)

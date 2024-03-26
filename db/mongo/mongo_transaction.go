@@ -52,7 +52,7 @@ func (m *_Mongo) init(ctx context.Context) (err error) {
 	}
 	var res map[string]any
 	if err := m.client.Database("admin").RunCommand(ctx, bson.M{"isMaster": 1}).Decode(&res); err != nil {
-		return err
+		return errs.WrapMsg(err, "Decode failed")
 	}
 	_, allowTx := res["setName"]
 	if !allowTx {
@@ -61,7 +61,7 @@ func (m *_Mongo) init(ctx context.Context) (err error) {
 	m.tx = func(fnctx context.Context, fn func(ctx context.Context) error) error {
 		sess, err := m.client.StartSession()
 		if err != nil {
-			return err
+			return errs.WrapMsg(err, "StartSession failed")
 		}
 		defer sess.EndSession(fnctx)
 		_, err = sess.WithTransaction(fnctx, func(sessCtx mongo.SessionContext) (any, error) {

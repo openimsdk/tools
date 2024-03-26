@@ -48,7 +48,7 @@ func NewRedisClient(ctx context.Context, config *Config) (Client, error) {
 	var err error
 	once.Do(func() {
 		if len(config.Address) == 0 {
-			err = errs.New("redis address is empty")
+			err = errs.New("redis address is empty").Wrap()
 			return
 		}
 
@@ -63,7 +63,7 @@ func NewRedisClient(ctx context.Context, config *Config) (Client, error) {
 		defer cancel()
 
 		if pingErr := clientInstance.Ping(cCtx).Err(); pingErr != nil {
-			err = errs.WrapMsg(pingErr, "Redis Ping failed.", "Address", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)
+			err = errs.WrapMsg(pingErr, "Redis Ping failed", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)
 			return
 		}
 	})

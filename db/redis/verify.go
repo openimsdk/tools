@@ -24,7 +24,7 @@ import (
 func CheckRedis(ctx context.Context, config *Config) error {
 	client, err := NewRedisClient(ctx, config)
 	if err != nil {
-		return errs.WrapMsg(err, "NewRedisClient failed", "config", config)
+		return err
 	}
 	defer client.(*redis.Client).Close()
 

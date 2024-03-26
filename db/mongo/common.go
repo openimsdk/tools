@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	DefaultMaxPoolSize = 100
-	DefaultMaxRetry    = 3
-	DefaultConnTimeout = 5 * time.Second
+	defaultMaxPoolSize = 100
+	defaultMaxRetry    = 3
+	defaultConnTimeout = 5 * time.Second
 )
 
 // buildMongoURI constructs the MongoDB URI from the provided configuration.
