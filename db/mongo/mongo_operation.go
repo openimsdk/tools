@@ -16,9 +16,9 @@ package mongo
 
 import (
 	"context"
+	"github.com/openimsdk/tools/db/pagination"
 
 	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/pagination"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
