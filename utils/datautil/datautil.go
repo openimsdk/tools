@@ -611,12 +611,6 @@ func SetSwitchFromOptions(options map[string]bool, key string, value bool) {
 	options[key] = value
 }
 
-func StructToJsonString(param any) string {
-	dataType, _ := jsonutil.JsonMarshal(param)
-	dataString := string(dataType)
-	return dataString
-}
-
 // copy a by b  b->a
 func CopyStructFields(a any, b any, fields ...string) (err error) {
 	return copier.Copy(a, b)

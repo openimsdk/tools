@@ -59,3 +59,9 @@ func JsonUnmarshal(b []byte, v any) error {
 		return errs.Wrap(json.Unmarshal(b, v))
 	}
 }
+
+func StructToJsonString(param any) string {
+	dataType, _ := JsonMarshal(param)
+	dataString := string(dataType)
+	return dataString
+}
