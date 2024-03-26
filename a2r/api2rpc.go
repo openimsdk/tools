@@ -16,7 +16,6 @@ package a2r
 
 import (
 	"context"
-	"errors"
 	"io"
 	"net/http"
 
@@ -58,11 +57,11 @@ func (jsonBinding) Name() string {
 
 func (b jsonBinding) Bind(req *http.Request, obj any) error {
 	if req == nil || req.Body == nil {
-		return errors.New("invalid request")
+		return errs.New("invalid request")
 	}
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		return err
+		return errs.WrapMsg(err, "read request body failed", "method", req.Method, "url", req.URL.String())
 	}
 	return b.BindBody(body, obj)
 }
