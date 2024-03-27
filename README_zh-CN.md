@@ -66,7 +66,7 @@
 
 ## field
 
-- `file.go`, `genutil.go`, `path.go`：处理文件操作和路径生成的实用工具。
+- `file.go`, `path.go`：处理文件操作和路径生成的实用工具。
 - 相关的测试文件。
 
 ## log

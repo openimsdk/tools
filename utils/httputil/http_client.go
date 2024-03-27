@@ -111,9 +111,9 @@ func (c *HTTPClient) Post(ctx context.Context, url string, headers map[string]st
 	return result, nil
 }
 
-// PostReturn sends a JSON-encoded POST request and decodes the JSON response into the output parameter.
-func (c *HTTPClient) PostReturn(ctx context.Context, url string, headers map[string]string, input, output any, timeout int) error {
-	responseBytes, err := c.Post(ctx, url, headers, input, timeout)
+// PostReturn sends a JSON-encoded POST request and decodes the JSON response into  output parameter.
+func (c *HTTPClient) PostReturn(ctx context.Context, url string, headers map[string]string, input, output ,timeout int) error {
+	responseBytes, err := c.Post(ctx, url, headers, input,timeout)
 	if err != nil {
 		return err
 	}

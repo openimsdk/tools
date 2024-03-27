@@ -67,7 +67,7 @@ This project includes a series of tools and libraries applicable to OpenIM, alon
 
 ## field
 
-- `file.go`, `genutil.go`, `path.go`: Utilities for file operations and path generation.
+- `file.go`, `path.go`: Utilities for file operations and path generation.
 - Related test files.
 
 ## log
