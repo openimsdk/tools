@@ -1,6 +1,6 @@
 <h1 align="center" style="border-bottom: none">
     <b>
-        <a href="https://docs.openim.io">tools</a><br>
+        <a href="https://docs.openim.io">openim-tools</a><br>
     </b>
 </h1>
 <h3 align="center" style="border-bottom: none">
