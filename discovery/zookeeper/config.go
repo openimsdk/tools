@@ -15,9 +15,19 @@
 package zookeeper
 
 import (
+	"time"
+
 	"github.com/go-zookeeper/zk"
 	"github.com/openimsdk/tools/errs"
 )
+
+type Config struct {
+	ZkServers []string
+	Scheme    string
+	Username  string
+	Password  string
+	Timeout   time.Duration
+}
 
 func (s *ZkClient) RegisterConf2Registry(key string, conf []byte) error {
 	path := s.getPath(key)
