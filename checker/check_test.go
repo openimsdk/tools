@@ -1,7 +1,6 @@
 package checker_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/openimsdk/tools/checker"
@@ -35,7 +34,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			name:      "checker with generic error",
-			arg:       mockChecker{errors.New("generic error")},
+			arg:       mockChecker{errs.New("generic error")},
 			wantError: errs.ErrArgs,
 		},
 		{
