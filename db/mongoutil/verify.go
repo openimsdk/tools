@@ -58,11 +58,8 @@ func (c *Config) ValidateAndSetDefaults() error {
 	if c.MaxPoolSize <= 0 {
 		c.MaxPoolSize = defaultMaxPoolSize
 	}
-	if c.MaxRetry < 0 {
+	if c.MaxRetry <= 0 {
 		c.MaxRetry = defaultMaxRetry
-	}
-	if c.ConnTimeout <= 0 {
-		c.ConnTimeout = defaultConnTimeout
 	}
 	if c.Uri == "" {
 		c.Uri = buildMongoURI(c)

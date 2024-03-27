@@ -12,14 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package db
+package tx
 
 import "context"
 
 type Tx interface {
-	Transaction(fn func(tx any) error) error
-}
-
-type CtxTx interface {
 	Transaction(ctx context.Context, fn func(ctx context.Context) error) error
 }

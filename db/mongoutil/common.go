@@ -15,17 +15,15 @@
 package mongoutil
 
 import (
+	"context"
 	"fmt"
-	"strings"
-	"time"
-
 	"go.mongodb.org/mongo-driver/mongo"
+	"strings"
 )
 
 const (
 	defaultMaxPoolSize = 100
 	defaultMaxRetry    = 3
-	defaultConnTimeout = 5 * time.Second
 )
 
 // buildMongoURI constructs the MongoDB URI from the provided configuration.
@@ -38,9 +36,14 @@ func buildMongoURI(config *Config) string {
 }
 
 // shouldRetry determines whether an error should trigger a retry.
-func shouldRetry(err error) bool {
-	if cmdErr, ok := err.(mongo.CommandError); ok {
-		return cmdErr.Code != 13 && cmdErr.Code != 18
+func shouldRetry(ctx context.Context, err error) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	default:
+		if cmdErr, ok := err.(mongo.CommandError); ok {
+			return cmdErr.Code != 13 && cmdErr.Code != 18
+		}
+		return true
 	}
-	return true
 }
