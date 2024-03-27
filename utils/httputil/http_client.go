@@ -74,7 +74,12 @@ func (c *HTTPClient) Get(url string) ([]byte, error) {
 }
 
 // Post sends a JSON-encoded POST request and returns the response body.
-func (c *HTTPClient) Post(ctx context.Context, url string, headers map[string]string, data any) ([]byte, error) {
+func (c *HTTPClient) Post(ctx context.Context, url string, headers map[string]string, data any, timeout int) ([]byte, error) {
+	if timeout > 0 {
+		var cancel func()
+		ctx, cancel = context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+		defer cancel()
+	}
 	body := bytes.NewBuffer(nil)
 	if data != nil {
 		if err := json.NewEncoder(body).Encode(data); err != nil {
@@ -107,8 +112,8 @@ func (c *HTTPClient) Post(ctx context.Context, url string, headers map[string]st
 }
 
 // PostReturn sends a JSON-encoded POST request and decodes the JSON response into the output parameter.
-func (c *HTTPClient) PostReturn(ctx context.Context, url string, headers map[string]string, input, output any) error {
-	responseBytes, err := c.Post(ctx, url, headers, input)
+func (c *HTTPClient) PostReturn(ctx context.Context, url string, headers map[string]string, input, output any, timeout int) error {
+	responseBytes, err := c.Post(ctx, url, headers, input, timeout)
 	if err != nil {
 		return err
 	}

@@ -59,7 +59,7 @@ func TestHTTPClient_Post(t *testing.T) {
 	headers := map[string]string{"Custom-Header": "value"}
 
 	expectedData := map[string]string{"key": "value"}
-	respBody, err := client.Post(context.Background(), server.URL, headers, expectedData)
+	respBody, err := client.Post(context.Background(), server.URL, headers, expectedData, 10)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -87,7 +87,7 @@ func TestHTTPClient_PostReturn(t *testing.T) {
 
 	client := NewHTTPClient(NewClientConfig())
 	var actualOutput struct{ Key string }
-	err := client.PostReturn(context.Background(), server.URL, nil, map[string]string{"key": "value"}, &actualOutput)
+	err := client.PostReturn(context.Background(), server.URL, nil, map[string]string{"key": "value"}, &actualOutput, 10)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
