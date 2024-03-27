@@ -27,7 +27,7 @@ type Config struct {
 	Address     []string // List of Redis server addresses (host:port).
 	Username    string   // Username for Redis authentication (Redis 6 ACL).
 	Password    string   // Password for Redis authentication.
-	MaxRetries  int      // Maximum number of retries for a command.
+	MaxRetry    int      // Maximum number of retries for a command.
 	DB          int      // Database number to connect to, for non-cluster mode.
 	PoolSize    int      // Number of connections to pool.
 }
@@ -43,7 +43,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 			Username:   config.Username,
 			Password:   config.Password,
 			PoolSize:   config.PoolSize,
-			MaxRetries: config.MaxRetries,
+			MaxRetries: config.MaxRetry,
 		}
 		cli = redis.NewClusterClient(opt)
 	} else {
@@ -53,7 +53,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 			Password:   config.Password,
 			DB:         config.DB,
 			PoolSize:   config.PoolSize,
-			MaxRetries: config.MaxRetries,
+			MaxRetries: config.MaxRetry,
 		}
 		cli = redis.NewClient(opt)
 	}
