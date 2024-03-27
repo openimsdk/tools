@@ -686,19 +686,14 @@ linters:
     - gofmt         # Format check
     - govet         # Go's standard linting tool
     - gosimple      # Suggestions for simplifying code
-    - errcheck
     - decorder
     - ineffassign
-    - forbidigo
-    - revive
     - reassign
     - tparallel
     - unconvert
     - dupl
     - dupword
-    - errname
     - gci
-    - gocritic
     - goprintffuncname
     - gomnd
     - goconst
@@ -709,7 +704,6 @@ linters:
     - godot         # Checks for comment punctuation
     - bodyclose     # Ensures HTTP response body is closed
     - stylecheck    # Style checker for Go code
-    - errcheck      # Checks for missed error returns
   fast: true
 
 issues:

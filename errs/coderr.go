@@ -96,8 +96,10 @@ func (e *codeError) Is(err error) bool {
 	return DefaultCodeRelation.Is(e.code, code)
 }
 
+const initialCapacity = 3
+
 func (e *codeError) Error() string {
-	v := make([]string, 0, 3)
+	v := make([]string, 0, initialCapacity)
 	v = append(v, strconv.Itoa(e.code), e.msg)
 
 	if e.detail != "" {
@@ -145,8 +147,10 @@ type codeRelation struct {
 	m map[int]map[int]struct{}
 }
 
+const minimumCodesLength = 2
+
 func (r *codeRelation) Add(codes ...int) error {
-	if len(codes) < 2 {
+	if len(codes) < minimumCodesLength {
 		return New("codes length must be greater than 2", "codes", codes).Wrap()
 	}
 	for i := 1; i < len(codes); i++ {

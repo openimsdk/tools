@@ -65,10 +65,10 @@ func TestFileUtils(t *testing.T) {
 	// recover test environment
 	defer func() {
 		if err := os.Chdir(currentDir); err != nil {
-			errs.New("Failed to change back to the original directory: %v", err)
+			errs.ErrArgs.WrapMsg(err.Error())
 		}
 		if err := os.RemoveAll(tmpDir); err != nil {
-			errs.New("Failed to remove temp directory: %v", err)
+			errs.ErrArgs.WrapMsg(err.Error())
 		}
 	}()
 

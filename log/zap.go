@@ -43,6 +43,9 @@ var (
 	}
 )
 
+const callDepth = 2
+const hoursPerDay = 24
+
 // InitFromConfig initializes a Zap-based logger.
 func InitFromConfig(
 	loggerPrefixName, moduleName string,
@@ -59,7 +62,7 @@ func InitFromConfig(
 	if err != nil {
 		return err
 	}
-	pkgLogger = l.WithCallDepth(2)
+	pkgLogger = l.WithCallDepth(callDepth)
 	if isJson {
 		pkgLogger = pkgLogger.WithName(moduleName)
 	}
@@ -74,7 +77,7 @@ func InitConsoleLogger(moduleName string,
 	if err != nil {
 		return err
 	}
-	osStdout = l.WithCallDepth(2)
+	osStdout = l.WithCallDepth(callDepth)
 	if isJson {
 		osStdout = osStdout.WithName(moduleName)
 	}
@@ -280,7 +283,7 @@ func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) 
 
 func (l *ZapLogger) getWriter(logLocation string, rorateCount uint) (zapcore.WriteSyncer, error) {
 	var path string
-	if l.rotationTime%(time.Hour*24) == 0 {
+	if l.rotationTime%(time.Hour*time.Duration(hoursPerDay)) == 0 {
 		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d"
 	} else if l.rotationTime%time.Hour == 0 {
 		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d_%H"
