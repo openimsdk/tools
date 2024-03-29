@@ -1,4 +1,4 @@
-// Copyright © 2024 OpenIM open source community. All rights reserved.
+// Copyright © 2023 OpenIM. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,55 +15,68 @@
 package kafka
 
 import (
-	"bytes"
-	"strings"
-
+	"context"
 	"github.com/IBM/sarama"
 	"github.com/openimsdk/tools/errs"
+	"google.golang.org/protobuf/proto"
 )
 
-func BuildProducerConfig(conf Config) (*sarama.Config, error) {
-	kfk := sarama.NewConfig()
-	kfk.Producer.Return.Successes = true
-	kfk.Producer.Return.Errors = true
-	kfk.Producer.Partitioner = sarama.NewHashPartitioner
-	if conf.Username != "" || conf.Password != "" {
-		kfk.Net.SASL.Enable = true
-		kfk.Net.SASL.User = conf.Username
-		kfk.Net.SASL.Password = conf.Password
-	}
-	switch strings.ToLower(conf.ProducerAck) {
-	case "no_response":
-		kfk.Producer.RequiredAcks = sarama.NoResponse
-	case "wait_for_local":
-		kfk.Producer.RequiredAcks = sarama.WaitForLocal
-	case "wait_for_all":
-		kfk.Producer.RequiredAcks = sarama.WaitForAll
-	default:
-		kfk.Producer.RequiredAcks = sarama.WaitForAll
-	}
-	if conf.CompressType == "" {
-		kfk.Producer.Compression = sarama.CompressionNone
-	} else {
-		if err := kfk.Producer.Compression.UnmarshalText(bytes.ToLower([]byte(conf.CompressType))); err != nil {
-			return nil, errs.WrapMsg(err, "UnmarshalText failed", "compressType", conf.CompressType)
-		}
-	}
-	if conf.TLS != nil {
-		tls, err := newTLSConfig(conf.TLS.ClientCrt, conf.TLS.ClientKey, conf.TLS.CACrt, []byte(conf.TLS.ClientKeyPwd), conf.TLS.InsecureSkipVerify)
-		if err != nil {
-			return nil, err
-		}
-		kfk.Net.TLS.Config = tls
-		kfk.Net.TLS.Enable = true
-	}
-	return kfk, nil
+// Producer represents a Kafka producer.
+type Producer struct {
+	addr     []string
+	topic    string
+	config   *sarama.Config
+	producer sarama.SyncProducer
 }
 
-func NewProducer(conf *sarama.Config, addr []string) (sarama.SyncProducer, error) {
-	producer, err := sarama.NewSyncProducer(addr, conf)
+func NewKafkaProducer(config *sarama.Config, addr []string, topic string) (*Producer, error) {
+	producer, err := NewProducer(config, addr)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "NewSyncProducer failed", "addr", addr, "conf", *conf)
+		return nil, err
 	}
-	return producer, nil
+	return &Producer{
+		addr:     addr,
+		topic:    topic,
+		config:   config,
+		producer: producer,
+	}, nil
+}
+
+// SendMessage sends a message to the Kafka topic configured in the Producer.
+func (p *Producer) SendMessage(ctx context.Context, key string, msg proto.Message) (int32, int64, error) {
+	// Marshal the protobuf message
+	bMsg, err := proto.Marshal(msg)
+	if err != nil {
+		return 0, 0, errs.WrapMsg(err, "kafka proto Marshal err")
+	}
+	if len(bMsg) == 0 {
+		return 0, 0, errs.WrapMsg(errEmptyMsg, "kafka proto Marshal err")
+	}
+
+	// Prepare Kafka message
+	kMsg := &sarama.ProducerMessage{
+		Topic: p.topic,
+		Key:   sarama.StringEncoder(key),
+		Value: sarama.ByteEncoder(bMsg),
+	}
+
+	// Validate message key and value
+	if kMsg.Key.Length() == 0 || kMsg.Value.Length() == 0 {
+		return 0, 0, errs.Wrap(errEmptyMsg)
+	}
+
+	// Attach context metadata as headers
+	header, err := GetMQHeaderWithContext(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	kMsg.Headers = header
+
+	// Send the message
+	partition, offset, err := p.producer.SendMessage(kMsg)
+	if err != nil {
+		return 0, 0, errs.WrapMsg(err, "p.producer.SendMessage error")
+	}
+
+	return partition, offset, nil
 }
