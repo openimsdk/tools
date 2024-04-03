@@ -28,22 +28,45 @@ import (
 	"google.golang.org/grpc"
 )
 
-func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context) {
+type Option[A, B any] struct {
+	BindAfter func(*A) error
+	RespAfter func(*B) error
+}
+
+func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context, opts ...*Option[A, B]) {
 	var req A
 	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
 		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap()) // args error
 		return
 	}
+	for _, opt := range opts {
+		if opt.BindAfter == nil {
+			continue
+		}
+		if err := opt.BindAfter(&req); err != nil {
+			apiresp.GinError(c, err) // args option error
+			return
+		}
+	}
 	if err := checker.Validate(&req); err != nil {
 		apiresp.GinError(c, err) // args validate error
 		return
 	}
-	data, err := rpc(client, c, &req)
+	resp, err := rpc(client, c, &req)
 	if err != nil {
 		apiresp.GinError(c, err) // rpc call failed
 		return
 	}
-	apiresp.GinSuccess(c, data) // rpc call success
+	for _, opt := range opts {
+		if opt.RespAfter == nil {
+			continue
+		}
+		if err := opt.RespAfter(resp); err != nil {
+			apiresp.GinError(c, err) // resp option error
+			return
+		}
+	}
+	apiresp.GinSuccess(c, resp) // rpc call success
 }
 
 type jsonBinding struct{}
