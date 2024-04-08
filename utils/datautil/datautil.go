@@ -16,6 +16,7 @@ package datautil
 
 import (
 	"github.com/jinzhu/copier"
+	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/utils/jsonutil"
 	"reflect"
 	"sort"
@@ -614,4 +615,12 @@ func SetSwitchFromOptions(options map[string]bool, key string, value bool) {
 // copy a by b  b->a
 func CopyStructFields(a any, b any, fields ...string) (err error) {
 	return copier.Copy(a, b)
+}
+
+func GetElemByIndex(array []int, index int) (int, error) {
+	if index < 0 || index >= len(array) {
+		return 0, errs.New("index out of range", "index", index, "array", array).Wrap()
+	}
+
+	return array[index], nil
 }
