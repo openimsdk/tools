@@ -21,7 +21,7 @@ import (
 	"github.com/openimsdk/tools/errs"
 )
 
-func CheckKafka(ctx context.Context, conf *Config, topics []string) error {
+func Check(ctx context.Context, conf *Config, topics []string) error {
 	kfk, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest)
 	if err != nil {
 		return err

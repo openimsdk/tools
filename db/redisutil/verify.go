@@ -22,7 +22,7 @@ import (
 )
 
 // CheckRedis checks the Redis connection.
-func CheckRedis(ctx context.Context, config *Config) error {
+func Check(ctx context.Context, config *Config) error {
 	client, err := NewRedisClient(ctx, config)
 	if err != nil {
 		return err
