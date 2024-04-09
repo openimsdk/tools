@@ -18,7 +18,7 @@ func BuildConsumerGroupConfig(conf *Config, initial int64) (*sarama.Config, erro
 		kfk.Net.SASL.User = conf.Username
 		kfk.Net.SASL.Password = conf.Password
 	}
-	if conf.TLS != nil {
+	if conf.TLS.EnableTLS {
 		tls, err := newTLSConfig(conf.TLS.ClientCrt, conf.TLS.ClientKey, conf.TLS.CACrt, []byte(conf.TLS.ClientKeyPwd), conf.TLS.InsecureSkipVerify)
 		if err != nil {
 			return nil, err
@@ -64,7 +64,7 @@ func BuildProducerConfig(conf Config) (*sarama.Config, error) {
 			return nil, errs.WrapMsg(err, "UnmarshalText failed", "compressType", conf.CompressType)
 		}
 	}
-	if conf.TLS != nil {
+	if conf.TLS.EnableTLS {
 		tls, err := newTLSConfig(conf.TLS.ClientCrt, conf.TLS.ClientKey, conf.TLS.CACrt, []byte(conf.TLS.ClientKeyPwd), conf.TLS.InsecureSkipVerify)
 		if err != nil {
 			return nil, err
