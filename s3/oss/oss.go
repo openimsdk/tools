@@ -51,6 +51,8 @@ const (
 
 const successCode = http.StatusOK
 
+var _ s3.Interface = (*OSS)(nil)
+
 type Config struct {
 	Endpoint        string
 	Bucket          string
@@ -61,7 +63,7 @@ type Config struct {
 	PublicRead      bool
 }
 
-func NewOSS(conf Config) (s3.Interface, error) {
+func NewOSS(conf Config) (*OSS, error) {
 	if conf.BucketURL == "" {
 		return nil, errs.Wrap(errors.New("bucket url is empty"))
 	}
