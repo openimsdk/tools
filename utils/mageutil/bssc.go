@@ -127,6 +127,7 @@ func compileDir(sourceDir, outputBase, platform string) {
 	// Check for errors
 	if err, ok := <-errors; ok {
 		fmt.Println(err)
+		fmt.Println("Compilation aborted.")
 		os.Exit(1)
 	}
 }
