@@ -72,7 +72,6 @@ func CompileForPlatform(platform string) {
 
 }
 
-// compileDir compiles Go programs in a specified directory, appending .exe extension for output files on Windows platform
 func compileDir(sourceDir, outputBase, platform string) {
 	targetOS, targetArch := strings.Split(platform, "_")[0], strings.Split(platform, "_")[1]
 	outputDir := filepath.Join(outputBase, targetOS, targetArch)
@@ -84,6 +83,7 @@ func compileDir(sourceDir, outputBase, platform string) {
 
 	var wg sync.WaitGroup
 	errors := make(chan error, 1)
+	sem := make(chan struct{}, 4)
 
 	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -95,7 +95,9 @@ func compileDir(sourceDir, outputBase, platform string) {
 
 		wg.Add(1)
 		go func() {
+			sem <- struct{}{}
 			defer wg.Done()
+			defer func() { <-sem }()
 
 			dir := filepath.Dir(path)
 			dirName := filepath.Base(dir)
@@ -108,9 +110,11 @@ func compileDir(sourceDir, outputBase, platform string) {
 			err := sh.RunWith(map[string]string{"GOOS": targetOS, "GOARCH": targetArch}, "go", "build", "-o", filepath.Join(outputDir, outputFileName), filepath.Join(dir, "main.go"))
 			if err != nil {
 				errors <- fmt.Errorf("failed to compile %s for %s: %v", dirName, platform, err)
+				PrintRed("Compilation aborted. " + fmt.Sprintf("failed to compile %s for %s: %v", dirName, platform, err))
+				os.Exit(1)
 				return
 			}
-			PrintGreen(fmt.Sprintf("Compiling dir: %s for platform: %s binary: %s ...", dirName, platform, outputFileName))
+			PrintGreen(fmt.Sprintf("Successfully compiled. dir: %s for platform: %s binary: %s", dirName, platform, outputFileName))
 		}()
 
 		return nil
@@ -127,7 +131,68 @@ func compileDir(sourceDir, outputBase, platform string) {
 	// Check for errors
 	if err, ok := <-errors; ok {
 		fmt.Println(err)
-		fmt.Println("Compilation aborted.")
 		os.Exit(1)
 	}
 }
+
+// compileDir compiles Go programs in a specified directory, appending .exe extension for output files on Windows platform
+//func compileDir(sourceDir, outputBase, platform string) {
+//	targetOS, targetArch := strings.Split(platform, "_")[0], strings.Split(platform, "_")[1]
+//	outputDir := filepath.Join(outputBase, targetOS, targetArch)
+//
+//	if err := os.MkdirAll(outputDir, 0755); err != nil {
+//		fmt.Printf("Failed to create directory %s: %v\n", outputDir, err)
+//		os.Exit(1)
+//	}
+//
+//	var wg sync.WaitGroup
+//	errors := make(chan error, 1)
+//
+//	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+//		if err != nil {
+//			return err
+//		}
+//		if info.IsDir() || filepath.Base(path) != "main.go" {
+//			return nil
+//		}
+//
+//		wg.Add(1)
+//		go func() {
+//			defer wg.Done()
+//
+//			dir := filepath.Dir(path)
+//			dirName := filepath.Base(dir)
+//			outputFileName := dirName
+//			if targetOS == "windows" {
+//				outputFileName += ".exe"
+//			}
+//
+//			PrintBlue(fmt.Sprintf("Compiling dir: %s for platform: %s binary: %s ...", dirName, platform, outputFileName))
+//			err := sh.RunWith(map[string]string{"GOOS": targetOS, "GOARCH": targetArch}, "go", "build", "-o", filepath.Join(outputDir, outputFileName), filepath.Join(dir, "main.go"))
+//			if err != nil {
+//				errors <- fmt.Errorf("failed to compile %s for %s: %v", dirName, platform, err)
+//				PrintRed("Compilation aborted. " + fmt.Sprintf("failed to compile %s for %s: %v", dirName, platform, err))
+//				os.Exit(1)
+//				return
+//			}
+//			PrintGreen(fmt.Sprintf("Compiling dir: %s for platform: %s binary: %s ...", dirName, platform, outputFileName))
+//		}()
+//
+//		return nil
+//	})
+//
+//	if err != nil {
+//		fmt.Println("Error walking through directories:", err)
+//		os.Exit(1)
+//	}
+//
+//	wg.Wait()
+//	close(errors)
+//
+//	// Check for errors
+//	if err, ok := <-errors; ok {
+//		fmt.Println(err)
+//		fmt.Println("Compilation aborted.")
+//		os.Exit(1)
+//	}
+//}
