@@ -1,8 +1,8 @@
 serviceBinaries:
-  openim-no-port: 1
-  openim-test: 1
+  #openim-no-port: 1
+  #openim-test: 1
 
 toolBinaries:
-  - check-free-memory
+  #- check-component
 
 maxFileDescriptors: 10000
