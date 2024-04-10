@@ -8,13 +8,13 @@ import (
 )
 
 var (
-	binaries           map[string]int
+	serviceBinaries    map[string]int
 	toolBinaries       []string
 	MaxFileDescriptors int
 )
 
 type Config struct {
-	Binaries           map[string]int `yaml:"binaries"`
+	ServiceBinaries    map[string]int `yaml:"serviceBinaries"`
 	ToolBinaries       []string       `yaml:"toolBinaries"`
 	MaxFileDescriptors int            `yaml:"maxFileDescriptors"`
 }
@@ -33,14 +33,14 @@ func init() {
 	}
 
 	adjustedBinaries := make(map[string]int)
-	for binary, count := range config.Binaries {
+	for binary, count := range config.ServiceBinaries {
 		if runtime.GOOS == "windows" {
 			binary += ".exe"
 		}
 		adjustedBinaries[binary] = count
 	}
 
-	binaries = adjustedBinaries
+	serviceBinaries = adjustedBinaries
 	toolBinaries = config.ToolBinaries
 	MaxFileDescriptors = config.MaxFileDescriptors
 }

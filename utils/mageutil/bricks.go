@@ -11,7 +11,7 @@ import (
 
 // StopBinaries iterates over all binary files and terminates their corresponding processes.
 func StopBinaries() {
-	for binary := range binaries {
+	for binary := range serviceBinaries {
 		fullPath := GetBinFullPath(binary)
 		KillExistBinary(fullPath)
 	}
@@ -19,7 +19,7 @@ func StopBinaries() {
 
 // StartBinaries Start all binary services.
 func StartBinaries() error {
-	for binary, count := range binaries {
+	for binary, count := range serviceBinaries {
 		binFullPath := filepath.Join(OpenIMOutputHostBin, binary)
 		for i := 0; i < count; i++ {
 			args := []string{"-i", strconv.Itoa(i), "-c", OpenIMOutputConfig}
@@ -64,7 +64,7 @@ func StartTools() error {
 
 // KillExistBinaries iterates over all binary files and kills their corresponding processes.
 func KillExistBinaries() {
-	for binary := range binaries {
+	for binary := range serviceBinaries {
 		fullPath := GetBinFullPath(binary)
 		KillExistBinary(fullPath)
 	}
@@ -74,7 +74,7 @@ func KillExistBinaries() {
 func CheckBinariesStop() error {
 	var runningBinaries []string
 
-	for binary := range binaries {
+	for binary := range serviceBinaries {
 		fullPath := GetBinFullPath(binary)
 		if CheckProcessNamesExist(fullPath) {
 			runningBinaries = append(runningBinaries, binary)
@@ -92,7 +92,7 @@ func CheckBinariesStop() error {
 func CheckBinariesRunning() error {
 	var errorMessages []string
 
-	for binary, expectedCount := range binaries {
+	for binary, expectedCount := range serviceBinaries {
 		fullPath := GetBinFullPath(binary)
 		err := CheckProcessNames(fullPath, expectedCount)
 		if err != nil {
@@ -109,7 +109,7 @@ func CheckBinariesRunning() error {
 
 // PrintListenedPortsByBinaries iterates over all binary files and prints the ports they are listening on.
 func PrintListenedPortsByBinaries() {
-	for binary, _ := range binaries {
+	for binary, _ := range serviceBinaries {
 		basePath := GetBinFullPath(binary)
 		fullPath := basePath
 		PrintBinaryPorts(fullPath)
