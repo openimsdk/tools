@@ -13,10 +13,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
+	github.com/magefile/mage v1.15.0
 	github.com/minio/minio-go/v7 v7.0.69
 	github.com/openimsdk/protocol v0.0.60
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.2.1
+	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/stretchr/testify v1.8.4
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.47
 	go.mongodb.org/mongo-driver v1.12.0
@@ -49,7 +51,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -62,6 +64,7 @@ require (
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
@@ -92,6 +95,8 @@ require (
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.13 // indirect
+	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
@@ -99,6 +104,7 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect

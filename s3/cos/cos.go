@@ -50,6 +50,8 @@ const (
 
 const successCode = http.StatusOK
 
+var _ s3.Interface = (*Cos)(nil)
+
 type Config struct {
 	BucketURL    string
 	SecretID     string
@@ -58,7 +60,7 @@ type Config struct {
 	PublicRead   bool
 }
 
-func NewCos(conf Config) (s3.Interface, error) {
+func NewCos(conf Config) (*Cos, error) {
 	u, err := url.Parse(conf.BucketURL)
 	if err != nil {
 		panic(err)

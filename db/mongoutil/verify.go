@@ -23,7 +23,7 @@ import (
 )
 
 // CheckMongo tests the MongoDB connection without retries.
-func CheckMongo(ctx context.Context, config *Config) error {
+func Check(ctx context.Context, config *Config) error {
 	if err := config.ValidateAndSetDefaults(); err != nil {
 		return err
 	}

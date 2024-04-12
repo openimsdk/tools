@@ -27,16 +27,18 @@ type Conn interface {
 	AddOption(opts ...grpc.DialOption)
 	CloseConn(conn *grpc.ClientConn)
 	// do not use this method for call rpc
-	GetClientLocalConns() map[string][]*grpc.ClientConn
-	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error)
+
+	GetClientLocalConns() map[string][]*grpc.ClientConn //del
+
+	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) //del
 }
 
 type SvcDiscoveryRegistry interface {
 	Conn
 	Register(serviceName, host string, port int, opts ...grpc.DialOption) error
-	UnRegister() error
-	CreateRpcRootNodes(serviceNames []string) error
-	RegisterConf2Registry(key string, conf []byte) error
-	GetConfFromRegistry(key string) ([]byte, error)
+	UnRegister() error                                   //del
+	CreateRpcRootNodes(serviceNames []string) error      //del
+	RegisterConf2Registry(key string, conf []byte) error //del
+	GetConfFromRegistry(key string) ([]byte, error)      //del
 	Close()
 }

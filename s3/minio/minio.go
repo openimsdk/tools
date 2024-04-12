@@ -56,6 +56,8 @@ const (
 
 const successCode = http.StatusOK
 
+var _ s3.Interface = (*Minio)(nil)
+
 type Config struct {
 	Bucket          string
 	Endpoint        string
@@ -66,7 +68,7 @@ type Config struct {
 	PublicRead      bool
 }
 
-func NewMinio(cache Cache, conf Config) (s3.Interface, error) {
+func NewMinio(ctx context.Context, cache Cache, conf Config) (*Minio, error) {
 	u, err := url.Parse(conf.Endpoint)
 	if err != nil {
 		return nil, err
@@ -112,10 +114,8 @@ func NewMinio(cache Cache, conf Config) (s3.Interface, error) {
 		conf.SignEndpoint = su.String()
 		m.signEndpoint = conf.SignEndpoint
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	if err := m.initMinio(ctx); err != nil {
-		fmt.Println("init minio error:", err)
+		return nil, err
 	}
 	return m, nil
 }

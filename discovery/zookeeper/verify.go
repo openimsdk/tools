@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func CheckZookeeper(ctx context.Context, ZkServers []string, scheme string, options ...ZkOption) error {
+func Check(ctx context.Context, ZkServers []string, scheme string, options ...ZkOption) error {
 	client := &ZkClient{
 		ZkServers:  ZkServers,
 		zkRoot:     "/",

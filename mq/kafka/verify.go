@@ -16,19 +16,19 @@ package kafka
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/openimsdk/tools/errs"
 )
 
-func CheckKafka(ctx context.Context, conf *Config, topics []string) error {
+func Check(ctx context.Context, conf *Config, topics []string) error {
 	kfk, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest)
 	if err != nil {
 		return err
 	}
 	cli, err := sarama.NewClient(conf.Addr, kfk)
 	if err != nil {
-		return errs.WrapMsg(err, "NewClient failed", "addr", conf.Addr, "config", *kfk)
+		return errs.WrapMsg(err, "NewClient failed", "config: ", fmt.Sprintf("%+v", conf))
 	}
 	defer cli.Close()
 
