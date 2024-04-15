@@ -46,7 +46,7 @@ func (r *ApiResponse) MarshalJSON() ([]byte, error) {
 			tmp.Data = json.RawMessage(data)
 		}
 	}
-	return jsonutil.JsonMarshal(tmp)
+	return json.Marshal(r)
 }
 
 func isAllFieldsPrivate(v any) bool {
