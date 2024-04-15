@@ -30,12 +30,7 @@ type ApiResponse struct {
 }
 
 func (r *ApiResponse) MarshalJSON() ([]byte, error) {
-	type apiResponse struct {
-		ErrCode int    `json:"errCode"`
-		ErrMsg  string `json:"errMsg"`
-		ErrDlt  string `json:"errDlt"`
-		Data    any    `json:"data,omitempty"`
-	}
+	type apiResponse ApiResponse
 	tmp := (*apiResponse)(r)
 	if tmp.Data != nil {
 		if format, ok := tmp.Data.(ApiFormat); ok {
