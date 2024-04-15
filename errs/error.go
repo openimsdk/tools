@@ -17,8 +17,6 @@ package errs
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/pkg/errors"
 )
 
 type Error interface {
@@ -39,7 +37,11 @@ type errorString struct {
 }
 
 func (e *errorString) Is(err error) bool {
-	return errors.Is(e, err)
+	if err == nil {
+		return false
+	}
+	t, ok := err.(*errorString)
+	return ok && e.s == t.s
 }
 
 func (e *errorString) Error() string {

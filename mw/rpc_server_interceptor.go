@@ -17,11 +17,11 @@ package mw
 import (
 	"context"
 	"fmt"
+	"github.com/openimsdk/tools/checker"
 	"math"
 
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
-	"github.com/openimsdk/tools/checker"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"
@@ -40,80 +40,80 @@ func rpcString(v any) string {
 
 func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	funcName := info.FullMethod
-	logRequest(ctx, funcName, req)
-	if err := validateMetadata(ctx); err != nil {
-		return nil, err
-	}
-	ctx, err := enrichContextWithMetadata(ctx)
+	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
+	md, err := validateMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := processRequest(ctx, req, handler, funcName)
+	ctx, err = enrichContextWithMetadata(ctx, md)
 	if err != nil {
-		logErrorResponse(ctx, funcName, req, err)
-		return nil, prepareErrorDetail(err)
+		return nil, err
+	}
+
+	if err := checker.Validate(req); err != nil {
+		return nil, err
+	}
+
+	resp, err := handler(ctx, req)
+	if err != nil {
+		return nil, handleError(ctx, funcName, req, err)
 	}
 	log.ZInfo(ctx, "rpc server resp", "funcName", funcName, "resp", rpcString(resp))
 	return resp, nil
 }
 
-func validateMetadata(ctx context.Context) error {
+func validateMetadata(ctx context.Context) (metadata.MD, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return status.New(codes.InvalidArgument, "missing metadata").Err()
+		return nil, status.New(codes.InvalidArgument, "missing metadata").Err()
 	}
 	if len(md.Get(constant.OperationID)) != 1 {
-		return status.New(codes.InvalidArgument, "operationID error").Err()
+		return nil, status.New(codes.InvalidArgument, "operationID error").Err()
 	}
-	return nil
+	return md, nil
 }
 
-func enrichContextWithMetadata(ctx context.Context) (context.Context, error) {
-	md, _ := metadata.FromIncomingContext(ctx) // Already validated
+func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Context, error) {
 	for _, key := range md.Get(constant.RpcCustomHeader) {
 		values := md.Get(key)
 		if len(values) == 0 {
-			return nil, status.Errorf(codes.InvalidArgument, "missing metadata key %s", key)
+			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("missing metadata key %s", key)).Err()
 		}
 		ctx = context.WithValue(ctx, key, values[0]) // Storing only the first value for simplicity
+	}
+	ctx = context.WithValue(ctx, constant.OperationID, md.Get(constant.OperationID)[0])
+	if opts := md.Get(constant.OpUserID); len(opts) == 1 {
+		ctx = context.WithValue(ctx, constant.OpUserID, opts[0])
+	}
+	if opts := md.Get(constant.OpUserPlatform); len(opts) == 1 {
+		ctx = context.WithValue(ctx, constant.OpUserPlatform, opts[0])
+	}
+	if opts := md.Get(constant.ConnID); len(opts) == 1 {
+		ctx = context.WithValue(ctx, constant.ConnID, opts[0])
 	}
 	return ctx, nil
 }
 
-func processRequest(ctx context.Context, req any, handler grpc.UnaryHandler, funcName string) (resp any, err error) {
-	if err := checker.Validate(req); err != nil {
-		return nil, err
-	}
-	return handler(ctx, req)
-}
-
-func logRequest(ctx context.Context, funcName string, req any) {
-	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
-}
-
-func logErrorResponse(ctx context.Context, funcName string, req any, err error) {
+func handleError(ctx context.Context, funcName string, req any, err error) error {
 	unwrap := errs.Unwrap(err)
 	codeErr := specialerror.ErrCode(unwrap)
 	if codeErr == nil {
-		log.ZError(ctx, "rpc InternalServer error", err, "req", req)
+		log.ZError(ctx, "rpc InternalServer error", err, "funcName", funcName, "req", req)
 		codeErr = errs.ErrInternalServer
 	}
 	code := codeErr.Code()
 	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		log.ZError(ctx, "rpc UnknownError", err, "rpc UnknownCode:", int64(code))
-		// code = errs.ServerInternalError
+		log.ZError(ctx, "rpc UnknownError", err, "funcName", funcName, "rpc UnknownCode:", int64(code))
+		code = errs.ServerInternalError
 	}
-	log.ZError(ctx, "rpc server resp", err, "funcName", funcName)
-}
-
-func prepareErrorDetail(err error) error {
-	grpcStatus := status.New(codes.Internal, err.Error())
+	grpcStatus := status.New(codes.Code(code), err.Error())
 	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
-		log.ZWarn(context.Background(), "rpc server resp WithDetails error", err)
+		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
 		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
+	log.ZWarn(ctx, "rpc server resp error", details.Err(), "funcName", funcName, "req", req, "err", err)
 	return details.Err()
 }
 
