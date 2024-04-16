@@ -16,13 +16,13 @@ package a2r
 
 import (
 	"context"
+	"github.com/openimsdk/tools/checker"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/openimsdk/tools/apiresp"
-	"github.com/openimsdk/tools/checker"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/utils/jsonutil"
 	"google.golang.org/grpc"
@@ -48,10 +48,6 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 			return
 		}
 	}
-	if err := checker.Validate(&req); err != nil {
-		apiresp.GinError(c, err) // args validate error
-		return
-	}
 	resp, err := rpc(client, c, req)
 	if err != nil {
 		apiresp.GinError(c, err) // rpc call failed
@@ -72,6 +68,9 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 func ParseRequest[T any](c *gin.Context) (*T, error) {
 	var req T
 	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
+		return nil, err
+	}
+	if err := checker.Validate(&req); err != nil {
 		return nil, err
 	}
 	return &req, nil
