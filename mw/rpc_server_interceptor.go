@@ -40,7 +40,6 @@ func rpcString(v any) string {
 
 func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	funcName := info.FullMethod
-	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
 	md, err := validateMetadata(ctx)
 	if err != nil {
 		return nil, err
@@ -49,7 +48,7 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if err != nil {
 		return nil, err
 	}
-
+	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
 	if err := checker.Validate(req); err != nil {
 		return nil, err
 	}
