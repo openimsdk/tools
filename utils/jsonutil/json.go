@@ -45,7 +45,7 @@ func JsonMarshal(v any) ([]byte, error) {
 		return m, errs.Wrap(err)
 	default:
 		m, err := json.Marshal(o)
-		return m, err
+		return m, errs.Wrap(err)
 	}
 }
 

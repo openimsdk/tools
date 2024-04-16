@@ -118,3 +118,6 @@ require (
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+// protobuf/encoding/protojson/encode.go Int64Kind e.WriteString(val.String()) -> e.WriteInt(val.Int())
+replace google.golang.org/protobuf => ./internal/protobuf
