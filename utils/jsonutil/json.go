@@ -17,47 +17,15 @@ package jsonutil
 import (
 	"encoding/json"
 	"github.com/openimsdk/tools/errs"
-
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
-)
-
-var (
-	protoMarshalOptions = protojson.MarshalOptions{
-		AllowPartial:    true,
-		UseProtoNames:   true,
-		UseEnumNumbers:  true,
-		EmitUnpopulated: true,
-	}
-	protoUnmarshalOptions = protojson.UnmarshalOptions{
-		AllowPartial:   true,
-		DiscardUnknown: true,
-	}
 )
 
 func JsonMarshal(v any) ([]byte, error) {
-	switch o := v.(type) {
-	case json.Marshaler:
-		m, err := o.MarshalJSON()
-		return m, errs.Wrap(err)
-	case proto.Message:
-		m, err := protoMarshalOptions.Marshal(o)
-		return m, errs.Wrap(err)
-	default:
-		m, err := json.Marshal(o)
-		return m, errs.Wrap(err)
-	}
+	m, err := json.Marshal(v)
+	return m, errs.Wrap(err)
 }
 
 func JsonUnmarshal(b []byte, v any) error {
-	switch o := v.(type) {
-	case json.Unmarshaler:
-		return errs.Wrap(o.UnmarshalJSON(b))
-	case proto.Message:
-		return errs.Wrap(protoUnmarshalOptions.Unmarshal(b, o))
-	default:
-		return errs.Wrap(json.Unmarshal(b, v))
-	}
+	return errs.Wrap(json.Unmarshal(b, v))
 }
 
 func StructToJsonString(param any) string {

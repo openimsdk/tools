@@ -1,9 +1,9 @@
 package apiresp
 
 import (
-	"github.com/openimsdk/protocol/auth"
+	"github.com/openimsdk/protocol/friend"
+	"github.com/openimsdk/protocol/wrapperspb"
 	"github.com/openimsdk/tools/utils/jsonutil"
-	"math"
 	"testing"
 )
 
@@ -12,9 +12,10 @@ func TestName(t *testing.T) {
 		ErrCode: 1234,
 		ErrMsg:  "test",
 		ErrDlt:  "4567",
-		Data: &auth.UserTokenResp{
-			Token:             "1234567",
-			ExpireTimeSeconds: math.MaxInt64,
+		Data: &friend.UpdateFriendsReq{
+			OwnerUserID:   "123456",
+			FriendUserIDs: []string{"1", "2", "3"},
+			Remark:        wrapperspb.String("1234567"),
 		},
 	}
 	data, err := resp.MarshalJSON()
@@ -24,7 +25,7 @@ func TestName(t *testing.T) {
 	t.Log(string(data))
 
 	var rReso ApiResponse
-	rReso.Data = &auth.UserTokenResp{}
+	rReso.Data = &friend.UpdateFriendsReq{}
 
 	if err := jsonutil.JsonUnmarshal(data, &rReso); err != nil {
 		panic(err)

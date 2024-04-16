@@ -15,7 +15,7 @@ require (
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/magefile/mage v1.15.0
 	github.com/minio/minio-go/v7 v7.0.69
-	github.com/openimsdk/protocol v0.0.60
+	github.com/openimsdk/protocol v0.0.63
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.2.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
@@ -118,6 +118,3 @@ require (
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
-
-// protobuf/encoding/protojson/encode.go Int64Kind e.WriteString(val.String()) -> e.WriteInt(val.Int())
-replace google.golang.org/protobuf => ./pkg/protobuf
