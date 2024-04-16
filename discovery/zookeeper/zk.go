@@ -79,7 +79,7 @@ func NewZkClient(ZkServers []string, scheme string, options ...ZkOption) (*ZkCli
 	}
 
 	// Establish a Zookeeper connection with a specified timeout and handle authentication.
-	conn, eventChan, err := zk.Connect(ZkServers, time.Duration(client.timeout)*time.Second)
+	conn, eventChan, err := zk.Connect(ZkServers, time.Duration(client.timeout)*time.Second, zk.WithLogger(nilLog{}))
 	if err != nil {
 		return nil, errs.WrapMsg(err, "connect failed", "ZkServers", ZkServers)
 	}

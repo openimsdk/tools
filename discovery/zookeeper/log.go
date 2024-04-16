@@ -29,7 +29,7 @@ func (nilLog) Info(ctx context.Context, msg string, keysAndValues ...any) {}
 func (nilLog) Warn(ctx context.Context, msg string, err error, keysAndValues ...any) {}
 
 func (nilLog) Error(ctx context.Context, msg string, err error, keysAndValues ...any) {}
-
+func (nilLog) Printf(string, ...interface{})                                          {}
 func (nilLog) WithValues(keysAndValues ...any) log.Logger {
 	return nilLog{}
 }

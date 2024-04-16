@@ -79,7 +79,7 @@ func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Con
 		if len(values) == 0 {
 			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("missing metadata key %s", key)).Err()
 		}
-		ctx = context.WithValue(ctx, key, values[0]) // Storing only the first value for simplicity
+		ctx = context.WithValue(ctx, key, values)
 	}
 	ctx = context.WithValue(ctx, constant.OperationID, md.Get(constant.OperationID)[0])
 	if opts := md.Get(constant.OpUserID); len(opts) == 1 {

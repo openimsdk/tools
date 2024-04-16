@@ -15,7 +15,7 @@ require (
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/magefile/mage v1.15.0
 	github.com/minio/minio-go/v7 v7.0.69
-	github.com/openimsdk/protocol v0.0.60
+	github.com/openimsdk/protocol v0.0.63
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.2.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
