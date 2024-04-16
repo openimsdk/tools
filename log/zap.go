@@ -259,7 +259,7 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 }
 
 func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-	fixedLength := 30
+	fixedLength := 50
 	trimmedPath := caller.TrimmedPath()
 	trimmedPath = "[" + trimmedPath + "]"
 	s := stringutil.FormatString(trimmedPath, fixedLength, true)
@@ -307,11 +307,11 @@ func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.Pr
 	enc.AppendString(s)
 	enc.AppendString(color.Add(pid))
 	if l.moduleName != "" {
-		moduleName := stringutil.FormatString(l.moduleName, 20, true)
+		moduleName := stringutil.FormatString(l.moduleName, 25, true)
 		enc.AppendString(color.Add(moduleName))
 	}
 	if l.moduleVersion != "" {
-		moduleVersion := stringutil.FormatString(fmt.Sprintf("["+"version:"+"%s"+"]", l.moduleVersion), 15, true)
+		moduleVersion := stringutil.FormatString(fmt.Sprintf("["+"version:"+"%s"+"]", l.moduleVersion), 17, true)
 		enc.AppendString(moduleVersion)
 	}
 }
