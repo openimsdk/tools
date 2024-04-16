@@ -34,16 +34,16 @@ type Option[A, B any] struct {
 }
 
 func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context, opts ...*Option[A, B]) {
-	var req A
-	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
-		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap()) // args error
+	req, err := ParseRequest[A](c)
+	if err != nil {
+		apiresp.GinError(c, err)
 		return
 	}
 	for _, opt := range opts {
 		if opt.BindAfter == nil {
 			continue
 		}
-		if err := opt.BindAfter(&req); err != nil {
+		if err := opt.BindAfter(req); err != nil {
 			apiresp.GinError(c, err) // args option error
 			return
 		}
@@ -52,7 +52,7 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 		apiresp.GinError(c, err) // args validate error
 		return
 	}
-	resp, err := rpc(client, c, &req)
+	resp, err := rpc(client, c, req)
 	if err != nil {
 		apiresp.GinError(c, err) // rpc call failed
 		return
@@ -67,6 +67,14 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 		}
 	}
 	apiresp.GinSuccess(c, resp) // rpc call success
+}
+
+func ParseRequest[T any](c *gin.Context) (*T, error) {
+	var req T
+	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
+		return nil, err
+	}
+	return &req, nil
 }
 
 type jsonBinding struct{}
