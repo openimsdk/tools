@@ -16,6 +16,7 @@ package stringutil
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	"hash/crc32"
 	"runtime"
@@ -233,4 +234,26 @@ func Difference(slice1, slice2 []int64) []int64 {
 
 func GetHashCode(s string) uint32 {
 	return crc32.ChecksumIEEE([]byte(s))
+}
+
+// FormatString formats a string with a specified length and alignment.
+// `text` is the input string to format.
+// `length` is the desired length of the output string.
+// `alignLeft` specifies whether the string should be left-aligned (true) or right-aligned (false).
+func FormatString(text string, length int, alignLeft bool) string {
+	if len(text) > length {
+		// Truncate the string if it's longer than the desired length
+		return text[:length]
+	}
+
+	// Create a format string based on alignment preference
+	var formatStr string
+	if alignLeft {
+		formatStr = fmt.Sprintf("%%-%ds", length) // Left align
+	} else {
+		formatStr = fmt.Sprintf("%%%ds", length) // Right align
+	}
+
+	// Use the format string to format the text
+	return fmt.Sprintf(formatStr, text)
 }
