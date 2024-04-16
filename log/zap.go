@@ -302,16 +302,17 @@ func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.Pr
 	if !ok {
 		s = _unknownLevelColor[zapcore.ErrorLevel]
 	}
-	pid := stringutil.FormatString(fmt.Sprintf("["+"PID:"+"%d"+"]", os.Getpid()), 20, true)
+	pid := stringutil.FormatString(fmt.Sprintf("["+"PID:"+"%d"+"]", os.Getpid()), 15, true)
 	color := _levelToColor[level]
 	enc.AppendString(s)
 	enc.AppendString(color.Add(pid))
 	if l.moduleName != "" {
-		moduleName := stringutil.FormatString(l.moduleName, 25, true)
+		moduleName := stringutil.FormatString(l.moduleName, 20, true)
 		enc.AppendString(color.Add(moduleName))
 	}
 	if l.moduleVersion != "" {
-		enc.AppendString(fmt.Sprintf("["+"version:"+"%s"+"]", l.moduleVersion))
+		moduleVersion := stringutil.FormatString(fmt.Sprintf("["+"version:"+"%s"+"]", l.moduleVersion), 15, true)
+		enc.AppendString(moduleVersion)
 	}
 }
 
