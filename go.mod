@@ -120,4 +120,4 @@ require (
 )
 
 // protobuf/encoding/protojson/encode.go Int64Kind e.WriteString(val.String()) -> e.WriteInt(val.Int())
-replace google.golang.org/protobuf => ./internal/protobuf
+replace google.golang.org/protobuf => ./pkg/protobuf
