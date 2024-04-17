@@ -34,7 +34,7 @@ type Option[A, B any] struct {
 }
 
 func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context, opts ...*Option[A, B]) {
-	req, err := ParseRequest[A](c)
+	req, err := ParseRequestNotCheck[A](c)
 	if err != nil {
 		apiresp.GinError(c, err)
 		return
@@ -47,6 +47,10 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 			apiresp.GinError(c, err) // args option error
 			return
 		}
+	}
+	if err := checker.Validate(req); err != nil {
+		apiresp.GinError(c, err) // args option error
+		return
 	}
 	resp, err := rpc(client, c, req)
 	if err != nil {
@@ -65,15 +69,23 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 	apiresp.GinSuccess(c, resp) // rpc call success
 }
 
-func ParseRequest[T any](c *gin.Context) (*T, error) {
+func ParseRequestNotCheck[T any](c *gin.Context) (*T, error) {
 	var req T
 	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
+		return nil, err
+	}
+	return &req, nil
+}
+
+func ParseRequest[T any](c *gin.Context) (*T, error) {
+	req, err := ParseRequestNotCheck[T](c)
+	if err != nil {
 		return nil, err
 	}
 	if err := checker.Validate(&req); err != nil {
 		return nil, err
 	}
-	return &req, nil
+	return req, nil
 }
 
 type jsonBinding struct{}
