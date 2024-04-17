@@ -16,6 +16,7 @@ package mw
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/openimsdk/protocol/constant"
@@ -40,13 +41,13 @@ func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc 
 	if err != nil {
 		return err
 	}
-	log.ZDebug(ctx, "get rpc ctx success", "funcName", method, "req", req, "conn target", cc.Target())
+	log.ZDebug(ctx, fmt.Sprintf("RPC Client Request - %s", extractFunctionName(method)), "funcName", method, "req", req, "conn target", cc.Target())
 	err = invoker(ctx, method, req, resp, cc, opts...)
 	if err == nil {
-		log.ZInfo(ctx, "rpc client resp", "funcName", method, "resp", rpcString(resp))
+		log.ZInfo(ctx, fmt.Sprintf("RPC Client Response Success - %s", extractFunctionName(method)), "funcName", method, "resp", rpcString(resp))
 		return nil
 	}
-	log.ZError(ctx, "rpc resp error", err, "funcName", method)
+	log.ZError(ctx, fmt.Sprintf("RPC Client Response Error - %s", extractFunctionName(method)), err, "funcName", method)
 	rpcErr, ok := err.(interface{ GRPCStatus() *status.Status })
 	if !ok {
 		return errs.ErrInternalServer.WrapMsg(err.Error())
@@ -102,4 +103,12 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 		md.Set(constant.ConnID, connID)
 	}
 	return metadata.NewOutgoingContext(ctx, md), nil
+}
+
+func extractFunctionName(funcName string) string {
+	parts := strings.Split(funcName, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return ""
 }

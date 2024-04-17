@@ -48,7 +48,7 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if err != nil {
 		return nil, err
 	}
-	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
+	log.ZInfo(ctx, fmt.Sprintf("RPC Server Request - %s", extractFunctionName(funcName)), "funcName", funcName, "req", rpcString(req))
 	if err := checker.Validate(req); err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if err != nil {
 		return nil, handleError(ctx, funcName, req, err)
 	}
-	log.ZInfo(ctx, "rpc server resp", "funcName", funcName, "resp", rpcString(resp))
+	log.ZInfo(ctx, fmt.Sprintf("RPC Server Response Success - %s", extractFunctionName(funcName)), "funcName", funcName, "resp", rpcString(resp))
 	return resp, nil
 }
 
@@ -112,7 +112,7 @@ func handleError(ctx context.Context, funcName string, req any, err error) error
 		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
 		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
-	log.ZWarn(ctx, "rpc server resp error", details.Err(), "funcName", funcName, "req", req, "err", err)
+	log.ZWarn(ctx, fmt.Sprintf("RPC Server Response Error - %s", extractFunctionName(funcName)), details.Err(), "funcName", funcName, "req", req, "err", err)
 	return details.Err()
 }
 
