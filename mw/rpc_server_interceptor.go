@@ -97,6 +97,7 @@ func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Con
 }
 
 func handleError(ctx context.Context, funcName string, req any, err error) error {
+	log.ZWarn(ctx, "rpc server resp WithDetails error", formatError(err), "funcName", funcName)
 	unwrap := errs.Unwrap(err)
 	codeErr := specialerror.ErrCode(unwrap)
 	if codeErr == nil {
