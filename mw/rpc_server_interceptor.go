@@ -18,7 +18,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/openimsdk/tools/checker"
+	"github.com/pkg/errors"
 	"math"
+	"runtime"
+	"strings"
 
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
@@ -97,25 +100,69 @@ func handleError(ctx context.Context, funcName string, req any, err error) error
 	unwrap := errs.Unwrap(err)
 	codeErr := specialerror.ErrCode(unwrap)
 	if codeErr == nil {
-		log.ZError(ctx, "rpc InternalServer error", err, "funcName", funcName, "req", req)
+		log.ZError(ctx, "rpc InternalServer error", formatError(err), "funcName", funcName, "req", req)
 		codeErr = errs.ErrInternalServer
 	}
 	code := codeErr.Code()
 	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		log.ZError(ctx, "rpc UnknownError", err, "funcName", funcName, "rpc UnknownCode:", int64(code))
+		log.ZError(ctx, "rpc UnknownError", formatError(err), "funcName", funcName, "rpc UnknownCode:", int64(code))
 		code = errs.ServerInternalError
 	}
 	grpcStatus := status.New(codes.Code(code), err.Error())
 	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
-		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
+		log.ZWarn(ctx, "rpc server resp WithDetails error", formatError(err), "funcName", funcName)
 		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
-	log.ZWarn(ctx, fmt.Sprintf("RPC Server Response Error - %s", extractFunctionName(funcName)), details.Err(), "funcName", funcName, "req", req, "err", err)
+	log.ZWarn(ctx, fmt.Sprintf("RPC Server Response Error - %s", extractFunctionName(funcName)), formatError(details.Err()), "funcName", funcName, "req", req, "err", err)
 	return details.Err()
 }
 
 func GrpcServer() grpc.ServerOption {
 	return grpc.ChainUnaryInterceptor(RpcServerInterceptor)
+}
+func formatError(err error) error {
+	type stackTracer interface {
+		StackTrace() errors.StackTrace
+	}
+	if e, ok := err.(stackTracer); ok {
+		st := e.StackTrace()
+		var sb strings.Builder
+		sb.WriteString("Error: ")
+		sb.WriteString(err.Error())
+		sb.WriteString(" | Error trace: ")
+
+		var callPath []string
+		for _, f := range st {
+			pc := uintptr(f) - 1
+			fn := runtime.FuncForPC(pc)
+			if fn == nil {
+				continue
+			}
+			if strings.Contains(fn.Name(), "runtime.") {
+				continue
+			}
+			file, line := fn.FileLine(pc)
+			funcName := simplifyFuncName(fn.Name())
+			callPath = append(callPath, fmt.Sprintf("%s (%s:%d)", funcName, file, line))
+		}
+		for i := len(callPath) - 1; i >= 0; i-- {
+			if i != len(callPath)-1 {
+				sb.WriteString(" -> ")
+			}
+			sb.WriteString(callPath[i])
+		}
+		return errors.New(sb.String())
+	}
+	return err
+}
+func simplifyFuncName(fullFuncName string) string {
+	parts := strings.Split(fullFuncName, "/")
+	lastPart := parts[len(parts)-1]
+	parts = strings.Split(lastPart, ".")
+	if len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+	return lastPart
 }
