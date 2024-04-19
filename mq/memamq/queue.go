@@ -1,4 +1,4 @@
-package memAsyncQueue
+package memamq
 
 import (
 	"errors"
