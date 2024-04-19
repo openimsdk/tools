@@ -16,13 +16,13 @@ package a2r
 
 import (
 	"context"
+	"github.com/openimsdk/tools/checker"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/openimsdk/tools/apiresp"
-	"github.com/openimsdk/tools/checker"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/utils/jsonutil"
 	"google.golang.org/grpc"
@@ -34,25 +34,25 @@ type Option[A, B any] struct {
 }
 
 func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context, opts ...*Option[A, B]) {
-	var req A
-	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
-		apiresp.GinError(c, errs.ErrArgs.WithDetail(err.Error()).Wrap()) // args error
+	req, err := ParseRequestNotCheck[A](c)
+	if err != nil {
+		apiresp.GinError(c, err)
 		return
 	}
 	for _, opt := range opts {
 		if opt.BindAfter == nil {
 			continue
 		}
-		if err := opt.BindAfter(&req); err != nil {
+		if err := opt.BindAfter(req); err != nil {
 			apiresp.GinError(c, err) // args option error
 			return
 		}
 	}
-	if err := checker.Validate(&req); err != nil {
-		apiresp.GinError(c, err) // args validate error
+	if err := checker.Validate(req); err != nil {
+		apiresp.GinError(c, err) // args option error
 		return
 	}
-	resp, err := rpc(client, c, &req)
+	resp, err := rpc(client, c, req)
 	if err != nil {
 		apiresp.GinError(c, err) // rpc call failed
 		return
@@ -67,6 +67,25 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 		}
 	}
 	apiresp.GinSuccess(c, resp) // rpc call success
+}
+
+func ParseRequestNotCheck[T any](c *gin.Context) (*T, error) {
+	var req T
+	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
+		return nil, err
+	}
+	return &req, nil
+}
+
+func ParseRequest[T any](c *gin.Context) (*T, error) {
+	req, err := ParseRequestNotCheck[T](c)
+	if err != nil {
+		return nil, err
+	}
+	if err := checker.Validate(&req); err != nil {
+		return nil, err
+	}
+	return req, nil
 }
 
 type jsonBinding struct{}

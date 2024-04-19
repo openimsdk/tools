@@ -17,6 +17,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"github.com/openimsdk/tools/utils/stringutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -258,14 +259,10 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 }
 
 func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-	fixedLength := 60
+	fixedLength := 50
 	trimmedPath := caller.TrimmedPath()
 	trimmedPath = "[" + trimmedPath + "]"
-	s := fmt.Sprintf("%-*s", fixedLength, trimmedPath)
-
-	if len(s) > fixedLength {
-		s = s[:fixedLength]
-	}
+	s := stringutil.FormatString(trimmedPath, fixedLength, true)
 	enc.AppendString(s)
 }
 
@@ -305,15 +302,17 @@ func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.Pr
 	if !ok {
 		s = _unknownLevelColor[zapcore.ErrorLevel]
 	}
-	pid := fmt.Sprintf("["+"PID:"+"%d"+"]", os.Getpid())
+	pid := stringutil.FormatString(fmt.Sprintf("["+"PID:"+"%d"+"]", os.Getpid()), 15, true)
 	color := _levelToColor[level]
 	enc.AppendString(s)
 	enc.AppendString(color.Add(pid))
 	if l.moduleName != "" {
-		enc.AppendString(color.Add(l.moduleName))
+		moduleName := stringutil.FormatString(l.moduleName, 25, true)
+		enc.AppendString(color.Add(moduleName))
 	}
 	if l.moduleVersion != "" {
-		enc.AppendString(l.moduleVersion)
+		moduleVersion := stringutil.FormatString(fmt.Sprintf("["+"version:"+"%s"+"]", l.moduleVersion), 17, true)
+		enc.AppendString(moduleVersion)
 	}
 }
 
