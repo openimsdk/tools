@@ -52,6 +52,7 @@ func TestGetRpcRegisterIP(t *testing.T) {
 	if net.ParseIP(ip) == nil {
 		t.Fatalf("Expected a valid IP address, got %s", ip)
 	}
+	t.Log("GetRpcRegisterIP:", ip)
 }
 
 func TestGetListenIP(t *testing.T) {
