@@ -79,6 +79,11 @@ func (s *ZkClient) watch(ctx context.Context) {
 }
 
 func (s *ZkClient) GetConnsRemote(ctx context.Context, serviceName string) (conns []resolver.Address, err error) {
+	err = s.ensureName(serviceName)
+	if err != nil {
+		return nil, err
+	}
+
 	path := s.getPath(serviceName)
 	_, _, _, err = s.conn.ChildrenW(path)
 	if err != nil {
