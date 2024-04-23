@@ -36,7 +36,12 @@ type Conn interface {
 type SvcDiscoveryRegistry interface {
 	Conn
 	Register(serviceName, host string, port int, opts ...grpc.DialOption) error
-	UnRegister() error                                   //del
+	UnRegister() error //del
+	// CreateRpcRootNodes When an upstream node accesses a downstream RPC node,
+	//it is imperative to call this method, such as from an API.
+	//Failing to do so can cause the RPC node to be inaccessible and block until it is refreshed after 30 minutes.
+	// This occurs because if the RPC node starts after the upstream node, the directory node in ZooKeeper needs to be created first.
+	//Otherwise, when the RPC node starts, the upstream node will not receive the ZooKeeper EventNodeChildrenChanged event.
 	CreateRpcRootNodes(serviceNames []string) error      //del
 	RegisterConf2Registry(key string, conf []byte) error //del
 	GetConfFromRegistry(key string) ([]byte, error)      //del

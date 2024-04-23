@@ -15,11 +15,12 @@
 package network
 
 import (
+	"errors"
 	"net"
 	"net/http"
 	"strings"
 
-	"github.com/openimsdk/tools/errs"
+	_ "github.com/openimsdk/tools/errs"
 )
 
 // Define http headers.
@@ -32,16 +33,31 @@ const (
 func GetLocalIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return "", errs.WrapMsg(err, "failed to get local ip", "addrs", addrs)
+		return "", err
 	}
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
+			if ipnet.IP.To4() != nil && isPrivateIP(ipnet.IP) {
 				return ipnet.IP.String(), nil
 			}
 		}
 	}
-	return "", errs.New("no ip")
+	return "", errors.New("no suitable IP found")
+}
+
+// isPrivateIP checks if the given IP is a private address.
+func isPrivateIP(ip net.IP) bool {
+	if ip4 := ip.To4(); ip4 != nil {
+		switch {
+		case ip4[0] == 10:
+			return true
+		case ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31:
+			return true
+		case ip4[0] == 192 && ip4[1] == 168:
+			return true
+		}
+	}
+	return false
 }
 
 func GetRpcRegisterIP(configIP string) (string, error) {
