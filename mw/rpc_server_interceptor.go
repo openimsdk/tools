@@ -76,12 +76,15 @@ func validateMetadata(ctx context.Context) (metadata.MD, error) {
 }
 
 func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Context, error) {
-	for _, key := range md.Get(constant.RpcCustomHeader) {
-		values := md.Get(key)
-		if len(values) == 0 {
-			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("missing metadata key %s", key)).Err()
+	if keys := md.Get(constant.RpcCustomHeader); len(keys) > 0 {
+		ctx = context.WithValue(ctx, constant.RpcCustomHeader, keys)
+		for _, key := range keys {
+			values := md.Get(key)
+			if len(values) == 0 {
+				return nil, status.New(codes.InvalidArgument, fmt.Sprintf("missing metadata key %s", key)).Err()
+			}
+			ctx = context.WithValue(ctx, key, values)
 		}
-		ctx = context.WithValue(ctx, key, values)
 	}
 	ctx = context.WithValue(ctx, constant.OperationID, md.Get(constant.OperationID)[0])
 	if opts := md.Get(constant.OpUserID); len(opts) == 1 {
