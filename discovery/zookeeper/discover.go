@@ -70,6 +70,7 @@ func (s *ZkClient) watch(ctx context.Context) {
 				s.logger.Debug(ctx, "zk event handle success", "path", event.Path)
 			case zk.EventNodeDataChanged:
 			case zk.EventNodeCreated:
+				s.logger.Debug(ctx, "zk node create event", "event", event)
 			case zk.EventNodeDeleted:
 			case zk.EventNotWatching:
 			}
