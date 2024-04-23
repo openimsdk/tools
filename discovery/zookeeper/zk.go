@@ -104,7 +104,7 @@ func NewZkClient(ZkServers []string, scheme string, options ...ZkOption) (*ZkCli
 	// Verify root node existence and create if missing.
 	if err := client.ensureRoot(); err != nil {
 		conn.Close()
-		return nil, errs.WrapMsg(err, "ensureRoot failed", "zkRoot", client.zkRoot)
+		return nil, err
 	}
 
 	resolver.Register(client)
