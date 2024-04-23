@@ -31,33 +31,43 @@ const (
 )
 
 func GetLocalIP() (string, error) {
-	addrs, err := net.InterfaceAddrs()
+	// Fetch all network interfaces
+	interfaces, err := net.Interfaces()
 	if err != nil {
 		return "", err
 	}
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil && isPrivateIP(ipnet.IP) {
-				return ipnet.IP.String(), nil
+	// Iterate over each interface
+	for _, iface := range interfaces {
+		// Check if the interface is up and not a loopback
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		// Get all addresses associated with the interface
+		addrs, err := iface.Addrs()
+		if err != nil {
+			return "", err
+		}
+
+		// Check each address for a valid IPv4 address that is not a loopback
+		for _, addr := range addrs {
+			// Try to parse the address as an IPNet (CIDR notation)
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok || ipNet.IP.IsLoopback() {
+				continue
+			}
+
+			ip4 := ipNet.IP.To4()
+			if ip4 != nil && !ip4.IsLoopback() {
+				// Ensure the IP is not a multicast address
+				if !ip4.IsMulticast() {
+					return ip4.String(), nil
+				}
 			}
 		}
 	}
-	return "", errors.New("no suitable IP found")
-}
-
-// isPrivateIP checks if the given IP is a private address.
-func isPrivateIP(ip net.IP) bool {
-	if ip4 := ip.To4(); ip4 != nil {
-		switch {
-		case ip4[0] == 10:
-			return true
-		case ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31:
-			return true
-		case ip4[0] == 192 && ip4[1] == 168:
-			return true
-		}
-	}
-	return false
+	// If no suitable IP is found, return an error
+	return "", errors.New("no suitable local IP address found")
 }
 
 func GetRpcRegisterIP(configIP string) (string, error) {
