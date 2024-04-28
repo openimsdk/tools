@@ -28,8 +28,8 @@ type MConsumerGroup struct {
 	topics  []string
 }
 
-func NewMConsumerGroup(conf *Config, groupID string, topics []string) (*MConsumerGroup, error) {
-	config, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest)
+func NewMConsumerGroup(conf *Config, groupID string, topics []string, autoCommitEnable bool) (*MConsumerGroup, error) {
+	config, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest, autoCommitEnable)
 	if err != nil {
 		return nil, err
 	}

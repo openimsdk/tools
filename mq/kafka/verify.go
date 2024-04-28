@@ -22,7 +22,7 @@ import (
 )
 
 func Check(ctx context.Context, conf *Config, topics []string) error {
-	kfk, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest)
+	kfk, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest, false)
 	if err != nil {
 		return err
 	}
