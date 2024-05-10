@@ -21,11 +21,11 @@ import (
 )
 
 type Conn interface {
-	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error)
-	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
-	GetSelfConnTarget() string
-	AddOption(opts ...grpc.DialOption)
-	CloseConn(conn *grpc.ClientConn)
+	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) //1
+	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)    //2
+	GetSelfConnTarget() string                                                                             //3
+	AddOption(opts ...grpc.DialOption)                                                                     //4
+	CloseConn(conn *grpc.ClientConn)                                                                       //5
 	// do not use this method for call rpc
 
 	GetClientLocalConns() map[string][]*grpc.ClientConn //del
@@ -35,9 +35,24 @@ type Conn interface {
 
 type SvcDiscoveryRegistry interface {
 	Conn
-	Register(serviceName, host string, port int, opts ...grpc.DialOption) error
-	UnRegister() error                                   //del
-	RegisterConf2Registry(key string, conf []byte) error //del
-	GetConfFromRegistry(key string) ([]byte, error)      //del
-	Close()
+	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
+	UnRegister() error                                                          //7
+	RegisterConf2Registry(key string, conf []byte) error                        //del
+	GetConfFromRegistry(key string) ([]byte, error)                             //del
+	Close()                                                                     //
+}
+
+type Conn1 interface {
+	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) //1
+	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)    //2
+	GetSelfConnTarget() string                                                                             //3
+	AddOption(opts ...grpc.DialOption)                                                                     //4
+	CloseConn(conn *grpc.ClientConn)                                                                       //5
+	// do not use this method for call rpc
+}
+type SvcDiscoveryRegistry1 interface {
+	Conn1
+	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
+	UnRegister() error                                                          //7
+	Close()                                                                     //
 }
