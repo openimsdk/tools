@@ -51,7 +51,7 @@ type Conn interface {
 	CloseConn(conn *grpc.ClientConn)                                                                       //5
 	// do not use this method for call rpc
 }
-type SvcDiscoveryRegistry1 interface {
+type SvcDiscoveryRegistry interface {
 	Conn
 	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
 	UnRegister() error                                                          //7
