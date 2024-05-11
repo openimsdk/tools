@@ -55,5 +55,6 @@ type SvcDiscoveryRegistry interface {
 	Conn
 	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
 	UnRegister() error                                                          //7
-	Close()                                                                     //
+	Close()
+	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) //
 }
