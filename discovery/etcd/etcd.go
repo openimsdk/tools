@@ -64,11 +64,6 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, options .
 		connMap:       make(map[string][]*grpc.ClientConn),
 	}
 
-	// Initialize the connection map by fetching existing endpoints
-	if err := s.initializeConnMap(); err != nil {
-		return nil, err
-	}
-
 	go s.watchServiceChanges()
 	return s, nil
 }
