@@ -207,8 +207,10 @@ func (r *SvcDiscoveryRegistryImpl) watchServiceChanges() {
 			prefix, _ := r.splitEndpoint(string(event.Kv.Key))
 			if _, alreadyUpdated := updatedPrefixes[prefix]; !alreadyUpdated {
 				updatedPrefixes[prefix] = struct{}{} // Mark this prefix as updated
-				fmt.Println("refreshConnMap prefix", prefix)
+				fmt.Println("refreshConnMap prefix", prefix, event)
 				r.refreshConnMap(prefix)
+			} else {
+				fmt.Println("no refreshConnMap prefix", prefix, event)
 			}
 		}
 	}
