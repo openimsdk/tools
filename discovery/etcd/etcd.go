@@ -197,20 +197,27 @@ func (r *SvcDiscoveryRegistryImpl) keepAliveLease(leaseID clientv3.LeaseID) {
 // watchServiceChanges watches for changes in the service directory
 func (r *SvcDiscoveryRegistryImpl) watchServiceChanges() {
 	watchChan := r.client.Watch(context.Background(), r.rootDirectory, clientv3.WithPrefix())
-	updatedPrefixes := make(map[string]struct{}) // Create a set to track updated prefixes
 	for watchResp := range watchChan {
-
+		r.initializeConnMap()
 		for _, event := range watchResp.Events {
-			prefix, _ := r.splitEndpoint(string(event.Kv.Key))
-			if _, alreadyUpdated := updatedPrefixes[prefix]; !alreadyUpdated {
-				updatedPrefixes[prefix] = struct{}{} // Mark this prefix as updated
-				fmt.Println("refreshConnMap prefix", prefix, event)
-				r.refreshConnMap(prefix)
-			} else {
-				fmt.Println("no refreshConnMap prefix", prefix, event)
-			}
+			fmt.Println("initializeConnMap key ", event.Kv.Key)
 		}
 	}
+
+	//watchChan := r.client.Watch(context.Background(), r.rootDirectory, clientv3.WithPrefix())
+	//updatedPrefixes := make(map[string]struct{}) // Create a set to track updated prefixes
+	//for watchResp := range watchChan {
+	//	for _, event := range watchResp.Events {
+	//		prefix, _ := r.splitEndpoint(string(event.Kv.Key))
+	//		if _, alreadyUpdated := updatedPrefixes[prefix]; !alreadyUpdated {
+	//			updatedPrefixes[prefix] = struct{}{} // Mark this prefix as updated
+	//			fmt.Println("refreshConnMap prefix", prefix, event)
+	//			r.refreshConnMap(prefix)
+	//		} else {
+	//			fmt.Println("no refreshConnMap prefix", prefix, event)
+	//		}
+	//	}
+	//}
 }
 
 // refreshConnMap fetches the latest endpoints and updates the local map
