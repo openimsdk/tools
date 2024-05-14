@@ -7,8 +7,11 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	gresolver "google.golang.org/grpc/resolver"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +36,21 @@ type SvcDiscoveryRegistryImpl struct {
 	connMap map[string][]*grpc.ClientConn
 }
 
+func createNoOpLogger() *zap.Logger {
+	// Create a no-op write syncer
+	noOpWriter := zapcore.AddSync(io.Discard)
+
+	// Create a basic zap core with the no-op writer
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		noOpWriter,
+		zapcore.InfoLevel, // You can set this to any level that suits your needs
+	)
+
+	// Create the logger using the core
+	return zap.New(core)
+}
+
 // NewSvcDiscoveryRegistry creates a new service discovery registry implementation
 func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, options ...ZkOption) (*SvcDiscoveryRegistryImpl, error) {
 	cfg := clientv3.Config{
@@ -40,6 +58,7 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, options .
 		DialTimeout: 5 * time.Second,
 		// Increase keep-alive queue capacity and message size
 		PermitWithoutStream: true,
+		Logger:              createNoOpLogger(),
 		MaxCallSendMsgSize:  10 * 1024 * 1024, // 10 MB
 	}
 
@@ -79,7 +98,6 @@ func (r *SvcDiscoveryRegistryImpl) initializeConnMap() error {
 		prefix, addr := r.splitEndpoint(string(kv.Key))
 		conn, err := grpc.DialContext(context.Background(), addr, append(r.dialOptions, grpc.WithResolvers(r.resolver))...)
 		if err != nil {
-			fmt.Printf("Failed to dial existing endpoint: %v\n", err)
 			continue
 		}
 		r.connMap[prefix] = append(r.connMap[prefix], conn)
