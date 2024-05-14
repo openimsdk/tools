@@ -123,9 +123,6 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 	if len(r.connMap) == 0 {
 		r.initializeConnMap()
 	}
-
-	fmt.Println("GetConns all map ", r.connMap)
-
 	return r.connMap[fullServiceKey], nil
 }
 
@@ -197,11 +194,8 @@ func (r *SvcDiscoveryRegistryImpl) keepAliveLease(leaseID clientv3.LeaseID) {
 // watchServiceChanges watches for changes in the service directory
 func (r *SvcDiscoveryRegistryImpl) watchServiceChanges() {
 	watchChan := r.client.Watch(context.Background(), r.rootDirectory, clientv3.WithPrefix())
-	for watchResp := range watchChan {
+	for range watchChan {
 		r.initializeConnMap()
-		for _, event := range watchResp.Events {
-			fmt.Println("initializeConnMap key ", event.Kv.Key)
-		}
 	}
 
 	//watchChan := r.client.Watch(context.Background(), r.rootDirectory, clientv3.WithPrefix())
