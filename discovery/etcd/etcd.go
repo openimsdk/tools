@@ -200,8 +200,8 @@ func (r *SvcDiscoveryRegistryImpl) keepAliveLease(leaseID clientv3.LeaseID) {
 // watchServiceChanges watches for changes in the service directory
 func (r *SvcDiscoveryRegistryImpl) watchServiceChanges() {
 	watchChan := r.client.Watch(context.Background(), r.rootDirectory, clientv3.WithPrefix())
+	updatedPrefixes := make(map[string]struct{}) // Create a set to track updated prefixes
 	for watchResp := range watchChan {
-		updatedPrefixes := make(map[string]struct{}) // Create a set to track updated prefixes
 
 		for _, event := range watchResp.Events {
 			prefix, _ := r.splitEndpoint(string(event.Kv.Key))
