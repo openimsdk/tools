@@ -63,8 +63,38 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, options .
 		rootDirectory: rootDirectory,
 		connMap:       make(map[string][]*grpc.ClientConn),
 	}
+
+	// Initialize the connection map by fetching existing endpoints
+	if err := s.initializeConnMap(); err != nil {
+		return nil, err
+	}
+
 	go s.watchServiceChanges()
 	return s, nil
+}
+
+// initializeConnMap fetches all existing endpoints and populates the local map
+func (r *SvcDiscoveryRegistryImpl) initializeConnMap() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	fullPrefix := fmt.Sprintf("%s/", r.rootDirectory)
+	resp, err := r.client.Get(context.Background(), fullPrefix, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	for _, kv := range resp.Kvs {
+		prefix, addr := r.splitEndpoint(string(kv.Key))
+		conn, err := grpc.DialContext(context.Background(), addr, append(r.dialOptions, grpc.WithInsecure())...)
+		if err != nil {
+			fmt.Printf("Failed to dial existing endpoint: %v\n", err)
+			continue
+		}
+		r.connMap[prefix] = append(r.connMap[prefix], conn)
+	}
+
+	return nil
 }
 
 // WithDialTimeout sets a custom dial timeout for the etcd client
