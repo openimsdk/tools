@@ -99,6 +99,9 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 	fullServiceKey := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	fmt.Println("GetConns all map ", r.connMap)
+
 	return r.connMap[fullServiceKey], nil
 }
 
@@ -174,6 +177,7 @@ func (r *SvcDiscoveryRegistryImpl) watchServiceChanges() {
 			prefix, _ := r.splitEndpoint(string(event.Kv.Key))
 			if _, alreadyUpdated := updatedPrefixes[prefix]; !alreadyUpdated {
 				updatedPrefixes[prefix] = struct{}{} // Mark this prefix as updated
+				fmt.Println("refreshConnMap prefix", prefix)
 				r.refreshConnMap(prefix)
 			}
 		}
