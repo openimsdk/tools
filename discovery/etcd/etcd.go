@@ -75,18 +75,14 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, options .
 
 // initializeConnMap fetches all existing endpoints and populates the local map
 func (r *SvcDiscoveryRegistryImpl) initializeConnMap() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	fullPrefix := fmt.Sprintf("%s/", r.rootDirectory)
 	resp, err := r.client.Get(context.Background(), fullPrefix, clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
-
 	for _, kv := range resp.Kvs {
 		prefix, addr := r.splitEndpoint(string(kv.Key))
-		conn, err := grpc.DialContext(context.Background(), addr, append(r.dialOptions, grpc.WithInsecure())...)
+		conn, err := grpc.DialContext(context.Background(), addr, append(r.dialOptions, grpc.WithResolvers(r.resolver))...)
 		if err != nil {
 			fmt.Printf("Failed to dial existing endpoint: %v\n", err)
 			continue
@@ -129,6 +125,9 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 	fullServiceKey := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	if len(r.connMap) == 0 {
+		r.initializeConnMap()
+	}
 
 	fmt.Println("GetConns all map ", r.connMap)
 
@@ -148,6 +147,9 @@ func (r *SvcDiscoveryRegistryImpl) GetSelfConnTarget() string {
 
 // AddOption appends gRPC dial options to the existing options
 func (r *SvcDiscoveryRegistryImpl) AddOption(opts ...grpc.DialOption) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.connMap = make(map[string][]*grpc.ClientConn)
 	r.dialOptions = append(r.dialOptions, opts...)
 }
 
