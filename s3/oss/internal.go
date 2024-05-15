@@ -23,7 +23,7 @@ import (
 )
 
 //go:linkname signHeader github.com/aliyun/aliyun-oss-go-sdk/oss.Conn.signHeader
-func signHeader(c oss.Conn, req *http.Request, canonicalizedResource string)
+func signHeader(c oss.Conn, req *http.Request, canonicalizedResource string, credentials oss.Credentials)
 
 //go:linkname getURLParams github.com/aliyun/aliyun-oss-go-sdk/oss.Conn.getURLParams
 func getURLParams(c oss.Conn, params map[string]any) string
