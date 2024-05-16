@@ -180,7 +180,7 @@ func (o *OSS) AuthSign(ctx context.Context, uploadID string, name string, expire
 		request.Header.Set(oss.HTTPHeaderHost, request.Host)
 		request.Header.Set(oss.HTTPHeaderDate, now)
 		request.Header.Set(oss.HttpHeaderOssDate, now)
-		signHeader(*o.bucket.Client.Conn, request, fmt.Sprintf(`/%s/%s?partNumber=%d&uploadId=%s`, o.bucket.BucketName, name, partNumber, uploadID))
+		signHeader(*o.bucket.Client.Conn, request, fmt.Sprintf(`/%s/%s?partNumber=%d&uploadId=%s`, o.bucket.BucketName, name, partNumber, uploadID), o.credentials)
 		delete(request.Header, oss.HTTPHeaderDate)
 		result.Parts[i] = s3.SignPart{
 			PartNumber: partNumber,

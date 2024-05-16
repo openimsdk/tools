@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/openimsdk/tools/errs"
-	"github.com/redis/go-redis/v9"
 )
 
 // CheckRedis checks the Redis connection.
@@ -27,7 +26,7 @@ func Check(ctx context.Context, config *Config) error {
 	if err != nil {
 		return err
 	}
-	defer client.(*redis.Client).Close()
+	defer client.Close()
 
 	// Ping the Redis server to check connectivity.
 	if err := client.Ping(ctx).Err(); err != nil {

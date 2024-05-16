@@ -16,6 +16,7 @@ package datautil
 
 import (
 	"github.com/jinzhu/copier"
+	"github.com/openimsdk/tools/db/pagination"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/utils/jsonutil"
 	"reflect"
@@ -306,6 +307,10 @@ func Paginate[E any](es []E, pageNumber int, showNumber int) []E {
 		end = len(es)
 	}
 	return es[start:end]
+}
+
+func SlicePaginate[E any](es []E, pagination pagination.Pagination) []E {
+	return Paginate(es, int(pagination.GetPageNumber()), int(pagination.GetShowNumber()))
 }
 
 // BothExistAny gets elements that are common in the slice (intersection)
