@@ -107,3 +107,13 @@ func GinParseToken(secretKey jwt.Keyfunc, whitelist []string) gin.HandlerFunc {
 		}
 	}
 }
+
+func CreateToken(userID string, accessSecret string, accessExpire int64, platformID int) (string, error) {
+	claims := tokenverify.BuildClaims(userID, platformID, accessExpire)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(accessSecret))
+	if err != nil {
+		return "", errs.WrapMsg(err, "token.SignedString")
+	}
+	return tokenString, nil
+}
