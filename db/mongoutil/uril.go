@@ -160,11 +160,27 @@ func DeleteOne(ctx context.Context, coll *mongo.Collection, filter any, opts ...
 	return nil
 }
 
+func DeleteOneResult(ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+	res, err := coll.DeleteOne(ctx, filter, opts...)
+	if err != nil {
+		return nil, errs.WrapMsg(err, "mongo delete one")
+	}
+	return res, nil
+}
+
 func DeleteMany(ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.DeleteOptions) error {
 	if _, err := coll.DeleteMany(ctx, filter, opts...); err != nil {
 		return errs.WrapMsg(err, "mongo delete many")
 	}
 	return nil
+}
+
+func DeleteManyResult(ctx context.Context, coll *mongo.Collection, filter any, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+	res, err := coll.DeleteMany(ctx, filter, opts...)
+	if err != nil {
+		return nil, errs.WrapMsg(err, "mongo delete many")
+	}
+	return res, nil
 }
 
 func Aggregate[T any](ctx context.Context, coll *mongo.Collection, pipeline any, opts ...*options.AggregateOptions) ([]T, error) {
@@ -221,4 +237,15 @@ func DecodeOne[T any](decoder func(v any) error) (res T, err error) {
 		}
 	}
 	return
+}
+
+func Ignore[T any](_ T, err error) error {
+	return err
+}
+
+func IgnoreWarp[T any](_ T, err error) error {
+	if err != nil {
+		return errs.Wrap(err)
+	}
+	return err
 }
