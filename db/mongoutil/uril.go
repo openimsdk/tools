@@ -249,3 +249,12 @@ func IgnoreWarp[T any](_ T, err error) error {
 	}
 	return err
 }
+
+func IncrVersion(dbs ...func() error) error {
+	for _, fn := range dbs {
+		if err := fn(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
