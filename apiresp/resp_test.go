@@ -1,10 +1,11 @@
 package apiresp
 
 import (
-	"github.com/openimsdk/protocol/friend"
+	"testing"
+
+	"github.com/openimsdk/protocol/relation"
 	"github.com/openimsdk/protocol/wrapperspb"
 	"github.com/openimsdk/tools/utils/jsonutil"
-	"testing"
 )
 
 func TestName(t *testing.T) {
@@ -12,7 +13,7 @@ func TestName(t *testing.T) {
 		ErrCode: 1234,
 		ErrMsg:  "test",
 		ErrDlt:  "4567",
-		Data: &friend.UpdateFriendsReq{
+		Data: &relation.UpdateFriendsReq{
 			OwnerUserID:   "123456",
 			FriendUserIDs: []string{"1", "2", "3"},
 			Remark:        wrapperspb.String("1234567"),
@@ -25,12 +26,11 @@ func TestName(t *testing.T) {
 	t.Log(string(data))
 
 	var rReso ApiResponse
-	rReso.Data = &friend.UpdateFriendsReq{}
+	rReso.Data = &relation.UpdateFriendsReq{}
 
 	if err := jsonutil.JsonUnmarshal(data, &rReso); err != nil {
 		panic(err)
 	}
 
 	t.Logf("%+v\n", rReso)
-
 }
