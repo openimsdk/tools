@@ -61,6 +61,7 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 		return nil, handleError(ctx, funcName, req, err)
 	}
 	log.ZInfo(ctx, fmt.Sprintf("RPC Server Response Success - %s", extractFunctionName(funcName)), "funcName", funcName, "resp", rpcString(resp))
+	ReplaceNil(&resp)
 	return resp, nil
 }
 
