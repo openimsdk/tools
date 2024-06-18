@@ -15,11 +15,6 @@ func ReplaceNil(data *any) {
 		return
 	}
 
-	if v.IsNil() {
-		*data = struct{}{}
-		return
-	}
-
 	replaceNil(v)
 }
 
@@ -27,6 +22,7 @@ func replaceNil(v reflect.Value) {
 	switch v.Kind() {
 	case reflect.Pointer:
 		if v.IsNil() {
+			// Handle multi-level pointers
 			if v.Type().Elem().Kind() == reflect.Pointer {
 				v.Set(reflect.New(v.Type().Elem()))
 			}
@@ -47,10 +43,10 @@ func replaceNil(v reflect.Value) {
 		}
 	case reflect.Interface:
 		if !v.IsNil() && !shouldReplace(v) {
-			// 已经被初始化，则循环替换内部nil
+			// If the interface is already initialized, recursively replace the internal nils
 			replaceNil(v.Elem())
 		} else {
-			// 没有被初始化，初始化为{}
+			// If the interface is not initialized, the struct will be initialized as {}
 			switch getRealType(v.Interface()) {
 			case reflect.Slice:
 				v.Set(reflect.MakeSlice(v.Type(), 0, 0))
