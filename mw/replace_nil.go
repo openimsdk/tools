@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// ReplaceNil initialization nil values.
+// ReplaceNil initialization nil values. It will panic if nil is passed in.
 func ReplaceNil(data *any) {
 	v := reflect.ValueOf(data)
 

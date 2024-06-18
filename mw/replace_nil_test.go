@@ -59,8 +59,6 @@ func TestReplaceNil(t *testing.T) {
 	printJson(k)
 	// {"B":null,"BB":{"D":{},"E":[1,2,5,3,6]},"C":[1,1,1],"D":{"a":"A","b":"B"},"E":{"1":11,"2":22},"F":5}
 
-	ReplaceNil(nil)
-
 }
 
 func printJson(data any) {
