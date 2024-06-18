@@ -1,17 +1,18 @@
 package mw
 
 import (
+	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 )
 
 type A struct {
-	B *B
-	C []int
-	D map[string]string
-	E interface{}
-	F *int
+	B  *B
+	BB B
+	C  []int
+	D  map[string]string
+	E  interface{}
+	F  *int
 }
 
 type B struct {
@@ -20,84 +21,50 @@ type B struct {
 }
 
 type C struct {
-	F int
 }
 
 func TestReplaceNil(t *testing.T) {
-	var a ***A
-	ReplaceNil(&a)
-	fmt.Println("struct a:")
-	printStruct(reflect.ValueOf(a), "")
-	//struct a:
-	//(pointer)
-	//  (pointer)
-	//    (pointer)
-	//B:         <nil>
-	//C: []
-	//D: map[]
-	//E: <nil>
-	//F:         <nil>
+	a := &A{}
+	k := any(a)
+	ReplaceNil(&k)
+	printJson(k)
+	// {"B":null,"BB":{"D":null,"E":[]},"C":[],"D":{},"E":null,"F":null}
 
-	b := &A{}
-	ReplaceNil(b)
-	fmt.Println("struct: b")
-	printStruct(reflect.ValueOf(b), "")
-	//struct: b
-	//(pointer)
-	//B:     (pointer)
-	//    D:         <nil>
-	//    E: []
-	//C: []
-	//D: map[]
-	//E: <nil>
-	//F:     (pointer)
+	var b *A
+	k = any(b)
+	ReplaceNil(&k)
+	printJson(k)
+	// {}
+
+	i := 5
+	c := &A{
+		B: nil,
+		BB: B{
+			D: &C{},
+			E: []int{1, 2, 5, 3, 6},
+		},
+		C: []int{1, 1, 1},
+		D: map[string]string{
+			"a": "A",
+			"b": "B",
+		},
+		E: map[int]int{
+			1: 11,
+			2: 22,
+		},
+		F: &i,
+	}
+	k = any(c)
+	ReplaceNil(&k)
+	printJson(k)
+	// {"B":null,"BB":{"D":{},"E":[1,2,5,3,6]},"C":[1,1,1],"D":{"a":"A","b":"B"},"E":{"1":11,"2":22},"F":5}
 }
 
-func printStruct(v reflect.Value, indent string) {
-	originalIndent := indent
-
-	for v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			fmt.Printf("%s<nil>\n", indent)
-			return
-		}
-		fmt.Printf("%s(pointer)\n", indent)
-		v = v.Elem()
-		indent += "  "
+func printJson(data any) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error serializing to JSON:", err)
+		return
 	}
-
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldName := v.Type().Field(i).Name
-
-		switch field.Kind() {
-		case reflect.Ptr:
-			fmt.Printf("%s%s: ", originalIndent, fieldName)
-			printStruct(field, indent+"  ")
-		case reflect.Slice:
-			if field.IsNil() {
-				fmt.Printf("%s%s: []\n", originalIndent, fieldName)
-			} else {
-				fmt.Printf("%s%s: %v\n", originalIndent, fieldName, field.Interface())
-			}
-		case reflect.Map:
-			if field.IsNil() {
-				fmt.Printf("%s%s: map[]\n", originalIndent, fieldName)
-			} else {
-				fmt.Printf("%s%s: %v\n", originalIndent, fieldName, field.Interface())
-			}
-		case reflect.Interface:
-			if field.IsNil() {
-				fmt.Printf("%s%s: <nil>\n", originalIndent, fieldName)
-			} else {
-				fmt.Printf("%s%s: (interface)\n", originalIndent, fieldName)
-				printStruct(field.Elem(), indent+"  ")
-			}
-		case reflect.Struct:
-			fmt.Printf("%s%s: (struct)\n", originalIndent, fieldName)
-			printStruct(field, indent+"  ")
-		default:
-			fmt.Printf("%s%s: %v\n", originalIndent, fieldName, field.Interface())
-		}
-	}
+	fmt.Println(string(jsonData)) // 输出: {}
 }
