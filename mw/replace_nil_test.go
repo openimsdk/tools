@@ -28,11 +28,29 @@ func TestReplaceNil(t *testing.T) {
 	ReplaceNil(&a)
 	fmt.Println("struct a:")
 	printStruct(reflect.ValueOf(a), "")
+	//struct a:
+	//(pointer)
+	//  (pointer)
+	//    (pointer)
+	//B:         <nil>
+	//C: []
+	//D: map[]
+	//E: <nil>
+	//F:         <nil>
 
 	b := &A{}
 	ReplaceNil(b)
 	fmt.Println("struct: b")
 	printStruct(reflect.ValueOf(b), "")
+	//struct: b
+	//(pointer)
+	//B:     (pointer)
+	//    D:         <nil>
+	//    E: []
+	//C: []
+	//D: map[]
+	//E: <nil>
+	//F:     (pointer)
 }
 
 func printStruct(v reflect.Value, indent string) {
@@ -46,11 +64,6 @@ func printStruct(v reflect.Value, indent string) {
 		fmt.Printf("%s(pointer)\n", indent)
 		v = v.Elem()
 		indent += "  "
-	}
-
-	if v.Kind() != reflect.Struct {
-		fmt.Println("Not a struct")
-		return
 	}
 
 	for i := 0; i < v.NumField(); i++ {
