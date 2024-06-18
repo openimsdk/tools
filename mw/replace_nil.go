@@ -5,17 +5,15 @@ import (
 	"reflect"
 )
 
-// ReplaceNil initialization nil values. An addressable type must be passed in; even if it's a pointer type,
-// its address must be passed. e.g., a := &A{} requires &a to be passed, not a .
+// ReplaceNil initialization nil values.
 func ReplaceNil(data *any) {
 	v := reflect.ValueOf(data)
 
-	// Replacement can only occur if IsValid is true and the value is addressable
-	if !v.IsValid() || v.Kind() != reflect.Ptr {
-		return
+	if v.IsNil() {
+		*data = struct{}{}
+	} else {
+		replaceNil(v)
 	}
-
-	replaceNil(v)
 }
 
 func replaceNil(v reflect.Value) {
@@ -39,7 +37,12 @@ func replaceNil(v reflect.Value) {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
-			replaceNil(field)
+			fieldType := v.Type().Field(i)
+
+			// Check if the field is exported
+			if fieldType.IsExported() {
+				replaceNil(field)
+			}
 		}
 	case reflect.Interface:
 		if !v.IsNil() && !shouldReplace(v) {
@@ -47,11 +50,16 @@ func replaceNil(v reflect.Value) {
 			replaceNil(v.Elem())
 		} else {
 			// If the interface is not initialized, the struct will be initialized as {}
-			switch getRealType(v.Interface()) {
+			realType := getRealType(v.Interface())
+			if realType == nil {
+				// Invalid type
+				return
+			}
+			switch realType.Kind() {
 			case reflect.Slice:
-				v.Set(reflect.MakeSlice(v.Type(), 0, 0))
+				v.Set(reflect.MakeSlice(realType, 0, 0))
 			case reflect.Map:
-				v.Set(reflect.MakeMap(v.Type()))
+				v.Set(reflect.MakeMap(realType))
 			case reflect.Struct:
 				v.Set(reflect.New(reflect.TypeOf(struct{}{})))
 			default:
@@ -62,17 +70,20 @@ func replaceNil(v reflect.Value) {
 	}
 }
 
-func getRealType(data any) reflect.Kind {
+// getRealType determines the underlying type.
+func getRealType(data any) reflect.Type {
 	t := reflect.TypeOf(data)
 	if t == nil {
-		return reflect.Invalid
+		return t
 	}
 	for t.Kind() == reflect.Ptr || t.Kind() == reflect.Interface {
 		t = t.Elem()
 	}
-	return t.Kind()
+	return t
 }
 
+// shouldReplace determines whether internal replacement is needed,
+// checks if the underlying component has already been initialized.
 func shouldReplace(v reflect.Value) bool {
 	if !v.IsValid() {
 		return true

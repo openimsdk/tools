@@ -30,7 +30,7 @@ func TestReplaceNil(t *testing.T) {
 	printJson(k)
 	// {"B":null,"BB":{"D":null,"E":[]},"C":[],"D":{},"E":null,"F":null}
 
-	var b *A
+	var b []*A
 	k = any(b)
 	ReplaceNil(&k)
 	printJson(k)
@@ -60,6 +60,7 @@ func TestReplaceNil(t *testing.T) {
 	// {"B":null,"BB":{"D":{},"E":[1,2,5,3,6]},"C":[1,1,1],"D":{"a":"A","b":"B"},"E":{"1":11,"2":22},"F":5}
 
 	ReplaceNil(nil)
+
 }
 
 func printJson(data any) {
