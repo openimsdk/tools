@@ -67,5 +67,5 @@ func printJson(data any) {
 		fmt.Println("Error serializing to JSON:", err)
 		return
 	}
-	fmt.Println(string(jsonData)) // 输出: {}
+	fmt.Println(string(jsonData))
 }
