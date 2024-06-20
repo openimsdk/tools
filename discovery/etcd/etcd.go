@@ -94,6 +94,7 @@ func (r *SvcDiscoveryRegistryImpl) initializeConnMap() error {
 	if err != nil {
 		return err
 	}
+	r.connMap = make(map[string][]*grpc.ClientConn)
 	for _, kv := range resp.Kvs {
 		prefix, addr := r.splitEndpoint(string(kv.Key))
 		conn, err := grpc.DialContext(context.Background(), addr, append(r.dialOptions, grpc.WithResolvers(r.resolver))...)
@@ -102,7 +103,6 @@ func (r *SvcDiscoveryRegistryImpl) initializeConnMap() error {
 		}
 		r.connMap[prefix] = append(r.connMap[prefix], conn)
 	}
-
 	return nil
 }
 
@@ -213,23 +213,10 @@ func (r *SvcDiscoveryRegistryImpl) keepAliveLease(leaseID clientv3.LeaseID) {
 func (r *SvcDiscoveryRegistryImpl) watchServiceChanges() {
 	watchChan := r.client.Watch(context.Background(), r.rootDirectory, clientv3.WithPrefix())
 	for range watchChan {
+		r.mu.RLock()
 		r.initializeConnMap()
+		r.mu.RUnlock()
 	}
-
-	//watchChan := r.client.Watch(context.Background(), r.rootDirectory, clientv3.WithPrefix())
-	//updatedPrefixes := make(map[string]struct{}) // Create a set to track updated prefixes
-	//for watchResp := range watchChan {
-	//	for _, event := range watchResp.Events {
-	//		prefix, _ := r.splitEndpoint(string(event.Kv.Key))
-	//		if _, alreadyUpdated := updatedPrefixes[prefix]; !alreadyUpdated {
-	//			updatedPrefixes[prefix] = struct{}{} // Mark this prefix as updated
-	//			fmt.Println("refreshConnMap prefix", prefix, event)
-	//			r.refreshConnMap(prefix)
-	//		} else {
-	//			fmt.Println("no refreshConnMap prefix", prefix, event)
-	//		}
-	//	}
-	//}
 }
 
 // refreshConnMap fetches the latest endpoints and updates the local map
