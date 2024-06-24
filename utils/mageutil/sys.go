@@ -60,7 +60,7 @@ func CheckProcessNamesExist(processPath string) bool {
 		}
 
 		if exePath == processPath {
-			return true // 找到至少一个匹配的进程
+			return true // Find at least one matching process
 		}
 	}
 

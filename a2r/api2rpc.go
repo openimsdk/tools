@@ -29,7 +29,9 @@ import (
 )
 
 type Option[A, B any] struct {
+	// BindAfter is called after the req is bind from ctx.
 	BindAfter func(*A) error
+	// RespAfter is called after the resp is return from rpc.
 	RespAfter func(*B) error
 }
 

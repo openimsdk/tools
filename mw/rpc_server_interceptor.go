@@ -64,31 +64,6 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	return resp, nil
 }
 
-// RpcServerInterceptorWithRespNilReplace This interceptor replaces nil maps and slices in the resp object and initializing them.
-func RpcServerInterceptorWithRespNilReplace(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	funcName := info.FullMethod
-	md, err := validateMetadata(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ctx, err = enrichContextWithMetadata(ctx, md)
-	if err != nil {
-		return nil, err
-	}
-	log.ZInfo(ctx, fmt.Sprintf("RPC Server Request - %s", extractFunctionName(funcName)), "funcName", funcName, "req", rpcString(req))
-	if err := checker.Validate(req); err != nil {
-		return nil, err
-	}
-
-	resp, err := handler(ctx, req)
-	if err != nil {
-		return nil, handleError(ctx, funcName, req, err)
-	}
-	log.ZInfo(ctx, fmt.Sprintf("RPC Server Response Success - %s", extractFunctionName(funcName)), "funcName", funcName, "resp", rpcString(resp))
-	ReplaceNil(&resp)
-	return resp, nil
-}
-
 func validateMetadata(ctx context.Context) (metadata.MD, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -151,11 +126,6 @@ func handleError(ctx context.Context, funcName string, req any, err error) error
 func GrpcServer() grpc.ServerOption {
 	return grpc.ChainUnaryInterceptor(RpcServerInterceptor)
 }
-
-func GrpcServerWithRespNilReplace() grpc.ServerOption {
-	return grpc.ChainUnaryInterceptor(RpcServerInterceptorWithRespNilReplace)
-}
-
 func formatError(err error) error {
 	type stackTracer interface {
 		StackTrace() errors.StackTrace

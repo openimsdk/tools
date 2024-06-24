@@ -5,15 +5,12 @@ import (
 	"reflect"
 )
 
-// ReplaceNil initialization nil values. It will panic if nil is passed in.
-func ReplaceNil(data *any) {
+// ReplaceNil initialization nil values.
+// e.g. Slice will be initialized as [],Map/interface will be initialized as {}
+func ReplaceNil(data any) {
 	v := reflect.ValueOf(data)
 
-	if v.IsNil() {
-		*data = struct{}{}
-	} else {
-		replaceNil(v)
-	}
+	replaceNil(v)
 }
 
 func replaceNil(v reflect.Value) {
@@ -21,7 +18,8 @@ func replaceNil(v reflect.Value) {
 	case reflect.Pointer:
 		if v.IsNil() {
 			// Handle multi-level pointers
-			if v.Type().Elem().Kind() == reflect.Pointer {
+			elemKind := v.Type().Elem().Kind()
+			if elemKind == reflect.Pointer {
 				v.Set(reflect.New(v.Type().Elem()))
 			}
 		}
