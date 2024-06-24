@@ -126,7 +126,6 @@ func handleError(ctx context.Context, funcName string, req any, err error) error
 func GrpcServer() grpc.ServerOption {
 	return grpc.ChainUnaryInterceptor(RpcServerInterceptor)
 }
-
 func formatError(err error) error {
 	type stackTracer interface {
 		StackTrace() errors.StackTrace

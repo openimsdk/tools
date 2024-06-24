@@ -33,15 +33,15 @@ type D struct {
 func TestReplaceNil(t *testing.T) {
 	a := &A{}
 	k := any(a)
-	//ReplaceNil(&k)
+	ReplaceNil(&k)
 	//printJson(k)
-	printJson(repl(k))
+	//printJson(repl(k))
 	// {"B":null,"BB":{"D":null,"E":[]},"C":[],"D":{},"E":null,"F":null}
 
 	var b *A
 	k = any(b)
-	//ReplaceNil(&k)
-	printJson(repl(k))
+	ReplaceNil(&k)
+	//printJson(repl(k))
 	// {}
 
 	i := 5
@@ -85,21 +85,4 @@ func printJson(data any) {
 		return
 	}
 	fmt.Println(string(jsonData))
-}
-
-func repl(a any) any {
-	ReplaceNil(&a)
-	return a
-}
-
-func TestCall(t *testing.T) {
-	a := new(A)
-	fmt.Println(a.BS == nil)
-	Rep(a)
-	fmt.Println(a.BS == nil)
-	fmt.Println(a)
-}
-
-func Rep(a *A) {
-	ReplaceNil(a)
 }
