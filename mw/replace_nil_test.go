@@ -9,6 +9,7 @@ import (
 type A struct {
 	B  *B
 	BB B
+	BS []*B
 	C  []int
 	D  map[string]string
 	E  interface{}
@@ -23,17 +24,24 @@ type B struct {
 type C struct {
 }
 
+type D struct {
+	sb  string
+	nt  []C
+	ssb *A
+}
+
 func TestReplaceNil(t *testing.T) {
 	a := &A{}
 	k := any(a)
-	ReplaceNil(&k)
-	printJson(k)
+	//ReplaceNil(&k)
+	//printJson(k)
+	printJson(repl(k))
 	// {"B":null,"BB":{"D":null,"E":[]},"C":[],"D":{},"E":null,"F":null}
 
-	var b []*A
+	var b *A
 	k = any(b)
-	ReplaceNil(&k)
-	printJson(k)
+	//ReplaceNil(&k)
+	printJson(repl(k))
 	// {}
 
 	i := 5
@@ -59,6 +67,15 @@ func TestReplaceNil(t *testing.T) {
 	printJson(k)
 	// {"B":null,"BB":{"D":{},"E":[1,2,5,3,6]},"C":[1,1,1],"D":{"a":"A","b":"B"},"E":{"1":11,"2":22},"F":5}
 
+	dd := &D{
+		sb:  "fhldsa",
+		nt:  []C{},
+		ssb: &A{},
+	}
+	k = any(dd)
+	ReplaceNil(&k)
+	printJson(k)
+	// {}
 }
 
 func printJson(data any) {
@@ -68,4 +85,21 @@ func printJson(data any) {
 		return
 	}
 	fmt.Println(string(jsonData))
+}
+
+func repl(a any) any {
+	ReplaceNil(&a)
+	return a
+}
+
+func TestCall(t *testing.T) {
+	a := new(A)
+	fmt.Println(a.BS == nil)
+	Rep(a)
+	fmt.Println(a.BS == nil)
+	fmt.Println(a)
+}
+
+func Rep(a *A) {
+	ReplaceNil(a)
 }
