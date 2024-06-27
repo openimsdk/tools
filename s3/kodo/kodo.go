@@ -242,7 +242,13 @@ func (k Kodo) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, erro
 }
 
 func (k Kodo) IsNotFound(err error) bool {
-	return true
+	if err != nil {
+		var errorType *awss3types.NotFound
+		if errors.As(err, &errorType) {
+			return true
+		}
+	}
+	return false
 }
 
 func (k Kodo) AbortMultipartUpload(ctx context.Context, uploadID string, name string) error {
@@ -299,7 +305,6 @@ func (k Kodo) AccessURL(ctx context.Context, name string, expire time.Duration, 
 	}
 	if opt != nil {
 		if opt.ContentType != aws.ToString(info.ContentType) {
-			//修改文件类型
 			err := k.SetObjectContentType(ctx, name, opt.ContentType)
 			if err != nil {
 				return "", errors.New("AccessURL setContentType error")
