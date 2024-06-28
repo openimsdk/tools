@@ -25,7 +25,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.20.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.25.4 // indirect
 	github.com/aws/smithy-go v1.17.0 // indirect
-	github.com/qiniu/go-sdk/v7 v7.18.2
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-zookeeper/zk v1.0.3
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -36,6 +35,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.69
 	github.com/openimsdk/protocol v0.0.69-alpha.4
 	github.com/pkg/errors v0.9.1
+	github.com/qiniu/go-sdk/v7 v7.18.2
 	github.com/redis/go-redis/v9 v9.2.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/stretchr/testify v1.8.4
