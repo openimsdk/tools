@@ -20,10 +20,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/openimsdk/tools/s3"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/openimsdk/tools/s3"
 
 	"github.com/google/uuid"
 	"github.com/openimsdk/tools/errs"
@@ -278,4 +279,8 @@ func (c *Controller) AccessURL(ctx context.Context, name string, expire time.Dur
 
 func (c *Controller) FormData(ctx context.Context, name string, size int64, contentType string, duration time.Duration) (*s3.FormData, error) {
 	return c.impl.FormData(ctx, name, size, contentType, duration)
+}
+
+func (c *Controller) DeleteObject(ctx context.Context, name string) error {
+	return c.impl.DeleteObject(ctx, name)
 }
