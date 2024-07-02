@@ -23,13 +23,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openimsdk/tools/s3"
-	"github.com/tencentyun/cos-go-sdk-v5"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/openimsdk/tools/s3"
+	"github.com/tencentyun/cos-go-sdk-v5"
 
 	"github.com/openimsdk/tools/errs"
 )
@@ -399,4 +400,8 @@ func sha1val(msg string) string {
 	sha1Hash := sha1.New()
 	sha1Hash.Write([]byte(msg))
 	return hex.EncodeToString(sha1Hash.Sum(nil))
+}
+
+func (m *Cos) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
+	panic("implement me.")
 }

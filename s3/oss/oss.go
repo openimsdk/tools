@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/openimsdk/tools/s3"
 	"io"
 	"net/http"
 	"net/url"
@@ -30,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/openimsdk/tools/s3"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/openimsdk/tools/errs"
@@ -381,4 +382,8 @@ func (o *OSS) FormData(ctx context.Context, name string, size int64, contentType
 		fd.FormData["x-oss-content-type"] = contentType
 	}
 	return fd, nil
+}
+
+func (m *OSS) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
+	panic("implement me.")
 }
