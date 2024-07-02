@@ -118,3 +118,23 @@ func resizeImage(img image.Image, maxWidth, maxHeight int) image.Image {
 	// By default, the original image is returned
 	return img
 }
+
+func getResizeImageSize(img image.Image, maxWidth, maxHeight int) (thumbnailWidth, thumbnailHeight int) {
+	bounds := img.Bounds()
+	imgWidth := bounds.Max.X
+	imgHeight := bounds.Max.Y
+
+	// Calculating scaling
+	scaleWidth := float64(maxWidth) / float64(imgWidth)
+	scaleHeight := float64(maxHeight) / float64(imgHeight)
+
+	scale := scaleWidth
+	if scaleHeight < scaleWidth {
+		scale = scaleHeight
+	}
+
+	// Calculate Thumbnail Size
+	thumbnailWidth = int(float64(imgWidth) * scale)
+	thumbnailHeight = int(float64(imgHeight) * scale)
+	return 
+}
