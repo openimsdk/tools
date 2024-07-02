@@ -18,18 +18,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/minio/minio-go/v7"
-	"github.com/openimsdk/tools/s3"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
+
+	"github.com/minio/minio-go/v7"
+	"github.com/openimsdk/tools/s3"
 
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/signer"
@@ -495,4 +497,24 @@ func (m *Minio) FormData(ctx context.Context, name string, size int64, contentTy
 		Expires:      expires,
 		SuccessCodes: []int{successCode},
 	}, nil
+}
+
+func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
+	info, err := m.cache.GetImageObjectKeyInfo(ctx, name, func(ctx context.Context) (info *ImageInfo, err error) {
+		info, _, err = m.getObjectImageInfo(ctx, name)
+		return
+	})
+	if err != nil {
+		return "", errs.Wrap(err)
+	}
+	if !info.IsImg {
+		return "", errs.New("object not image").Wrap()
+	}
+	opt := &s3.Image{
+		Width:  info.Width,
+		Height: info.Height,
+		Format: info.Format,
+	}
+	cacheKey := filepath.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", opt.Width, opt.Height, opt.Format))
+	return cacheKey, nil
 }

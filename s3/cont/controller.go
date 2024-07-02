@@ -284,3 +284,6 @@ func (c *Controller) FormData(ctx context.Context, name string, size int64, cont
 func (c *Controller) DeleteObject(ctx context.Context, name string) error {
 	return c.impl.DeleteObject(ctx, name)
 }
+func (c *Controller) GetImageThumbnailURL(ctx context.Context, name string) (string, error) {
+	return c.impl.GetImageThumbnailKey(ctx, name)
+}
