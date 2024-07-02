@@ -509,12 +509,8 @@ func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, 
 	}
 
 	thumbnailWidth, thumbnailHeight := getResizeImageSize(img, info.Width, info.Height)
-	opt := &s3.Image{
-		Width:  thumbnailWidth,
-		Height: thumbnailHeight,
-		Format: info.Format,
-	}
+	log.ZDebug(ctx, "thumbnail Size is ", "Width is", thumbnailWidth, "Height is", thumbnailHeight, "image is", img)
 
-	cacheKey := filepath.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", opt.Width, opt.Height, opt.Format))
+	cacheKey := filepath.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", thumbnailWidth, thumbnailHeight, info.Format))
 	return cacheKey, nil
 }
