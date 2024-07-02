@@ -15,12 +15,14 @@
 package minio
 
 import (
+	"context"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
 
+	"github.com/openimsdk/tools/log"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
@@ -119,7 +121,7 @@ func resizeImage(img image.Image, maxWidth, maxHeight int) image.Image {
 	return img
 }
 
-func getResizeImageSize(img image.Image) (thumbnailWidth, thumbnailHeight int) {
+func getResizeImageSize(img image.Image) (int, int) {
 	bounds := img.Bounds()
 	imgWidth := bounds.Max.X
 	imgHeight := bounds.Max.Y
@@ -134,7 +136,10 @@ func getResizeImageSize(img image.Image) (thumbnailWidth, thumbnailHeight int) {
 	}
 
 	// Calculate Thumbnail Size
-	thumbnailWidth = int(float64(imgWidth) * scale)
-	thumbnailHeight = int(float64(imgHeight) * scale)
-	return
+	thumbnailWidth := int(float64(imgWidth) * scale)
+	thumbnailHeight := int(float64(imgHeight) * scale)
+	log.ZDebug(context.TODO(), "thumbnail resize is", "scale is", scale)
+	log.ZDebug(context.TODO(), "thumbnail resize!!!", "thunbWidth is", thumbnailWidth, "thumbnailHeight", thumbnailHeight)
+	log.ZDebug(context.TODO(), "thumbnail resize!!!", "imgWidth is", imgWidth, "Height", imgHeight)
+	return thumbnailWidth, thumbnailHeight
 }
