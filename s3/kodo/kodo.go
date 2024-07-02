@@ -19,24 +19,24 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	"io"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/openimsdk/tools/s3"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	awss3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/s3"
 	"github.com/qiniu/go-sdk/v7/auth"
 	"github.com/qiniu/go-sdk/v7/storage"
-	"github.com/openimsdk/tools/errs"
 )
 
 const (
@@ -156,10 +156,10 @@ func (k Kodo) PartSize(ctx context.Context, size int64) (int64, error) {
 	if size <= 0 {
 		return 0, errors.New("size must be greater than 0")
 	}
-	if size > maxPartSize*maxNumSize {
-		return 0, fmt.Errorf("size must be less than %db", maxPartSize*maxNumSize)
+	if size > int64(maxPartSize)*int64(maxNumSize) {
+		return 0, fmt.Errorf("size must be less than %db", int64(maxPartSize)*int64(maxNumSize))
 	}
-	if size <= minPartSize*maxNumSize {
+	if size <= int64(maxPartSize)*int64(maxNumSize) {
 		return minPartSize, nil
 	}
 	partSize := size / maxNumSize
@@ -359,9 +359,9 @@ func (k *Kodo) FormData(ctx context.Context, name string, size int64, contentTyp
 	// https://developer.qiniu.com/kodo/1312/upload
 	now := time.Now()
 	expiration := now.Add(duration)
-	resourceKey := k.Region+":"+name
+	resourceKey := k.Region + ":" + name
 	putPolicy := map[string]any{
-		"scope": resourceKey,
+		"scope":    resourceKey,
 		"deadline": now.Unix() + 3600,
 	}
 
@@ -379,14 +379,13 @@ func (k *Kodo) FormData(ctx context.Context, name string, size int64, contentTyp
 	encodedSign := base64.StdEncoding.EncodeToString([]byte(sign))
 	uploadToken := k.AccessKey + ":" + encodedSign + ":" + encodedPutPolicy
 
-
 	fd := &s3.FormData{
 		URL:     k.BucketURL,
 		File:    "file",
 		Expires: expiration,
 		FormData: map[string]string{
-			"key":        resourceKey,
-			"token":      uploadToken,
+			"key":   resourceKey,
+			"token": uploadToken,
 		},
 		SuccessCodes: []int{successCode},
 	}
