@@ -508,8 +508,7 @@ func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, 
 		return "", errs.New("object not image").Wrap()
 	}
 
-	thumbnail := resizeImage(img, info.Width, info.Height)
-	thumbnailWidth, thumbnailHeight := ImageWidthHeight(thumbnail)
+	thumbnailWidth, thumbnailHeight := getResizeImageSize(img, info.Width, info.Height)
 	opt := &s3.Image{
 		Width:  thumbnailWidth,
 		Height: thumbnailHeight,
