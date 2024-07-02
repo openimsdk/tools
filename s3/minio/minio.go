@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"image"
 	"io"
 	"net/http"
 	"net/url"
@@ -501,11 +500,7 @@ func (m *Minio) FormData(ctx context.Context, name string, size int64, contentTy
 }
 
 func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
-	var img image.Image
-	info, err := m.cache.GetImageObjectKeyInfo(ctx, name, func(ctx context.Context) (info *ImageInfo, err error) {
-		info, img, err = m.getObjectImageInfo(ctx, name)
-		return
-	})
+	info, img, err := m.getObjectImageInfo(ctx, name)
 	if err != nil {
 		return "", errs.Wrap(err)
 	}
