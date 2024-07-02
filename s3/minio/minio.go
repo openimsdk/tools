@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image"
 	"io"
 	"net/http"
 	"net/url"
@@ -500,8 +501,9 @@ func (m *Minio) FormData(ctx context.Context, name string, size int64, contentTy
 }
 
 func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
+	var img image.Image
 	info, err := m.cache.GetImageObjectKeyInfo(ctx, name, func(ctx context.Context) (info *ImageInfo, err error) {
-		info, _, err = m.getObjectImageInfo(ctx, name)
+		info, img, err = m.getObjectImageInfo(ctx, name)
 		return
 	})
 	if err != nil {
@@ -510,11 +512,15 @@ func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, 
 	if !info.IsImg {
 		return "", errs.New("object not image").Wrap()
 	}
+
+	thumbnail := resizeImage(img, info.Width, info.Height)
+	thumbnailWidth, thumbnailHeight := ImageWidthHeight(thumbnail)
 	opt := &s3.Image{
-		Width:  info.Width,
-		Height: info.Height,
+		Width:  thumbnailWidth,
+		Height: thumbnailHeight,
 		Format: info.Format,
 	}
+
 	cacheKey := filepath.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", opt.Width, opt.Height, opt.Format))
 	return cacheKey, nil
 }
