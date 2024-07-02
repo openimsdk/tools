@@ -163,4 +163,6 @@ type Interface interface {
 	AccessURL(ctx context.Context, name string, expire time.Duration, opt *AccessURLOption) (string, error)
 
 	FormData(ctx context.Context, name string, size int64, contentType string, duration time.Duration) (*FormData, error)
+
+	GetImageThumbnailKey(ctx context.Context, name string) (string, error)
 }

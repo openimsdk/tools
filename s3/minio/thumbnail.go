@@ -18,9 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/minio/minio-go/v7"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/s3"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -29,6 +26,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/minio/minio-go/v7"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/s3"
 
 	"github.com/openimsdk/tools/log"
 )
