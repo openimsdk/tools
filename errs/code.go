@@ -23,7 +23,10 @@ const (
 	RecordNotFoundError = 1004 // Record does not exist
 
 	TokenExpiredError     = 1501
+	TokenInvalidError     = 1502
 	TokenMalformedError   = 1503
 	TokenNotValidYetError = 1504
 	TokenUnknownError     = 1505
+	TokenKickedError      = 1506
+	TokenNotExistError    = 1507
 )
