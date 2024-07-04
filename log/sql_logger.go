@@ -49,17 +49,24 @@ func (l *SqlLogger) LogMode(logLevel gormLogger.LogLevel) gormLogger.Interface {
 
 func (SqlLogger) Info(ctx context.Context, msg string, args ...any) {
 	ZInfo(ctx, msg, "args", args)
-	fmt.Print(args...)
 }
 
 func (SqlLogger) Warn(ctx context.Context, msg string, args ...any) {
 	ZWarn(ctx, msg, nil, "args", args)
-	fmt.Print(args...)
 }
 
 func (SqlLogger) Error(ctx context.Context, msg string, args ...any) {
-	ZError(ctx, msg, nil, "args", args)
-	fmt.Print(args...)
+	var err error = nil
+	v, ok := args[0].(error)
+	if ok {
+		err = v
+	} else {
+		kvList := make([]any, 0)
+		kvList = append(kvList, args...)
+		ZError(ctx, msg, nil, kvList...)
+		return
+	}
+	ZError(ctx, msg, err)
 }
 
 func (l *SqlLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
