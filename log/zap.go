@@ -170,7 +170,7 @@ func NewZapLogger(
 		moduleVersion:    moduleVersion,
 		loggerPrefixName: loggerPrefixName,
 		logLocation:      logLocation,
-		rotationTime:     time.Duration(rotationTime) * time.Minute,
+		rotationTime:     time.Duration(rotationTime) * time.Hour,
 		maxBackups:       maxBackups,
 		maxSize:          maxSize,
 		maxAge:           maxAge,
