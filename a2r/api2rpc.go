@@ -74,7 +74,7 @@ func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options .
 func ParseRequestNotCheck[T any](c *gin.Context) (*T, error) {
 	var req T
 	if err := c.ShouldBindWith(&req, jsonBind); err != nil {
-		return nil, err
+		return nil, errs.NewCodeError(errs.ArgsError, err.Error())
 	}
 	return &req, nil
 }
