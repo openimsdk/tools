@@ -57,16 +57,19 @@ func (SqlLogger) Warn(ctx context.Context, msg string, args ...any) {
 
 func (SqlLogger) Error(ctx context.Context, msg string, args ...any) {
 	var err error = nil
+	kvList := make([]any, 0)
 	v, ok := args[0].(error)
 	if ok {
 		err = v
+		for i := 1; i < len(args); i++ {
+			kvList = append(kvList, fmt.Sprintf("args[%v]", i), args[i])
+		}
 	} else {
-		kvList := make([]any, 0)
-		kvList = append(kvList, args...)
-		ZError(ctx, msg, nil, kvList...)
-		return
+		for i := 0; i < len(args); i++ {
+			kvList = append(kvList, fmt.Sprintf("args[%v]", i), args[i])
+		}
 	}
-	ZError(ctx, msg, err)
+	ZError(ctx, msg, err, kvList...)
 }
 
 func (l *SqlLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
