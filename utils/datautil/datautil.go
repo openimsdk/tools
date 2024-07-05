@@ -23,7 +23,7 @@ import (
 	"sort"
 )
 
-// SliceSubFunc returns elements in slice a that are not present in slice b (a - b).
+// SliceSubFunc returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
 // Determine if elements are equal based on the result returned by fn.
 func SliceSubFunc[T any, E comparable](a, b []T, fn func(i T) E) []T {
 	if len(b) == 0 {
@@ -49,19 +49,24 @@ func SliceSubFunc[T any, E comparable](a, b []T, fn func(i T) E) []T {
 	return rs
 }
 
-// SliceSub returns elements in slice a that are not present in slice b (a - b).
+// SliceSub returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
 func SliceSub[E comparable](a, b []E) []E {
 	return SliceSubFunc(a, b, func(i E) E { return i })
 }
 
-// SliceSubAny returns elements in slice a that are not present in slice b (a - b).
+// SliceSubAny returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
 // fn is a function that converts elements of slice b to elements comparable with those in slice a.
 func SliceSubAny[E comparable, T any](a []E, b []T, fn func(t T) E) []E {
 	return SliceSub(a, Slice(b, fn))
 }
 
+// SliceSubConvertPre returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
+// fn is a function that converts elements of slice a to elements comparable with those in slice b.
+func SliceSubConvertPre[E comparable, T any](a []T, b []E, fn func(t T) E) []E {
+	return SliceSub(Slice(a, fn), b)
+}
+
 // SliceAnySub returns elements in slice a that are not present in slice b (a - b).
-// fn is a function that extracts a comparable value from elements of slice a.
 func SliceAnySub[E any, T comparable](a, b []E, fn func(t E) T) []E {
 	m := make(map[T]E)
 	for i := 0; i < len(b); i++ {
