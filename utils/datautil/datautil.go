@@ -23,20 +23,20 @@ import (
 	"sort"
 )
 
-// SliceSubFunc returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
-// Determine if elements are equal based on the result returned by fn.
-func SliceSubFunc[T any, E comparable](a, b []T, fn func(i T) E) []T {
+// SliceSubFuncs returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
+// Determine if elements are equal based on the result returned by fna(a[i]) and fnb(b[i]).
+func SliceSubFuncs[T, V any, E comparable](a []T, b []V, fna func(i T) E, fnb func(i V) E) []T {
 	if len(b) == 0 {
 		return a
 	}
 	k := make(map[E]struct{})
 	for i := 0; i < len(b); i++ {
-		k[fn(b[i])] = struct{}{}
+		k[fnb(b[i])] = struct{}{}
 	}
 	t := make(map[E]struct{})
 	rs := make([]T, 0, len(a))
 	for i := 0; i < len(a); i++ {
-		e := fn(a[i])
+		e := fna(a[i])
 		if _, ok := t[e]; ok {
 			continue
 		}
@@ -47,6 +47,12 @@ func SliceSubFunc[T any, E comparable](a, b []T, fn func(i T) E) []T {
 		t[e] = struct{}{}
 	}
 	return rs
+}
+
+// SliceSubFunc returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
+// Determine if elements are equal based on the result returned by fn.
+func SliceSubFunc[T any, E comparable](a, b []T, fn func(i T) E) []T {
+	return SliceSubFuncs(a, b, fn, fn)
 }
 
 // SliceSub returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
@@ -62,8 +68,8 @@ func SliceSubAny[E comparable, T any](a []E, b []T, fn func(t T) E) []E {
 
 // SliceSubConvertPre returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
 // fn is a function that converts elements of slice a to elements comparable with those in slice b.
-func SliceSubConvertPre[E comparable, T any](a []T, b []E, fn func(t T) E) []E {
-	return SliceSub(Slice(a, fn), b)
+func SliceSubConvertPre[E comparable, T any](a []T, b []E, fn func(t T) E) []T {
+	return SliceSubFuncs(a, b, fn, func(i E) E { return i })
 }
 
 // SliceAnySub returns elements in slice a that are not present in slice b (a - b).
