@@ -23,29 +23,35 @@ import (
 	"sort"
 )
 
-// SliceSub returns elements in slice a that are not present in slice b (a - b).
-func SliceSub[E comparable](a, b []E) []E {
+// SliceSubFunc returns elements in slice a that are not present in slice b (a - b).
+// Determine if elements are equal based on the result returned by fn.
+func SliceSubFunc[T any, E comparable](a, b []T, fn func(i T) E) []T {
 	if len(b) == 0 {
 		return a
 	}
 	k := make(map[E]struct{})
 	for i := 0; i < len(b); i++ {
-		k[b[i]] = struct{}{}
+		k[fn(b[i])] = struct{}{}
 	}
 	t := make(map[E]struct{})
-	rs := make([]E, 0, len(a))
+	rs := make([]T, 0, len(a))
 	for i := 0; i < len(a); i++ {
-		e := a[i]
+		e := fn(a[i])
 		if _, ok := t[e]; ok {
 			continue
 		}
 		if _, ok := k[e]; ok {
 			continue
 		}
-		rs = append(rs, e)
+		rs = append(rs, a[i])
 		t[e] = struct{}{}
 	}
 	return rs
+}
+
+// SliceSub returns elements in slice a that are not present in slice b (a - b).
+func SliceSub[E comparable](a, b []E) []E {
+	return SliceSubFunc(a, b, func(i E) E { return i })
 }
 
 // SliceSubAny returns elements in slice a that are not present in slice b (a - b).

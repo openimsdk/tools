@@ -20,6 +20,28 @@ import (
 	"testing"
 )
 
+func TestSliceSubFunc(t *testing.T) {
+	type A struct {
+		ID  string
+		Num int
+	}
+	arr1 := []A{{ID: "1", Num: 1}, {ID: "2", Num: 2}, {ID: "3", Num: 3}, {ID: "4", Num: 4}, {ID: "5", Num: 5}}
+	arr2 := []A{{ID: "2", Num: 2}, {ID: "4", Num: 3}, {ID: "5", Num: 3}}
+	fmt.Println(SliceSubFunc(arr1, arr2, func(i A) string { return i.ID }))
+	// [{1 1} {3 3}]
+}
+
+func TestSliceSub(t *testing.T) {
+	type A struct {
+		ID  string
+		Num int
+	}
+	arr1 := []A{{ID: "1", Num: 1}, {ID: "2", Num: 2}, {ID: "3", Num: 3}, {ID: "4", Num: 4}, {ID: "5", Num: 5}}
+	arr2 := []A{{ID: "2", Num: 2}, {ID: "4", Num: 3}, {ID: "5", Num: 3}}
+	fmt.Println(SliceSub(arr1, arr2))
+	// [{1 1} {3 3} {4 4} {5 5}]
+}
+
 func TestDistinct(t *testing.T) {
 	arr := []int{1, 1, 1, 4, 4, 5, 2, 3, 3, 3, 6}
 	fmt.Println(Distinct(arr))
