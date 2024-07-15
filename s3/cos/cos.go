@@ -401,7 +401,3 @@ func sha1val(msg string) string {
 	sha1Hash.Write([]byte(msg))
 	return hex.EncodeToString(sha1Hash.Sum(nil))
 }
-
-func (m *Cos) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
-	panic("implement me.")
-}

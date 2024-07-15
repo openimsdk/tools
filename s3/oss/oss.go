@@ -383,7 +383,3 @@ func (o *OSS) FormData(ctx context.Context, name string, size int64, contentType
 	}
 	return fd, nil
 }
-
-func (m *OSS) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
-	panic("implement me.")
-}
