@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -496,4 +497,18 @@ func (m *Minio) FormData(ctx context.Context, name string, size int64, contentTy
 		Expires:      expires,
 		SuccessCodes: []int{successCode},
 	}, nil
+}
+
+func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, error) {
+	info, img, err := m.getObjectImageInfo(ctx, name)
+	if err != nil {
+		return "", errs.Wrap(err)
+	}
+	if !info.IsImg {
+		return "", errs.New("object not image").Wrap()
+	}
+	thumbnailWidth, thumbnailHeight := getThumbnailSize(img)
+
+	cacheKey := filepath.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", thumbnailWidth, thumbnailHeight, info.Format))
+	return cacheKey, nil
 }
