@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/openimsdk/tools/utils/stringutil"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
 	"path/filepath"
 	"time"
 
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/mcontext"
 	"go.uber.org/zap"
@@ -54,27 +54,20 @@ func InitFromConfig(
 	isStdout bool,
 	isJson bool,
 	logLocation string,
-	rotateTime uint,
-	maxBackups int,
-	maxSize int,
-	maxAge int,
-	compress bool,
+	rotateCount uint,
+	rotationTime uint,
 	moduleVersion string,
 ) error {
 	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation,
-		rotateTime, maxBackups, maxSize, maxAge, compress, moduleVersion)
+		rotateCount, rotationTime, moduleVersion)
 	if err != nil {
 		return err
 	}
-	setPkgLogger(isJson, moduleName, l)
-	return nil
-}
-
-func setPkgLogger(isJson bool, moduleName string, l *ZapLogger) {
 	pkgLogger = l.WithCallDepth(callDepth)
 	if isJson {
 		pkgLogger = pkgLogger.WithName(moduleName)
 	}
+	return nil
 }
 
 // InitConsoleLogger init osStdout and osStderr.
@@ -134,12 +127,7 @@ type ZapLogger struct {
 	moduleName       string
 	moduleVersion    string
 	loggerPrefixName string
-	logLocation      string
 	rotationTime     time.Duration
-	maxBackups       int
-	maxSize          int
-	maxAge           int
-	compress         bool
 }
 
 func NewZapLogger(
@@ -148,11 +136,8 @@ func NewZapLogger(
 	isStdout bool,
 	isJson bool,
 	logLocation string,
+	rotateCount uint,
 	rotationTime uint,
-	maxBackups int,
-	maxSize int,
-	maxAge int,
-	compress bool,
 	moduleVersion string,
 ) (*ZapLogger, error) {
 	zapConfig := zap.Config{
@@ -164,20 +149,12 @@ func NewZapLogger(
 	} else {
 		zapConfig.Encoding = "console"
 	}
-	zl := &ZapLogger{
-		level:            logLevelMap[logLevel],
-		moduleName:       moduleName,
-		moduleVersion:    moduleVersion,
-		loggerPrefixName: loggerPrefixName,
-		logLocation:      logLocation,
-		rotationTime:     time.Duration(rotationTime) * time.Hour,
-		maxBackups:       maxBackups,
-		maxSize:          maxSize,
-		maxAge:           maxAge,
-		compress:         compress,
+	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, loggerPrefixName: loggerPrefixName,
+		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion}
+	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
+	if err != nil {
+		return nil, err
 	}
-	opts := zl.cores(isStdout, isJson)
-
 	l, err := zapConfig.Build(opts)
 	if err != nil {
 		return nil, err
@@ -202,8 +179,10 @@ func NewConsoleZapLogger(
 		zapConfig.Encoding = "console"
 	}
 	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, moduleVersion: moduleVersion}
-	opts := zl.consoleCores(outPut, isJson)
-
+	opts, err := zl.consoleCores(outPut, isJson)
+	if err != nil {
+		return nil, err
+	}
 	l, err := zapConfig.Build(opts)
 	if err != nil {
 		return nil, err
@@ -211,8 +190,7 @@ func NewConsoleZapLogger(
 	zl.zap = l.Sugar()
 	return zl, nil
 }
-
-func (l *ZapLogger) cores(isStdout bool, isJson bool) zap.Option {
+func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotateCount uint) (zap.Option, error) {
 	c := zap.NewProductionEncoderConfig()
 	c.EncodeTime = l.timeEncoder
 	c.EncodeDuration = zapcore.SecondsDurationEncoder
@@ -233,10 +211,12 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool) zap.Option {
 		fileEncoder = zapcore.NewConsoleEncoder(c)
 	}
 	fileEncoder = &alignEncoder{Encoder: fileEncoder}
-	writer := l.getWriter()
-
+	writer, err := l.getWriter(logLocation, rotateCount)
+	if err != nil {
+		return nil, err
+	}
 	var cores []zapcore.Core
-	if l.logLocation != "" {
+	if logLocation != "" {
 		cores = []zapcore.Core{
 			zapcore.NewCore(fileEncoder, writer, zap.NewAtomicLevelAt(l.level)),
 		}
@@ -247,25 +227,10 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool) zap.Option {
 	}
 	return zap.WrapCore(func(c zapcore.Core) zapcore.Core {
 		return zapcore.NewTee(cores...)
-	})
+	}), nil
 }
 
-// setupLogRotation set to rotate according to l.rotationTime
-func (l *ZapLogger) setupLogRotation(lumLogger *lumberjack.Logger) {
-	ticker := time.NewTicker(l.rotationTime)
-	go func() {
-		for range ticker.C {
-			fileName := l.getLogFileName()
-			lumLogger.Filename = fileName
-			err := lumLogger.Rotate()
-			if err != nil {
-				ZError(context.TODO(), "rotate log field", err)
-			}
-		}
-	}()
-}
-
-func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) zap.Option {
+func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, error) {
 	c := zap.NewProductionEncoderConfig()
 	c.EncodeTime = l.timeEncoder
 	c.EncodeDuration = zapcore.SecondsDurationEncoder
@@ -290,7 +255,7 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) zap.Option {
 
 	return zap.WrapCore(func(c zapcore.Core) zapcore.Core {
 		return zapcore.NewTee(cores...)
-	})
+	}), nil
 }
 
 func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
@@ -313,33 +278,23 @@ func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) 
 	enc.AppendString(t.Format(layout))
 }
 
-func (l *ZapLogger) getWriter() zapcore.WriteSyncer {
-	fileName := l.getLogFileName()
-	lumberjackLogger := &lumberjack.Logger{
-		Filename:   fileName,     // log file path
-		MaxSize:    l.maxSize,    // maximum size of each log file (in MB)
-		MaxBackups: l.maxBackups, // maximum number of retained old log files
-		MaxAge:     l.maxAge,     // maximum number of days to retain old log files
-		Compress:   l.compress,   // whether compress old log files
-	}
-	l.setupLogRotation(lumberjackLogger) // Set to rotate according to time
-	return zapcore.AddSync(lumberjackLogger)
-}
-
-func (l *ZapLogger) getLogFileName() string {
-	var (
-		now     = time.Now()
-		timeStr string
-	)
-
+func (l *ZapLogger) getWriter(logLocation string, rorateCount uint) (zapcore.WriteSyncer, error) {
+	var path string
 	if l.rotationTime%(time.Hour*time.Duration(hoursPerDay)) == 0 {
-		timeStr = now.Format(".2006-01-02")
+		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d"
 	} else if l.rotationTime%time.Hour == 0 {
-		timeStr = now.Format(".2006-01-02_15")
+		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d_%H"
 	} else {
-		timeStr = now.Format(".2006-01-02_15_04_05")
+		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d_%H_%M_%S"
 	}
-	return l.logLocation + sp + l.loggerPrefixName + timeStr
+	logf, err := rotatelogs.New(path,
+		rotatelogs.WithRotationCount(rorateCount),
+		rotatelogs.WithRotationTime(l.rotationTime),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return zapcore.AddSync(logf), nil
 }
 
 func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
