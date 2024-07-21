@@ -173,7 +173,7 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 		return nil, errors.Wrapf(err, `failed to create a new file %v`, filename)
 	}
 
-	if err := rl.rotateNolock(filename); err != nil {
+	if err := rl.rotateNolock(filename); err != nil && errors.Is(err, errors.New("The file exists")) {
 		err = errors.Wrap(err, "failed to rotate")
 		if bailOnRotateFail {
 			// Failure to rotate is a problem, but it's really not a great
@@ -186,7 +186,6 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 			if fh != nil { // probably can't happen, but being paranoid
 				fh.Close()
 			}
-
 			return nil, err
 		}
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
