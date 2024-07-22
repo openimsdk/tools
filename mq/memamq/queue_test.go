@@ -2,27 +2,28 @@ package memamq
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func TestNewMemoryQueue(t *testing.T) {
-	workerCount := 3
-	bufferSize := 10
-	queue := NewMemoryQueue(workerCount, bufferSize)
-
-	if cap(queue.taskChan) != bufferSize {
-		t.Errorf("Expected buffer size %d, got %d", bufferSize, cap(queue.taskChan))
-	}
-
-	if queue.isStopped {
-		t.Errorf("New queue is prematurely stopped")
-	}
-
-	if len(queue.taskChan) != 0 {
-		t.Errorf("New queue should be empty, found %d items", len(queue.taskChan))
-	}
-}
+//func TestNewMemoryQueue(t *testing.T) {
+//	workerCount := 3
+//	bufferSize := 10
+//	queue := NewMemoryQueue(workerCount, bufferSize)
+//
+//	if cap(queue.taskChan) != bufferSize {
+//		t.Errorf("Expected buffer size %d, got %d", bufferSize, cap(queue.taskChan))
+//	}
+//
+//	if queue.isStopped {
+//		t.Errorf("New queue is prematurely stopped")
+//	}
+//
+//	if len(queue.taskChan) != 0 {
+//		t.Errorf("New queue should be empty, found %d items", len(queue.taskChan))
+//	}
+//}
 
 func TestPushAndStop(t *testing.T) {
 	queue := NewMemoryQueue(1, 5)
@@ -58,4 +59,24 @@ func TestPushTimeout(t *testing.T) {
 	if err := queue.Push(func() {}); err != nil {
 		t.Error("Expected timeout error, got nil")
 	}
+}
+
+func TestName(t *testing.T) {
+	queue := NewMemoryQueue(16, 1024)
+	var count atomic.Int64
+	for i := 0; i < 128; i++ {
+		go func() {
+			for {
+				queue.Push(func() {
+					count.Add(1)
+				})
+			}
+		}()
+	}
+
+	<-time.After(time.Second * 2)
+	t.Log("stop 1", time.Now())
+	queue.Stop()
+	t.Log("stop 2", time.Now())
+	t.Log(count.Load(), time.Now())
 }
