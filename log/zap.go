@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"time"
 
 	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
@@ -371,16 +370,21 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
 
-	for i := 1; i <= len(keysAndValues); i += 2 {
-		if val, ok := keysAndValues[i].(interface {
-			Format() any
-		}); ok {
-			if reflect.ValueOf(val).Kind() != reflect.Ptr {
+	if len(keysAndValues)%2 == 0 {
+		for i := 1; i <= len(keysAndValues); i += 2 {
+			if val, ok := keysAndValues[i].(interface {
+				Format() any
+			}); ok && val != nil {
 				keysAndValues[i] = val.Format()
-			} else {
-				val.Format()
+				// if reflect.ValueOf(val).Kind() != reflect.Ptr {
+				// 	keysAndValues[i] = val.Format()
+				// } else {
+				// 	val.Format()
+				// }
 			}
 		}
+	} else {
+		ZError(ctx, "keysAndValues length is not even", nil)
 	}
 
 	if opUserID != "" {
