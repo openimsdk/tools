@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"golang.org/x/image/bmp"
+	"golang.org/x/image/tiff"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -27,11 +29,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chai2010/webp"
 	"github.com/minio/minio-go/v7"
 	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/s3"
-
 	"github.com/openimsdk/tools/log"
+	"github.com/openimsdk/tools/s3"
 )
 
 func (m *Minio) getImageThumbnailURL(ctx context.Context, name string, expire time.Duration, opt *s3.Image) (string, error) {
@@ -100,6 +102,19 @@ func (m *Minio) getImageThumbnailURL(ctx context.Context, name string, expire ti
 			err = jpeg.Encode(buf, thumbnail, nil)
 		case formatGif:
 			err = gif.Encode(buf, thumbnail, nil)
+		case formatWebP:
+			err = webp.Encode(buf, thumbnail, nil)
+		case formatTiff:
+			err = tiff.Encode(buf, thumbnail, nil)
+		case formatBmp:
+			err = bmp.Encode(buf, thumbnail)
+		case formatAvif:
+			//err = avif.Encode(buf, img, nil)
+		case formatHeic, formatHeif:
+
+		}
+		if err != nil {
+			return "", errs.WrapMsg(err, "encode failed", "type", opt.Format)
 		}
 		cacheKey := filepath.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", opt.Width, opt.Height, opt.Format))
 		if _, err = m.core.Client.PutObject(ctx, m.bucket, cacheKey, buf, int64(buf.Len()), minio.PutObjectOptions{}); err != nil {
