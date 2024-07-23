@@ -17,11 +17,12 @@ package log
 import (
 	"context"
 	"fmt"
-	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
-	"github.com/openimsdk/tools/utils/stringutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
+	"github.com/openimsdk/tools/utils/stringutil"
 
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/tools/mcontext"
@@ -368,6 +369,14 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	triggerID := mcontext.GetTriggerID(ctx)
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
+	for i := 1; i <= len(keysAndValues); i += 2 {
+		if k, ok := keysAndValues[i].(interface {
+			Format() error
+		}); ok {
+			k.Format()
+		}
+	}
+
 	if opUserID != "" {
 		keysAndValues = append([]any{constant.OpUserID, opUserID}, keysAndValues...)
 	}
