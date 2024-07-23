@@ -58,9 +58,10 @@ func InitFromConfig(
 	rotateCount uint,
 	rotationTime uint,
 	moduleVersion string,
+	isSimplify bool,
 ) error {
 	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation,
-		rotateCount, rotationTime, moduleVersion)
+		rotateCount, rotationTime, moduleVersion, isSimplify)
 	if err != nil {
 		return err
 	}
@@ -129,6 +130,7 @@ type ZapLogger struct {
 	moduleVersion    string
 	loggerPrefixName string
 	rotationTime     time.Duration
+	isSimplify       bool
 }
 
 func NewZapLogger(
@@ -140,6 +142,7 @@ func NewZapLogger(
 	rotateCount uint,
 	rotationTime uint,
 	moduleVersion string,
+	isSimplify bool,
 ) (*ZapLogger, error) {
 	zapConfig := zap.Config{
 		Level:             zap.NewAtomicLevelAt(logLevelMap[logLevel]),
@@ -151,7 +154,7 @@ func NewZapLogger(
 		zapConfig.Encoding = "console"
 	}
 	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, loggerPrefixName: loggerPrefixName,
-		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion}
+		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion, isSimplify: isSimplify}
 	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
 	if err != nil {
 		return nil, err
@@ -370,21 +373,18 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
 
-	if len(keysAndValues)%2 == 0 {
-		for i := 1; i <= len(keysAndValues); i += 2 {
-			if val, ok := keysAndValues[i].(interface {
-				Format() any
-			}); ok && val != nil {
-				keysAndValues[i] = val.Format()
-				// if reflect.ValueOf(val).Kind() != reflect.Ptr {
-				// 	keysAndValues[i] = val.Format()
-				// } else {
-				// 	val.Format()
-				// }
+	if l.isSimplify {
+		if len(keysAndValues)%2 == 0 {
+			for i := 1; i <= len(keysAndValues); i += 2 {
+				if val, ok := keysAndValues[i].(interface {
+					Format() any
+				}); ok && val != nil {
+					keysAndValues[i] = val.Format()
+				}
 			}
+		} else {
+			ZError(ctx, "keysAndValues length is not even", nil)
 		}
-	} else {
-		ZError(ctx, "keysAndValues length is not even", nil)
 	}
 
 	if opUserID != "" {
