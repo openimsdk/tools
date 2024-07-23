@@ -379,7 +379,7 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 
 	if l.isSimplify {
 		if len(keysAndValues)%2 == 0 {
-			for i := 1; i <= len(keysAndValues); i += 2 {
+			for i := 1; i < len(keysAndValues); i += 2 {
 
 				if val, ok := keysAndValues[i].(LogFormatter); ok && val != nil {
 					keysAndValues[i] = val.Format()
@@ -390,7 +390,7 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 		}
 	}
 
-	for i := 1; i <= len(keysAndValues); i += 2 {
+	for i := 1; i < len(keysAndValues); i += 2 {
 		if s, ok := keysAndValues[i].(interface{ String() string }); ok {
 			keysAndValues[i] = s.String()
 		} else {
