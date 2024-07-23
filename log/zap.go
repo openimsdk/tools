@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"time"
 
 	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
@@ -369,11 +370,16 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	triggerID := mcontext.GetTriggerID(ctx)
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
+
 	for i := 1; i <= len(keysAndValues); i += 2 {
-		if k, ok := keysAndValues[i].(interface {
-			Format() error
+		if val, ok := keysAndValues[i].(interface {
+			Format() any
 		}); ok {
-			k.Format()
+			if reflect.ValueOf(val).Kind() != reflect.Ptr {
+				keysAndValues[i] = val.Format()
+			} else {
+				val.Format()
+			}
 		}
 	}
 
