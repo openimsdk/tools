@@ -17,11 +17,12 @@ package mw
 import (
 	"context"
 	"fmt"
-	"github.com/openimsdk/tools/checker"
-	"github.com/pkg/errors"
 	"math"
 	"runtime"
 	"strings"
+
+	"github.com/openimsdk/tools/checker"
+	"github.com/pkg/errors"
 
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
@@ -34,13 +35,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func rpcString(v any) string {
-	if s, ok := v.(interface{ String() string }); ok {
-		return s.String()
-	}
-	return fmt.Sprintf("%+v", v)
-}
-
 func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	funcName := info.FullMethod
 	md, err := validateMetadata(ctx)
@@ -51,7 +45,7 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if err != nil {
 		return nil, err
 	}
-	log.ZInfo(ctx, fmt.Sprintf("RPC Server Request - %s", extractFunctionName(funcName)), "funcName", funcName, "req", rpcString(req))
+	log.ZInfo(ctx, fmt.Sprintf("RPC Server Request - %s", extractFunctionName(funcName)), "funcName", funcName, "req", req)
 	if err := checker.Validate(req); err != nil {
 		return nil, err
 	}
@@ -60,7 +54,7 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if err != nil {
 		return nil, handleError(ctx, funcName, req, err)
 	}
-	log.ZInfo(ctx, fmt.Sprintf("RPC Server Response Success - %s", extractFunctionName(funcName)), "funcName", funcName, "resp", rpcString(resp))
+	log.ZInfo(ctx, fmt.Sprintf("RPC Server Response Success - %s", extractFunctionName(funcName)), "funcName", funcName, "resp", resp)
 	return resp, nil
 }
 
