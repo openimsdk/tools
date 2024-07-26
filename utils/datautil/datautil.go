@@ -190,6 +190,38 @@ func IndexOf[E comparable](e E, es ...E) int {
 	})
 }
 
+// DeleteElems delete elems in slice.
+func DeleteElems[E comparable](es []E, delEs ...E) []E {
+	switch len(delEs) {
+	case 0:
+		return es
+	case 1:
+		for i := range es {
+			if es[i] == delEs[0] {
+				return append(es[:i], es[i+1:]...)
+			}
+		}
+		return es
+	default:
+		elMap := make(map[E]int)
+		for _, e := range delEs {
+			elMap[e]++
+		}
+		res := make([]E, 0, len(es))
+		for i := range es {
+			if _, ok := elMap[es[i]]; ok {
+				elMap[es[i]]--
+				if elMap[es[i]] == 0 {
+					delete(elMap, es[i])
+				}
+				continue
+			}
+			res = append(res, es[i])
+		}
+		return res
+	}
+}
+
 // Contain Whether to include
 func Contain[E comparable](e E, es ...E) bool {
 	return IndexOf(e, es...) >= 0
@@ -306,6 +338,26 @@ func Max[E Ordered](e ...E) E {
 		}
 	}
 	return v
+}
+
+// Between checks if data is between left and right, excluding equality.
+func Between[E Ordered](data, left, right E) bool {
+	return left < data && data < right
+}
+
+// BetweenEq checks if data is between left and right, including equality.
+func BetweenEq[E Ordered](data, left, right E) bool {
+	return left <= data && data <= right
+}
+
+// BetweenLEq checks if data is between left and right, including left equality.
+func BetweenLEq[E Ordered](data, left, right E) bool {
+	return left <= data && data < right
+}
+
+// BetweenREq checks if data is between left and right, including right equality.
+func BetweenREq[E Ordered](data, left, right E) bool {
+	return left < data && data <= right
 }
 
 func Paginate[E any](es []E, pageNumber int, showNumber int) []E {
