@@ -691,6 +691,12 @@ func CopyStructFields(a any, b any, fields ...string) (err error) {
 	return copier.Copy(a, b)
 }
 
+func CopySlice[T any](a []T) []T {
+	ns := make([]T, len(a))
+	copy(ns, a)
+	return ns
+}
+
 func GetElemByIndex(array []int, index int) (int, error) {
 	if index < 0 || index >= len(array) {
 		return 0, errs.New("index out of range", "index", index, "array", array).Wrap()
