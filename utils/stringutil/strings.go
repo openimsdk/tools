@@ -270,3 +270,23 @@ func CamelCaseToSpaceSeparated(input string) string {
 	}
 	return string(result)
 }
+
+// UpperFirst upper the first letter of the input string
+func UpperFirst(input string) string {
+	if len(input) == 0 {
+		return input
+	}
+	runes := []rune(input)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+// LowerFirst lower the first letter of the input string
+func LowerFirst(input string) string {
+	if len(input) == 0 {
+		return input
+	}
+	runes := []rune(input)
+	runes[0] = unicode.ToLower(runes[0])
+	return string(runes)
+}
