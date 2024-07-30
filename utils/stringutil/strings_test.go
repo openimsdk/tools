@@ -15,6 +15,7 @@
 package stringutil
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -98,5 +99,16 @@ func TestFormatString(t *testing.T) {
 				t.Errorf("FormatString(%q, %d, %t) = %q; want %q", tc.text, tc.length, tc.alignLeft, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestCamelCaseToSpaceSeparated(t *testing.T) {
+	inputs := []string{
+		"HelloWorld,GoGo",
+		"hello world, go go",
+	}
+	for _, input := range inputs {
+		r := CamelCaseToSpaceSeparated(input)
+		fmt.Println(r)
 	}
 }

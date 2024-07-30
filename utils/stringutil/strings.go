@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 func IntToString(i int) string {
@@ -256,4 +257,16 @@ func FormatString(text string, length int, alignLeft bool) string {
 
 	// Use the format string to format the text
 	return fmt.Sprintf(formatStr, text)
+}
+
+// CamelCaseToSpaceSeparated converts a camelCase string to a space-separated format
+func CamelCaseToSpaceSeparated(input string) string {
+	var result []rune
+	for i, r := range input {
+		if unicode.IsUpper(r) && i > 0 {
+			result = append(result, ' ')
+		}
+		result = append(result, unicode.ToLower(r))
+	}
+	return string(result)
 }
