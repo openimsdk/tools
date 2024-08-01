@@ -394,8 +394,6 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	for i := 1; i < len(keysAndValues); i += 2 {
 		if s, ok := keysAndValues[i].(interface{ String() string }); ok {
 			keysAndValues[i] = s.String()
-		} else {
-			keysAndValues[i] = fmt.Sprintf("%+v", keysAndValues[i])
 		}
 	}
 
