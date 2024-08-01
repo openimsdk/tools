@@ -18,20 +18,27 @@ import "github.com/openimsdk/tools/errs"
 
 var handlers []func(err error) errs.CodeError
 
-func AddErrHandler(h func(err error) errs.CodeError) {
+func AddErrHandler(h func(err error) errs.CodeError) (err error) {
 	if h == nil {
-		panic("nil handler")
+		return errs.New("nil handler")
 	}
 	handlers = append(handlers, h)
+	return nil
 }
 
-func AddReplace(target error, codeErr errs.CodeError) {
-	AddErrHandler(func(err error) errs.CodeError {
+func AddReplace(target error, codeErr errs.CodeError) error {
+	handler := func(err error) errs.CodeError {
 		if err == target {
 			return codeErr
 		}
 		return nil
-	})
+	}
+
+	if err := AddErrHandler(handler); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func ErrCode(err error) errs.CodeError {

@@ -1,0 +1,73 @@
+# Copyright © 2023 OpenIM open source community. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: OpenIM CI Aotu Build and Install
+
+on: 
+  push:
+    branches:
+        - main
+        - release-*
+  pull_request:
+    branches:
+        - main
+        - release-*
+
+env:
+  GO_VERSION: "1.22"
+  GOLANGCI_VERSION: "v1.50.1"
+
+jobs:
+  openim:
+    name: Test with go ${{ matrix.go_version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+        contents: write
+        pull-requests: write
+    strategy:
+      matrix:
+        go_version: ["1.21","1.22"]
+        os: [ubuntu-latest]
+    steps:
+    - name: Setup
+      uses: actions/checkout@v4
+      
+    - name: Set up Go ${{ matrix.go_version }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go_version }}
+      id: go
+
+    - name: Install Task
+      uses: arduino/setup-task@v1
+      with:
+        version: '3.x' # If available, use the latest major version that's compatible
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Module Operations
+      run: |
+        sudo make tidy
+        sudo make tools.verify.go-gitlint
+
+    - name: Format Code
+      run: sudo make lint
+      continue-on-error: true
+
+    - name: test
+      run: sudo make test
+
+    - name: Collect and Display Test Coverage
+      id: collect_coverage
+      run: |
+        sudo make cover

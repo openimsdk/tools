@@ -15,25 +15,20 @@
 package errs
 
 import (
-	"bytes"
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
+var DefaultCodeRelation = newCodeRelation()
+
 type CodeError interface {
 	Code() int
 	Msg() string
 	Detail() string
 	WithDetail(detail string) CodeError
-	// Is checks if the error is of a certain type, when loose is false,
-	//only the error code is the same is considered the same error, default is true
-	Is(err error, loose ...bool) bool
-	Wrap() error
-	WrapMsg(msg string, kv ...any) error
-	error
+	Error
 }
 
 func NewCodeError(code int, msg string) CodeError {
@@ -83,33 +78,34 @@ func (e *codeError) WrapMsg(msg string, kv ...any) error {
 	return WrapMsg(e, msg, kv...)
 }
 
-func (e *codeError) Is(err error, loose ...bool) bool {
-	if err == nil {
+func (e *codeError) Is(err error) bool {
+	codeErr, ok := Unwrap(err).(CodeError)
+	if !ok {
+		if err == nil && e == nil {
+			return true
+		}
 		return false
 	}
-	var allowSubclasses bool
-	if len(loose) == 0 {
-		allowSubclasses = true
-	} else {
-		allowSubclasses = loose[0]
+	if e == nil {
+		return false
 	}
-	codeErr, ok := Unwrap(err).(CodeError)
-	if ok {
-		if allowSubclasses {
-			return Relation.Is(e.code, codeErr.Code())
-		} else {
-			return codeErr.Code() == e.code
-		}
+	code := codeErr.Code()
+	if e.code == code {
+		return true
 	}
-	return false
+	return DefaultCodeRelation.Is(e.code, code)
 }
 
+const initialCapacity = 3
+
 func (e *codeError) Error() string {
-	v := make([]string, 0, 3)
+	v := make([]string, 0, initialCapacity)
 	v = append(v, strconv.Itoa(e.code), e.msg)
+
 	if e.detail != "" {
 		v = append(v, e.detail)
 	}
+
 	return strings.Join(v, " ")
 }
 
@@ -134,155 +130,51 @@ func WrapMsg(err error, msg string, kv ...any) error {
 	if err == nil {
 		return nil
 	}
-	var buf bytes.Buffer
-	if len(msg) > 0 {
-		buf.WriteString(msg)
-	}
-	for i := 0; i < len(kv); i += 2 {
-		if buf.Len() > 0 {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(fmt.Sprint(kv[i]))
-		buf.WriteString("=")
-		if i+1 < len(kv) {
-			buf.WriteString(fmt.Sprint(kv[i+1]))
-		} else {
-			buf.WriteString(fmt.Sprint("MISSING"))
-		}
-	}
-	withMessage := errors.WithMessage(err, buf.String())
+	withMessage := errors.WithMessage(err, toString(msg, kv))
 	return errors.WithStack(withMessage)
 }
 
-func toString(v any) string {
-	const nilStr = "<nil>"
-	if v == nil {
-		return nilStr
+type CodeRelation interface {
+	Add(codes ...int) error
+	Is(parent, child int) bool
+}
+
+func newCodeRelation() CodeRelation {
+	return &codeRelation{m: make(map[int]map[int]struct{})}
+}
+
+type codeRelation struct {
+	m map[int]map[int]struct{}
+}
+
+const minimumCodesLength = 2
+
+func (r *codeRelation) Add(codes ...int) error {
+	if len(codes) < minimumCodesLength {
+		return New("codes length must be greater than 2", "codes", codes).Wrap()
 	}
-	switch w := v.(type) {
-	case string:
-		return w
-	case []byte:
-		return string(w)
-	case []rune:
-		return string(w)
-	case int:
-		return strconv.Itoa(w)
-	case int8:
-		return strconv.FormatInt(int64(w), 10)
-	case int16:
-		return strconv.FormatInt(int64(w), 10)
-	case int32:
-		return strconv.FormatInt(int64(w), 10)
-	case int64:
-		return strconv.FormatInt(w, 10)
-	case uint:
-		return strconv.FormatUint(uint64(w), 10)
-	case uint8:
-		return strconv.FormatUint(uint64(w), 10)
-	case uint16:
-		return strconv.FormatUint(uint64(w), 10)
-	case uint32:
-		return strconv.FormatUint(uint64(w), 10)
-	case uint64:
-		return strconv.FormatUint(w, 10)
-	case float32:
-		return strconv.FormatFloat(float64(w), 'f', -1, 32)
-	case float64:
-		return strconv.FormatFloat(w, 'f', -1, 64)
-	case error:
-		if w == nil {
-			return nilStr
+	for i := 1; i < len(codes); i++ {
+		parent := codes[i-1]
+		s, ok := r.m[parent]
+		if !ok {
+			s = make(map[int]struct{})
+			r.m[parent] = s
 		}
-		return w.Error()
-	case fmt.Stringer:
-		return w.String()
-	case *string:
-		if w == nil {
-			return nilStr
+		for _, code := range codes[i:] {
+			s[code] = struct{}{}
 		}
-		return *w
-	case *[]byte:
-		if w == nil {
-			return nilStr
-		}
-		return string(*w)
-	case *[]rune:
-		if w == nil {
-			return nilStr
-		}
-		return string(*w)
-	case *int:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.Itoa(*w)
-	case *int8:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatInt(int64(*w), 10)
-	case *int16:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatInt(int64(*w), 10)
-	case *int32:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatInt(int64(*w), 10)
-	case *int64:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatInt(*w, 10)
-	case *uint:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatUint(uint64(*w), 10)
-	case *uint8:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatUint(uint64(*w), 10)
-	case *uint16:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatUint(uint64(*w), 10)
-	case *uint32:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatUint(uint64(*w), 10)
-	case *uint64:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatUint(*w, 10)
-	case *float32:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatFloat(float64(*w), 'f', -1, 32)
-	case *float64:
-		if w == nil {
-			return nilStr
-		}
-		return strconv.FormatFloat(*w, 'f', -1, 64)
-	case *error:
-		if w == nil {
-			return nilStr
-		}
-		return (*w).Error()
-	case *fmt.Stringer:
-		if w == nil {
-			return nilStr
-		}
-		return (*w).String()
-	default:
-		return fmt.Sprintf("%+v", w)
 	}
+	return nil
+}
+
+func (r *codeRelation) Is(parent, child int) bool {
+	if parent == child {
+		return true
+	}
+	s, ok := r.m[parent]
+	if !ok {
+		return false
+	}
+	_, ok = s[child]
+	return ok
 }

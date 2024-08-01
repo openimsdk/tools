@@ -16,18 +16,16 @@ package mw
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func GrpcClient() grpc.DialOption {
@@ -43,13 +41,13 @@ func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc 
 	if err != nil {
 		return err
 	}
-	log.ZDebug(ctx, "get rpc ctx success", "funcName", method, "req", req, "conn target", cc.Target())
+	log.ZDebug(ctx, fmt.Sprintf("RPC Client Request - %s", extractFunctionName(method)), "funcName", method, "req", req, "conn target", cc.Target())
 	err = invoker(ctx, method, req, resp, cc, opts...)
 	if err == nil {
-		log.ZInfo(ctx, "rpc client resp", "funcName", method, "resp", rpcString(resp))
+		log.ZInfo(ctx, fmt.Sprintf("RPC Client Response Success - %s", extractFunctionName(method)), "funcName", method, "resp", resp)
 		return nil
 	}
-	log.ZError(ctx, "rpc resp error", err, "funcName", method)
+	log.ZError(ctx, fmt.Sprintf("RPC Client Response Error - %s", extractFunctionName(method)), err, "funcName", method)
 	rpcErr, ok := err.(interface{ GRPCStatus() *status.Status })
 	if !ok {
 		return errs.ErrInternalServer.WrapMsg(err.Error())
@@ -74,10 +72,10 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 		for _, key := range keys {
 			val, ok := ctx.Value(key).([]string)
 			if !ok {
-				return nil, errs.ErrInternalServer.WrapMsg(fmt.Sprintf("ctx missing key %s", key))
+				return nil, errs.ErrInternalServer.WrapMsg("ctx missing key", "key", key)
 			}
 			if len(val) == 0 {
-				return nil, errs.ErrInternalServer.WrapMsg(fmt.Sprintf("ctx key %s value is empty", key))
+				return nil, errs.ErrInternalServer.WrapMsg("ctx key value is empty", "key", key)
 			}
 			md.Set(key, val...)
 		}
@@ -85,16 +83,16 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 	}
 	operationID, ok := ctx.Value(constant.OperationID).(string)
 	if !ok {
-		log.ZWarn(ctx, "ctx missing operationID", errors.New("ctx missing operationID"), "funcName", method)
+		log.ZWarn(ctx, "ctx missing operationID", errs.New("ctx missing operationID"), "funcName", method)
 		return nil, errs.ErrArgs.WrapMsg("ctx missing operationID")
 	}
 	md.Set(constant.OperationID, operationID)
-	var checkArgs []string
-	checkArgs = append(checkArgs, constant.OperationID, operationID)
+	// var checkArgs []string
+	// checkArgs = append(checkArgs, constant.OperationID, operationID)
 	opUserID, ok := ctx.Value(constant.OpUserID).(string)
 	if ok {
 		md.Set(constant.OpUserID, opUserID)
-		checkArgs = append(checkArgs, constant.OpUserID, opUserID)
+		// checkArgs = append(checkArgs, constant.OpUserID, opUserID)
 	}
 	opUserIDPlatformID, ok := ctx.Value(constant.OpUserPlatform).(string)
 	if ok {
@@ -105,4 +103,12 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 		md.Set(constant.ConnID, connID)
 	}
 	return metadata.NewOutgoingContext(ctx, md), nil
+}
+
+func extractFunctionName(funcName string) string {
+	parts := strings.Split(funcName, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return ""
 }

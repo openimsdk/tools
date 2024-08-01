@@ -21,14 +21,19 @@ import (
 	"path/filepath"
 	"time"
 
-	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-
-	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/mcontext"
+	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
+	"github.com/openimsdk/tools/utils/stringutil"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/openimsdk/protocol/constant"
+	"github.com/openimsdk/tools/mcontext"
 )
+
+type LogFormatter interface {
+	Format() any
+}
 
 var (
 	pkgLogger   Logger
@@ -45,6 +50,9 @@ var (
 	}
 )
 
+const callDepth = 2
+const hoursPerDay = 24
+
 // InitFromConfig initializes a Zap-based logger.
 func InitFromConfig(
 	loggerPrefixName, moduleName string,
@@ -55,20 +63,21 @@ func InitFromConfig(
 	rotateCount uint,
 	rotationTime uint,
 	moduleVersion string,
+	isSimplify bool,
 ) error {
 	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation,
-		rotateCount, rotationTime, moduleVersion)
+		rotateCount, rotationTime, moduleVersion, isSimplify)
 	if err != nil {
 		return err
 	}
-	pkgLogger = l.WithCallDepth(2)
+	pkgLogger = l.WithCallDepth(callDepth)
 	if isJson {
 		pkgLogger = pkgLogger.WithName(moduleName)
 	}
 	return nil
 }
 
-// InitConsoleLogger init osStdout and osStderr
+// InitConsoleLogger init osStdout and osStderr.
 func InitConsoleLogger(moduleName string,
 	logLevel int,
 	isJson bool, moduleVersion string) error {
@@ -76,7 +85,7 @@ func InitConsoleLogger(moduleName string,
 	if err != nil {
 		return err
 	}
-	osStdout = l.WithCallDepth(2)
+	osStdout = l.WithCallDepth(callDepth)
 	if isJson {
 		osStdout = osStdout.WithName(moduleName)
 	}
@@ -111,6 +120,7 @@ func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	}
 	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
+
 func CInfo(ctx context.Context, msg string, keysAndValues ...any) {
 	if osStdout == nil {
 		return
@@ -125,6 +135,7 @@ type ZapLogger struct {
 	moduleVersion    string
 	loggerPrefixName string
 	rotationTime     time.Duration
+	isSimplify       bool
 }
 
 func NewZapLogger(
@@ -136,6 +147,7 @@ func NewZapLogger(
 	rotateCount uint,
 	rotationTime uint,
 	moduleVersion string,
+	isSimplify bool,
 ) (*ZapLogger, error) {
 	zapConfig := zap.Config{
 		Level:             zap.NewAtomicLevelAt(logLevelMap[logLevel]),
@@ -147,7 +159,7 @@ func NewZapLogger(
 		zapConfig.Encoding = "console"
 	}
 	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, loggerPrefixName: loggerPrefixName,
-		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion}
+		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion, isSimplify: isSimplify}
 	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
 	if err != nil {
 		return nil, err
@@ -256,14 +268,10 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 }
 
 func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-	fixedLength := 60
+	fixedLength := 50
 	trimmedPath := caller.TrimmedPath()
 	trimmedPath = "[" + trimmedPath + "]"
-	s := fmt.Sprintf("%-*s", fixedLength, trimmedPath)
-
-	if len(s) > fixedLength {
-		s = s[:fixedLength]
-	}
+	s := stringutil.FormatString(trimmedPath, fixedLength, true)
 	enc.AppendString(s)
 }
 
@@ -281,7 +289,7 @@ func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) 
 
 func (l *ZapLogger) getWriter(logLocation string, rorateCount uint) (zapcore.WriteSyncer, error) {
 	var path string
-	if l.rotationTime%(time.Hour*24) == 0 {
+	if l.rotationTime%(time.Hour*time.Duration(hoursPerDay)) == 0 {
 		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d"
 	} else if l.rotationTime%time.Hour == 0 {
 		path = logLocation + sp + l.loggerPrefixName + ".%Y-%m-%d_%H"
@@ -303,15 +311,17 @@ func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.Pr
 	if !ok {
 		s = _unknownLevelColor[zapcore.ErrorLevel]
 	}
-	pid := fmt.Sprintf("["+"PID:"+"%d"+"]", os.Getpid())
+	pid := stringutil.FormatString(fmt.Sprintf("["+"PID:"+"%d"+"]", os.Getpid()), 15, true)
 	color := _levelToColor[level]
 	enc.AppendString(s)
 	enc.AppendString(color.Add(pid))
 	if l.moduleName != "" {
-		enc.AppendString(color.Add(l.moduleName))
+		moduleName := stringutil.FormatString(l.moduleName, 25, true)
+		enc.AppendString(color.Add(moduleName))
 	}
 	if l.moduleVersion != "" {
-		enc.AppendString(l.moduleVersion)
+		moduleVersion := stringutil.FormatString(fmt.Sprintf("["+"version:"+"%s"+"]", l.moduleVersion), 17, true)
+		enc.AppendString(moduleVersion)
 	}
 }
 
@@ -367,6 +377,28 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	triggerID := mcontext.GetTriggerID(ctx)
 	opUserPlatform := mcontext.GetOpUserPlatform(ctx)
 	remoteAddr := mcontext.GetRemoteAddr(ctx)
+
+	if l.isSimplify {
+		if len(keysAndValues)%2 == 0 {
+			for i := 1; i < len(keysAndValues); i += 2 {
+
+				if val, ok := keysAndValues[i].(LogFormatter); ok && val != nil {
+					keysAndValues[i] = val.Format()
+				}
+			}
+		} else {
+			ZError(ctx, "keysAndValues length is not even", nil)
+		}
+	}
+
+	for i := 1; i < len(keysAndValues); i += 2 {
+		if s, ok := keysAndValues[i].(interface{ String() string }); ok {
+			keysAndValues[i] = s.String()
+		} else {
+			keysAndValues[i] = fmt.Sprintf("%+v", keysAndValues[i])
+		}
+	}
+
 	if opUserID != "" {
 		keysAndValues = append([]any{constant.OpUserID, opUserID}, keysAndValues...)
 	}

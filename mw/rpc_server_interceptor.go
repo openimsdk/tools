@@ -18,65 +18,60 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"runtime"
+	"strings"
 
 	"github.com/openimsdk/tools/checker"
+	"github.com/pkg/errors"
 
 	"github.com/openimsdk/protocol/constant"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
-
 	"github.com/openimsdk/protocol/errinfo"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
-func rpcString(v any) string {
-	if s, ok := v.(interface{ String() string }); ok {
-		return s.String()
+func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	funcName := info.FullMethod
+	md, err := validateMetadata(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return fmt.Sprintf("%+v", v)
+	ctx, err = enrichContextWithMetadata(ctx, md)
+	if err != nil {
+		return nil, err
+	}
+	log.ZInfo(ctx, fmt.Sprintf("RPC Server Request - %s", extractFunctionName(funcName)), "funcName", funcName, "req", req)
+	if err := checker.Validate(req); err != nil {
+		return nil, err
+	}
+
+	resp, err := handler(ctx, req)
+	if err != nil {
+		return nil, handleError(ctx, funcName, req, err)
+	}
+	log.ZInfo(ctx, fmt.Sprintf("RPC Server Response Success - %s", extractFunctionName(funcName)), "funcName", funcName, "resp", resp)
+	return resp, nil
 }
 
-func RpcServerInterceptor(
-	ctx context.Context,
-	req any,
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (resp any, err error) {
-	//defer func() {
-	//	if r := recover(); r != nil {
-	// 		log.ZError(ctx, "rpc panic", nil, "FullMethod", info.FullMethod, "type:", fmt.Sprintf("%T", r), "panic:", r)
-	//		fmt.Printf("panic: %+v\nstack info: %s\n", r, string(debug.Stack()))
-	//		pc, file, line, ok := runtime.Caller(4)
-	//		if !ok {
-	//			panic("get runtime.Caller failed")
-	//		}
-	//		errInfo := &errinfo.ErrorInfo{
-	//			Path:  file,
-	//			Line:  uint32(line),
-	//			Name:  runtime.FuncForPC(pc).Name(),
-	//			Cause: fmt.Sprintf("%s", r),
-	//			Warp:  nil,
-	//		}
-	// 		sta, err_ := status.New(codes.Code(errs.ErrInternalServer.Code()),
-	// errs.ErrInternalServer.Msg()).WithDetails(errInfo)
-	//		if err_ != nil {
-	//			panic(err_)
-	//		}
-	//		err = sta.Err()
-	//	}
-	//}()
-	funcName := info.FullMethod
-	log.ZInfo(ctx, "rpc server req", "funcName", funcName, "req", rpcString(req))
+func validateMetadata(ctx context.Context) (metadata.MD, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.New(codes.InvalidArgument, "missing metadata").Err()
 	}
+	if len(md.Get(constant.OperationID)) != 1 {
+		return nil, status.New(codes.InvalidArgument, "operationID error").Err()
+	}
+	return md, nil
+}
+
+func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Context, error) {
 	if keys := md.Get(constant.RpcCustomHeader); len(keys) > 0 {
+		ctx = context.WithValue(ctx, constant.RpcCustomHeader, keys)
 		for _, key := range keys {
 			values := md.Get(key)
 			if len(values) == 0 {
@@ -85,15 +80,8 @@ func RpcServerInterceptor(
 			ctx = context.WithValue(ctx, key, values)
 		}
 	}
-	args := make([]string, 0, 4)
-	if opts := md.Get(constant.OperationID); len(opts) != 1 || opts[0] == "" {
-		return nil, status.New(codes.InvalidArgument, "operationID error").Err()
-	} else {
-		args = append(args, constant.OperationID, opts[0])
-		ctx = context.WithValue(ctx, constant.OperationID, opts[0])
-	}
+	ctx = context.WithValue(ctx, constant.OperationID, md.Get(constant.OperationID)[0])
 	if opts := md.Get(constant.OpUserID); len(opts) == 1 {
-		args = append(args, constant.OpUserID, opts[0])
 		ctx = context.WithValue(ctx, constant.OpUserID, opts[0])
 	}
 	if opts := md.Get(constant.OpUserPlatform); len(opts) == 1 {
@@ -102,76 +90,77 @@ func RpcServerInterceptor(
 	if opts := md.Get(constant.ConnID); len(opts) == 1 {
 		ctx = context.WithValue(ctx, constant.ConnID, opts[0])
 	}
-	resp, err = func() (any, error) {
-		if err := checker.Validate(req); err != nil {
-			return nil, err
-		}
-		return handler(ctx, req)
-	}()
-	if err == nil {
-		log.ZInfo(ctx, "rpc server resp", "funcName", funcName, "resp", rpcString(resp))
-		return resp, nil
-	}
-	log.ZError(ctx, "rpc server resp", err, "funcName", funcName)
+	return ctx, nil
+}
+
+func handleError(ctx context.Context, funcName string, req any, err error) error {
+	log.ZWarn(ctx, "rpc server resp WithDetails error", formatError(err), "funcName", funcName)
 	unwrap := errs.Unwrap(err)
 	codeErr := specialerror.ErrCode(unwrap)
 	if codeErr == nil {
-		log.ZError(ctx, "rpc InternalServer error", err, "req", req)
+		log.ZError(ctx, "rpc InternalServer error", formatError(err), "funcName", funcName, "req", req)
 		codeErr = errs.ErrInternalServer
 	}
 	code := codeErr.Code()
 	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		log.ZError(ctx, "rpc UnknownError", err, "rpc UnknownCode:", int64(code))
+		log.ZError(ctx, "rpc UnknownError", formatError(err), "funcName", funcName, "rpc UnknownCode:", int64(code))
 		code = errs.ServerInternalError
 	}
-	grpcStatus := status.New(codes.Code(code), codeErr.Msg())
-	//var errInfo *errinfo.ErrorInfo
-	//if config.Config.Log.WithStack {
-	//	if unwrap != err {
-	//		sti, ok := err.(interface{ StackTrace() errors.StackTrace })
-	//		if ok {
-	//			log.ZWarn(
-	//				ctx,
-	//				"rpc server resp",
-	//				err,
-	//				"funcName",
-	//				funcName,
-	//				"unwrap",
-	//				unwrap.Error(),
-	//				"stack",
-	//				fmt.Sprintf("%+v", err),
-	//			)
-	//			if fs := sti.StackTrace(); len(fs) > 0 {
-	//				pc := uintptr(fs[0])
-	//				fn := runtime.FuncForPC(pc)
-	//				file, line := fn.FileLine(pc)
-	//				errInfo = &errinfo.ErrorInfo{
-	//					Path:  file,
-	//					Line:  uint32(line),
-	//					Name:  fn.Name(),
-	//					Cause: unwrap.Error(),
-	//					Warp:  nil,
-	//				}
-	//				if arr := strings.Split(err.Error(), ": "); len(arr) > 1 {
-	//					errInfo.Warp = arr[:len(arr)-1]
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-	//if errInfo == nil {
-	//	errInfo = &errinfo.ErrorInfo{Cause: err.Error()}
-	//}
+	grpcStatus := status.New(codes.Code(code), err.Error())
 	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
-		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
-		return nil, errs.Wrap(err)
+		log.ZWarn(ctx, "rpc server resp WithDetails error", formatError(err), "funcName", funcName)
+		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
-	log.ZWarn(ctx, "rpc server resp", err, "funcName", funcName)
-	return nil, details.Err()
+	log.ZWarn(ctx, fmt.Sprintf("RPC Server Response Error - %s", extractFunctionName(funcName)), formatError(details.Err()), "funcName", funcName, "req", req, "err", err)
+	return details.Err()
 }
 
 func GrpcServer() grpc.ServerOption {
 	return grpc.ChainUnaryInterceptor(RpcServerInterceptor)
+}
+func formatError(err error) error {
+	type stackTracer interface {
+		StackTrace() errors.StackTrace
+	}
+	if e, ok := err.(stackTracer); ok {
+		st := e.StackTrace()
+		var sb strings.Builder
+		sb.WriteString("Error: ")
+		sb.WriteString(err.Error())
+		sb.WriteString(" | Error trace: ")
+
+		var callPath []string
+		for _, f := range st {
+			pc := uintptr(f) - 1
+			fn := runtime.FuncForPC(pc)
+			if fn == nil {
+				continue
+			}
+			if strings.Contains(fn.Name(), "runtime.") {
+				continue
+			}
+			file, line := fn.FileLine(pc)
+			funcName := simplifyFuncName(fn.Name())
+			callPath = append(callPath, fmt.Sprintf("%s (%s:%d)", funcName, file, line))
+		}
+		for i := len(callPath) - 1; i >= 0; i-- {
+			if i != len(callPath)-1 {
+				sb.WriteString(" -> ")
+			}
+			sb.WriteString(callPath[i])
+		}
+		return errors.New(sb.String())
+	}
+	return err
+}
+func simplifyFuncName(fullFuncName string) string {
+	parts := strings.Split(fullFuncName, "/")
+	lastPart := parts[len(parts)-1]
+	parts = strings.Split(lastPart, ".")
+	if len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+	return lastPart
 }

@@ -20,10 +20,28 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	ginApiResponseKey = "gin_api_response_key"
+)
+
+func ginJson(c *gin.Context, resp *ApiResponse) {
+	c.Set(ginApiResponseKey, resp)
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetGinApiResponse(c *gin.Context) *ApiResponse {
+	val, ok := c.Get(ginApiResponseKey)
+	if !ok {
+		return nil
+	}
+	resp, _ := val.(*ApiResponse)
+	return resp
+}
+
 func GinError(c *gin.Context, err error) {
-	c.JSON(http.StatusOK, ParseError(err))
+	ginJson(c, ParseError(err))
 }
 
 func GinSuccess(c *gin.Context, data any) {
-	c.JSON(http.StatusOK, ApiSuccess(data))
+	ginJson(c, ApiSuccess(data))
 }

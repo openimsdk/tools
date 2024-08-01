@@ -18,9 +18,11 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-
 	"github.com/openimsdk/tools/errs"
 )
+
+const HoursOneDay = 24
+const minutesBefore = 5
 
 type Claims struct {
 	UserID     string
@@ -30,38 +32,41 @@ type Claims struct {
 
 func BuildClaims(uid string, platformID int, ttl int64) Claims {
 	now := time.Now()
-	before := now.Add(-time.Minute * 5)
+	before := now.Add(-time.Minute * time.Duration(minutesBefore))
 	return Claims{
 		UserID:     uid,
 		PlatformID: platformID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(ttl*24) * time.Hour)), // Expiration time
-			IssuedAt:  jwt.NewNumericDate(now),                                        // Issuing time
-			NotBefore: jwt.NewNumericDate(before),                                     // Begin Effective time
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(ttl*HoursOneDay) * time.Hour)), // Expiration time
+			IssuedAt:  jwt.NewNumericDate(now),                                                 // Issuing time
+			NotBefore: jwt.NewNumericDate(before),                                              // Begin Effective time
 		},
 	}
 }
 
 func GetClaimFromToken(tokensString string, secretFunc jwt.Keyfunc) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokensString, &Claims{}, secretFunc)
-	if err != nil {
-		if ve, ok := err.(*jwt.ValidationError); ok {
-			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return nil, errs.Wrap(errs.ErrTokenMalformed)
-			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				return nil, errs.Wrap(errs.ErrTokenExpired)
-			} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
-				return nil, errs.Wrap(errs.ErrTokenNotValidYet)
-			} else {
-				return nil, errs.Wrap(errs.ErrTokenUnknown)
-			}
-		} else {
-			return nil, errs.Wrap(errs.ErrTokenUnknown)
-		}
-	} else {
+	if err == nil {
 		if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 			return claims, nil
 		}
-		return nil, errs.Wrap(errs.ErrTokenUnknown)
+		return nil, errs.ErrTokenUnknown
 	}
+
+	if ve, ok := err.(*jwt.ValidationError); ok {
+		return nil, mapValidationError(ve)
+	}
+
+	return nil, errs.ErrTokenUnknown
+}
+
+func mapValidationError(ve *jwt.ValidationError) error {
+	if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+		return errs.ErrTokenMalformed
+	} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
+		return errs.ErrTokenExpired
+	} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
+		return errs.ErrTokenNotValidYet
+	}
+	return errs.ErrTokenUnknown
 }
