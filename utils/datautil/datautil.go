@@ -701,8 +701,7 @@ func CopySlice[T any](a []T) []T {
 
 func ShuffleSlice[T any](a []T) []T {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	shuffled := make([]T, len(a))
-	copy(shuffled, a)
+	shuffled := CopySlice(a)
 	r.Shuffle(len(shuffled), func(i, j int) {
 		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 	})
