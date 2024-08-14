@@ -13,6 +13,10 @@ var (
 	ErrFull = errors.New("push failed: queue is full")
 )
 
+const (
+	pushWait = time.Second * 3
+)
+
 // AsyncQueue is the interface responsible for asynchronous processing of functions.
 //type AsyncQueue interface {
 //	Initialize(processFunc func(), workerCount int, bufferSize int)
@@ -61,7 +65,7 @@ func (mq *MemoryQueue) Push(task func()) error {
 	if mq.isStopped.Load() {
 		return ErrStop
 	}
-	timer := time.NewTimer(time.Millisecond * 100)
+	timer := time.NewTimer(pushWait)
 	defer timer.Stop()
 	select {
 	case mq.taskChan <- task:
