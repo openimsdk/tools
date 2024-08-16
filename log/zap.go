@@ -1,17 +1,3 @@
-// Copyright © 2023 OpenIM. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package log
 
 import (
@@ -54,7 +40,7 @@ const callDepth = 2
 const hoursPerDay = 24
 
 // InitFromConfig initializes a Zap-based logger.
-func InitFromConfig(
+func InitLoggerFromConfig(
 	loggerPrefixName, moduleName string,
 	logLevel int,
 	isStdout bool,
@@ -91,6 +77,30 @@ func InitConsoleLogger(moduleName string,
 	}
 	return nil
 
+}
+
+func InitSDKConfig(
+	loggerPrefixName, moduleName string,
+	sdkType, platformName string,
+	logLevel int,
+	isStdout bool,
+	isJson bool,
+	logLocation string,
+	rotateCount uint,
+	rotationTime uint,
+	moduleVersion string,
+	isSimplify bool,
+) error {
+	// 调用 NewSDKZapLogger 进行自定义初始化
+	l, err := NewSDKZapLogger(loggerPrefixName, moduleName, sdkType, platformName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime, moduleVersion, isSimplify)
+	if err != nil {
+		return err
+	}
+	pkgLogger = l.WithCallDepth(callDepth)
+	if isJson {
+		pkgLogger = pkgLogger.WithName(moduleName)
+	}
+	return nil
 }
 
 func ZDebug(ctx context.Context, msg string, keysAndValues ...any) {
@@ -135,7 +145,11 @@ type ZapLogger struct {
 	moduleVersion    string
 	loggerPrefixName string
 	rotationTime     time.Duration
-	isSimplify       bool
+	sdkType          string
+	platformName     string
+	// file             string
+	// line             int
+	isSimplify bool
 }
 
 func NewZapLogger(
@@ -158,8 +172,13 @@ func NewZapLogger(
 	} else {
 		zapConfig.Encoding = "console"
 	}
-	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, loggerPrefixName: loggerPrefixName,
-		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion, isSimplify: isSimplify}
+	zl := &ZapLogger{level: logLevelMap[logLevel],
+		moduleName:       moduleName,
+		loggerPrefixName: loggerPrefixName,
+		rotationTime:     time.Duration(rotationTime) * time.Hour,
+		moduleVersion:    moduleVersion,
+		isSimplify:       isSimplify,
+	}
 	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
 	if err != nil {
 		return nil, err
@@ -199,6 +218,52 @@ func NewConsoleZapLogger(
 	zl.zap = l.Sugar()
 	return zl, nil
 }
+
+func NewSDKZapLogger(
+	loggerPrefixName, moduleName string, sdkType, platformName string,
+	logLevel int,
+	isStdout bool,
+	isJson bool,
+	logLocation string,
+	rotateCount uint,
+	rotationTime uint,
+	moduleVersion string,
+	// file string,
+	// line int,
+	isSimplify bool,
+) (*ZapLogger, error) {
+	zapConfig := zap.Config{
+		Level:             zap.NewAtomicLevelAt(logLevelMap[logLevel]),
+		DisableStacktrace: true,
+	}
+	if isJson {
+		zapConfig.Encoding = "json"
+	} else {
+		zapConfig.Encoding = "console"
+	}
+	zl := &ZapLogger{level: logLevelMap[logLevel],
+		moduleName:       moduleName,
+		loggerPrefixName: loggerPrefixName,
+		rotationTime:     time.Duration(rotationTime) * time.Hour,
+		moduleVersion:    moduleVersion,
+		sdkType:          sdkType,
+		platformName:     platformName,
+		// file:             file,
+		// line:             line,
+		isSimplify: isSimplify,
+	}
+	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
+	if err != nil {
+		return nil, err
+	}
+	l, err := zapConfig.Build(opts)
+	if err != nil {
+		return nil, err
+	}
+	zl.zap = l.Sugar()
+	return zl, nil
+}
+
 func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotateCount uint) (zap.Option, error) {
 	c := zap.NewProductionEncoderConfig()
 	c.EncodeTime = l.timeEncoder
@@ -216,7 +281,7 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 		fileEncoder.AddString("version", l.moduleVersion)
 	} else {
 		c.EncodeLevel = l.capitalColorLevelEncoder
-		c.EncodeCaller = l.customCallerEncoder
+		c.EncodeCaller = l.combinedCallerEncoder
 		fileEncoder = zapcore.NewConsoleEncoder(c)
 	}
 	fileEncoder = &alignEncoder{Encoder: fileEncoder}
@@ -256,7 +321,7 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 		fileEncoder.AddString("version", l.moduleVersion)
 	} else {
 		c.EncodeLevel = l.capitalColorLevelEncoder
-		c.EncodeCaller = l.customCallerEncoder
+		c.EncodeCaller = l.combinedCallerEncoder
 		fileEncoder = zapcore.NewConsoleEncoder(c)
 	}
 	var cores []zapcore.Core
@@ -273,6 +338,109 @@ func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.
 	trimmedPath = "[" + trimmedPath + "]"
 	s := stringutil.FormatString(trimmedPath, fixedLength, true)
 	enc.AppendString(s)
+}
+
+// func (l *ZapLogger) customCallerEncoderB(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+// 	fixedLength := 50
+// 	trimmedPath := caller.TrimmedPath()
+// 	sdkPlatform := fmt.Sprintf("[%s/%s]", l.sdkType, l.platformName)
+// 	trimmedPath = fmt.Sprintf("%s [%s]", sdkPlatform, trimmedPath)
+// 	s := stringutil.FormatString(trimmedPath, fixedLength, true)
+// 	enc.AppendString(s)
+// }
+
+// func (l *ZapLogger) combinedCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+// 	fixedLength := 50
+
+// 	// 获取文件和行号
+// 	trimmedPath := caller.TrimmedPath()
+// 	trimmedPath = "[" + trimmedPath + "]"
+
+// 	// 获取 sdkType 和 platformName
+// 	sdkPlatform := fmt.Sprintf("[%s/%s]", l.sdkType, l.platformName)
+
+// 	// 合并两部分
+// 	combinedOutput := fmt.Sprintf("%s %s", sdkPlatform, trimmedPath)
+
+// 	// 调整格式
+// 	s := stringutil.FormatString(combinedOutput, fixedLength, true)
+
+// 	// 输出到日志中
+// 	enc.AppendString(s)
+// }
+
+func (l *ZapLogger) combinedCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+	fixedLength := 25 // 控制 [sdkType/platformName] 的长度
+
+	// 构造 [sdkType/platformName]
+	sdkPlatform := fmt.Sprintf("[%s/%s]", l.sdkType, l.platformName)
+	sdkPlatformFormatted := stringutil.FormatString(sdkPlatform, fixedLength, true)
+
+	// // 构造 [file:line]
+	// fileLine := fmt.Sprintf("[%s:%d]", caller.TrimmedPath(), caller.Line)
+	// fileLineFormatted := stringutil.FormatString(fileLine, fixedLength, true)
+
+	// 输出 [sdkType/platformName] 和 [file:line] 到日志中
+	enc.AppendString(sdkPlatformFormatted)
+	// enc.AppendString(fileLineFormatted)
+}
+
+func SDKLog(ctx context.Context, logLevel int, file string, line int, msg string, err error, keysAndValues []any) {
+	// Add [file:line] convert
+
+	// switch logLevel {
+	// case 6:
+	// 	// sdklog.SDKDebug(ctx, path, line, msg, keysAndValues)
+	// 	ZDebug(ctx, msg, keysAndValues...)
+	// case 4:
+	// 	// sdklog.SDKInfo(ctx, path, line, msg, keysAndValues)
+	// 	ZInfo(ctx, msg, keysAndValues...)
+	// case 3:
+	// 	// sdklog.SDKWarn(ctx, path, line, msg, errs.New(err), keysAndValues)
+	// 	ZWarn(ctx, msg, err, keysAndValues...)
+	// case 2:
+	// 	// sdklog.SDKError(ctx, path, line, msg, errs.New(err), keysAndValues)
+	// 	ZError(ctx, msg, err, keysAndValues...)
+	// }
+
+	// 设置自定义的 [file:line] 信息
+
+	// 构造自定义的 Caller
+	pkgLogger, ok := pkgLogger.(*ZapLogger)
+	if !ok {
+		// 处理错误
+		return
+	}
+
+	customCaller := fmt.Sprintf("[%s:%d]", file, line)
+	// loggerWithCaller := pkgLogger.WithValues("caller", customCaller)
+	// loggerWithCaller := pkgLogger.ToZap().WithOptions(zap.WithCaller(false)).With(zap.String("caller", customCaller))
+	// loggerWithCaller := pkgLogger.ToZap().WithOptions(zap.WithCaller(false)).With(zap.String("caller", customCaller))
+	// pkgLogger.zap = pkgLogger.zap.With(zap.String("file", file), zap.Int("line", line))
+
+	// 使用 zap.WithOptions 忽略原有的自动 caller 信息，并追加自定义的 caller 信息
+	loggerWithCaller := pkgLogger.zap.WithOptions(zap.AddCallerSkip(1)).With(zap.String("caller", customCaller))
+	fullMsg := fmt.Sprintf("%s\t%s", customCaller, msg)
+
+	// 根据 logLevel 调用不同的日志级别
+	switch logLevel {
+	case 6:
+		loggerWithCaller.Debugw(fullMsg, keysAndValues...)
+		// loggerWithCaller.Debug(ctx, msg, keysAndValues...)
+		// pkgLogger.Debug(ctx, msg, keysAndValues...)
+	case 4:
+		loggerWithCaller.Infow(fullMsg, keysAndValues...)
+		// loggerWithCaller.Info(ctx, msg, keysAndValues...)
+		// pkgLogger.Info(ctx, msg, keysAndValues...)
+	case 3:
+		loggerWithCaller.Warnw(fullMsg, keysAndValues...)
+		// loggerWithCaller.Warn(ctx, msg, err, keysAndValues...)
+		// pkgLogger.Warn(ctx, msg, err, keysAndValues...)
+	case 2:
+		loggerWithCaller.Errorw(fullMsg, keysAndValues...)
+		// loggerWithCaller.Error(ctx, msg, err, keysAndValues...)
+		// pkgLogger.Error(ctx, msg, err, keysAndValues...)
+	}
 }
 
 func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
