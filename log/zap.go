@@ -147,9 +147,9 @@ type ZapLogger struct {
 	rotationTime     time.Duration
 	sdkType          string
 	platformName     string
-	// file             string
-	// line             int
-	isSimplify bool
+	file             string
+	line             int
+	isSimplify       bool
 }
 
 func NewZapLogger(
@@ -370,7 +370,7 @@ func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.
 // }
 
 func (l *ZapLogger) combinedCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-	fixedLength := 25 // 控制 [sdkType/platformName] 的长度
+	fixedLength := 50 // 控制 [sdkType/platformName] 的长度
 
 	// 构造 [sdkType/platformName]
 	sdkPlatform := fmt.Sprintf("[%s/%s]", l.sdkType, l.platformName)
@@ -378,12 +378,42 @@ func (l *ZapLogger) combinedCallerEncoder(caller zapcore.EntryCaller, enc zapcor
 
 	// // 构造 [file:line]
 	// fileLine := fmt.Sprintf("[%s:%d]", caller.TrimmedPath(), caller.Line)
-	// fileLineFormatted := stringutil.FormatString(fileLine, fixedLength, true)
+	fileLine := fmt.Sprintf("[%s:%d]", caller.File, caller.Line)
+	fileLineFormatted := stringutil.FormatString(fileLine, fixedLength, true)
 
 	// 输出 [sdkType/platformName] 和 [file:line] 到日志中
 	enc.AppendString(sdkPlatformFormatted)
-	// enc.AppendString(fileLineFormatted)
+	enc.AppendString(fileLineFormatted)
 }
+
+// type customCallerCore struct {
+// 	zapcore.Core
+// 	file string
+// 	line int
+// }
+
+// func (c *customCallerCore) With(fields []zapcore.Field) zapcore.Core {
+// 	// 保持原有 core 的行为，传递 fields
+// 	return &customCallerCore{
+// 		Core: c.Core.With(fields),
+// 		file: c.file,
+// 		line: c.line,
+// 	}
+// }
+
+// func (c *customCallerCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
+// 	// // 在写日志时，不替换原有 caller，而是在日志字段中追加自定义的 caller 信息
+// 	// newFields := append(fields, zap.String("customCaller", fmt.Sprintf("[%s:%d]", c.file, c.line)))
+// 	// return c.Core.Write(entry, newFields)
+
+// 	// 替换 Entry.Caller 为自定义的 file 和 line 信息
+// 	entry.Caller = zapcore.EntryCaller{
+// 		File:    c.file,
+// 		Line:    c.line,
+// 		Defined: true, // 表示该 Caller 已经定义
+// 	}
+// 	return c.Core.Write(entry, fields)
+// }
 
 func SDKLog(ctx context.Context, logLevel int, file string, line int, msg string, err error, keysAndValues []any) {
 	// Add [file:line] convert
@@ -411,6 +441,24 @@ func SDKLog(ctx context.Context, logLevel int, file string, line int, msg string
 		// 处理错误
 		return
 	}
+	// ZDebug(ctx, "pkgLogger contents", )
+
+	// // 构造自定义的 EntryCaller 信息
+	// customCaller := zapcore.EntryCaller{
+	// 	File: file,
+	// 	Line: line,
+	// }
+
+	// 创建自定义的 Core，附加自定义的 Caller 信息
+	// customCore := &customCallerCore{
+	// 	Core: pkgLogger.zap.Desugar().Core(),
+	// 	file: file,
+	// 	line: line,
+	// }
+
+	// loggerWithCaller := pkgLogger.zap.Desugar().WithOptions(zap.WrapCore(func(c zapcore.Core) zapcore.Core {
+	// 	return customCore
+	// })).Sugar()
 
 	customCaller := fmt.Sprintf("[%s:%d]", file, line)
 	// loggerWithCaller := pkgLogger.WithValues("caller", customCaller)
@@ -419,8 +467,14 @@ func SDKLog(ctx context.Context, logLevel int, file string, line int, msg string
 	// pkgLogger.zap = pkgLogger.zap.With(zap.String("file", file), zap.Int("line", line))
 
 	// 使用 zap.WithOptions 忽略原有的自动 caller 信息，并追加自定义的 caller 信息
-	loggerWithCaller := pkgLogger.zap.WithOptions(zap.AddCallerSkip(1)).With(zap.String("caller", customCaller))
-	fullMsg := fmt.Sprintf("%s\t%s", customCaller, msg)
+	// loggerWithCaller := pkgLogger.zap.WithOptions(zap.AddCallerSkip(-1)).With(zap.String("caller", customCaller))
+	// 生成自定义的 zap logger，将 caller 替换为自定义的 caller 信息
+
+	// loggerWithCaller := pkgLogger.zap.With(zap.String("caller", fmt.Sprintf("[%s:%d]", customCaller.File, customCaller.Line)))
+	loggerWithCaller := pkgLogger.zap.With(zap.String("caller", customCaller))
+
+	// fullMsg := fmt.Sprintf("%s\t%s", customCaller, msg)
+	fullMsg := msg
 
 	// 根据 logLevel 调用不同的日志级别
 	switch logLevel {
@@ -602,4 +656,112 @@ func (l *ZapLogger) WithCallDepth(depth int) Logger {
 	dup := *l
 	dup.zap = l.zap.WithOptions(zap.AddCallerSkip(depth))
 	return &dup
+}
+
+func SDKLog666(ctx context.Context, logLevel int, file string, line int, msg string, err error, keysAndValues []any) {
+	// 确保 pkgLogger 是正确的类型
+	pkgLogger, ok := pkgLogger.(*ZapLogger)
+	if !ok {
+		// 处理错误
+		return
+	}
+
+	// // 构造自定义的 Caller 信息
+	// customCaller := zapcore.EntryCaller{
+	// 	Defined: true,
+	// 	File:    file,
+	// 	Line:    line,
+	// }
+
+	// 创建一个自定义的 Core，并设置 file 和 line
+
+	// customCore := &customCallerCore{
+	// 	Core: pkgLogger.zap.Desugar().Core(),
+	// 	file: file,
+	// 	line: line,
+	// }
+
+	core := &customCheckedCore{
+		Core: pkgLogger.zap.Desugar().Core(),
+		file: file,
+		line: line,
+	}
+	
+
+	pkgLogger.zap.Desugar().Core().Check(pkgLogger.zap.Desugar().Core().Write(zapcore.Entry, []zapcore.Field), *zapcore.CheckedEntry)
+	pkgLogger.zap.Desugar().WithOptions(zapcore.)
+
+	// 包装 Core 并传入自定义的 Caller 信息
+	loggerWithCustomCaller := pkgLogger.zap.Desugar().WithOptions(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+		// return customCore
+		return &customCheckedCore{
+			Core: core,
+			file: file,
+			line: line,
+		}
+	})).Sugar()
+
+	// // 使用自定义的 caller
+	// loggerWithCaller := pkgLogger.ToZap().WithOptions(zap.WithCaller(false)).With(zap.String("caller", fmt.Sprintf("[%s:%d]", customCaller.File, customCaller.Line)))
+
+	// // 设置自定义的 file 和 line 信息
+	// pkgLogger.file = file
+	// pkgLogger.line = line
+
+	// loggerWithCaller := pkgLogger.zap
+
+	// 根据 logLevel 调用不同的日志级别
+	switch logLevel {
+	case 6:
+		loggerWithCustomCaller.Debugw(msg, keysAndValues...)
+	case 4:
+		loggerWithCustomCaller.Infow(msg, keysAndValues...)
+	case 3:
+		loggerWithCustomCaller.Warnw(msg, keysAndValues...)
+	case 2:
+		loggerWithCustomCaller.Errorw(msg, keysAndValues...)
+	}
+}
+
+// customCheckedCore wraps a zapcore.Core and modifies the file and line in CheckedEntry.
+type customCheckedCore struct {
+	zapcore.Core
+	file string
+	line int
+}
+
+// Check intercepts the logging decision and modifies the Entry's Caller.
+func (c *customCheckedCore) Check(entry zapcore.Entry, checked *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	// 调用原始的 Check 逻辑
+	checkedEntry := c.Core.Check(entry, checked)
+	if checkedEntry != nil {
+		// 修改 Caller 信息
+		entry.Caller = zapcore.EntryCaller{
+			File:    c.file,
+			Line:    c.line,
+			Defined: true,
+		}
+		// 将自定义的 Entry 注入到 CheckedEntry 中
+		checkedEntry = checkedEntry.AddCore(entry, c)
+	}
+	return checkedEntry
+}
+
+// Write writes the modified Entry and preserves the original behavior.
+func (c *customCheckedCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
+	// 保持原有的写日志逻辑
+	return c.Core.Write(entry, fields)
+}
+
+// With ensures that fields are added to the Core while preserving the custom behavior.
+func (c *customCheckedCore) With(fields []zapcore.Field) zapcore.Core {
+	return &customCheckedCore{
+		Core: c.Core.With(fields),
+		file: c.file,
+		line: c.line,
+	}
+}
+
+func SDKLogG(ctx context.Context, logLevel int, file string, line int, msg string, err error, keysAndValues []any) {
+
 }
