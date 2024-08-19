@@ -11,7 +11,7 @@ import (
 
 // TestSDKLog tests the SDKLog function for proper log output including custom [file:line] information
 func TestSDKLog(t *testing.T) {
-	sdkType := ""
+	sdkType := "TestSDK"
 	platformName := "testPlatform"
 
 	err := InitLoggerFromConfig(
