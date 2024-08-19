@@ -392,10 +392,10 @@ func (l *ZapLogger) platformCallerEncoder(caller zapcore.EntryCaller, enc zapcor
 }
 
 func SDKLog(ctx context.Context, logLevel int, file string, line int, msg string, err error, keysAndValues []any) {
-	customCallerKey := "caller"
-	customCaller := fmt.Sprintf("[%s:%d]", file, line)
+	nativeCallerKey := "native caller"
+	nativeCaller := fmt.Sprintf("[%s:%d]", file, line)
 
-	kv := []any{customCallerKey, customCaller}
+	kv := []any{nativeCallerKey, nativeCaller}
 	kv = append(kv, keysAndValues...)
 
 	switch logLevel {
