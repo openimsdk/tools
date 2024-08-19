@@ -13,6 +13,7 @@ import (
 func TestSDKLog(t *testing.T) {
 	sdkType := "TestSDK"
 	platformName := "testPlatform"
+
 	err := InitLoggerFromConfig(
 		"testLogger", // loggerPrefixName
 		"testModule", // moduleName
@@ -37,6 +38,7 @@ func TestSDKLog(t *testing.T) {
 	logger := zap.NewExample()
 	defer logger.Sync()
 
+	ZDebug(context.Background(), "hello")
 	SDKLog(context.Background(), 5, "cmd/abc.go", 666, "This is a test message", nil, []any{"key", "value"})
 	SDKLog(context.Background(), 4, "cmd/abc.go", 666, "This is a test message", nil, []any{"key", "value", "key", "key", 1})
 	SDKLog(context.Background(), 3, "cmd/abc.go", 666, "This is a test message", nil, []any{"key", "value"})
