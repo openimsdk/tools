@@ -31,8 +31,8 @@ var (
 		4: zapcore.InfoLevel,
 		3: zapcore.WarnLevel,
 		2: zapcore.ErrorLevel,
-		1: zapcore.FatalLevel,
-		0: zapcore.PanicLevel,
+		1: zapcore.PanicLevel,
+		0: zapcore.FatalLevel,
 	}
 )
 
