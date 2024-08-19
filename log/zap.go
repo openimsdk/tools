@@ -1,17 +1,3 @@
-// Copyright © 2023 OpenIM. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package log
 
 import (
@@ -35,18 +21,28 @@ type LogFormatter interface {
 	Format() any
 }
 
+const (
+	LevelFatal = iota
+	LevelPanic
+	LevelError
+	LevelWarn
+	LevelInfo
+	LevelDebug
+	LevelDebugWithSQL
+)
+
 var (
 	pkgLogger   Logger
 	osStdout    Logger
 	sp          = string(filepath.Separator)
 	logLevelMap = map[int]zapcore.Level{
-		6: zapcore.DebugLevel,
-		5: zapcore.DebugLevel,
-		4: zapcore.InfoLevel,
-		3: zapcore.WarnLevel,
-		2: zapcore.ErrorLevel,
-		1: zapcore.FatalLevel,
-		0: zapcore.PanicLevel,
+		LevelDebugWithSQL: zapcore.DebugLevel,
+		LevelDebug:        zapcore.DebugLevel,
+		LevelInfo:         zapcore.InfoLevel,
+		LevelWarn:         zapcore.WarnLevel,
+		LevelError:        zapcore.ErrorLevel,
+		LevelPanic:        zapcore.PanicLevel,
+		LevelFatal:        zapcore.FatalLevel,
 	}
 )
 
@@ -54,7 +50,7 @@ const callDepth = 2
 const hoursPerDay = 24
 
 // InitFromConfig initializes a Zap-based logger.
-func InitFromConfig(
+func InitLoggerFromConfig(
 	loggerPrefixName, moduleName string,
 	logLevel int,
 	isStdout bool,
@@ -91,6 +87,29 @@ func InitConsoleLogger(moduleName string,
 	}
 	return nil
 
+}
+
+func InitSDKLogger(
+	loggerPrefixName, moduleName string,
+	sdkType, platformName string,
+	logLevel int,
+	isStdout bool,
+	isJson bool,
+	logLocation string,
+	rotateCount uint,
+	rotationTime uint,
+	moduleVersion string,
+	isSimplify bool,
+) error {
+	l, err := NewSDKZapLogger(loggerPrefixName, moduleName, sdkType, platformName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime, moduleVersion, isSimplify)
+	if err != nil {
+		return err
+	}
+	pkgLogger = l.WithCallDepth(callDepth)
+	if isJson {
+		pkgLogger = pkgLogger.WithName(moduleName)
+	}
+	return nil
 }
 
 func ZDebug(ctx context.Context, msg string, keysAndValues ...any) {
@@ -135,6 +154,8 @@ type ZapLogger struct {
 	moduleVersion    string
 	loggerPrefixName string
 	rotationTime     time.Duration
+	sdkType          string
+	platformName     string
 	isSimplify       bool
 }
 
@@ -158,8 +179,13 @@ func NewZapLogger(
 	} else {
 		zapConfig.Encoding = "console"
 	}
-	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, loggerPrefixName: loggerPrefixName,
-		rotationTime: time.Duration(rotationTime) * time.Hour, moduleVersion: moduleVersion, isSimplify: isSimplify}
+	zl := &ZapLogger{level: logLevelMap[logLevel],
+		moduleName:       moduleName,
+		loggerPrefixName: loggerPrefixName,
+		rotationTime:     time.Duration(rotationTime) * time.Hour,
+		moduleVersion:    moduleVersion,
+		isSimplify:       isSimplify,
+	}
 	opts, err := zl.cores(isStdout, isJson, logLocation, rotateCount)
 	if err != nil {
 		return nil, err
@@ -199,6 +225,48 @@ func NewConsoleZapLogger(
 	zl.zap = l.Sugar()
 	return zl, nil
 }
+
+func NewSDKZapLogger(
+	loggerPrefixName, moduleName string, sdkType, platformName string,
+	logLevel int,
+	isStdout bool,
+	isJson bool,
+	logLocation string,
+	rotateCount uint,
+	rotationTime uint,
+	moduleVersion string,
+	isSimplify bool,
+) (*ZapLogger, error) {
+	zapConfig := zap.Config{
+		Level:             zap.NewAtomicLevelAt(logLevelMap[logLevel]),
+		DisableStacktrace: true,
+	}
+	if isJson {
+		zapConfig.Encoding = "json"
+	} else {
+		zapConfig.Encoding = "console"
+	}
+	zl := &ZapLogger{level: logLevelMap[logLevel],
+		moduleName:       moduleName,
+		loggerPrefixName: loggerPrefixName,
+		rotationTime:     time.Duration(rotationTime) * time.Hour,
+		moduleVersion:    moduleVersion,
+		sdkType:          sdkType,
+		platformName:     platformName,
+		isSimplify:       isSimplify,
+	}
+	opts, err := zl.sdkCores(isStdout, isJson, logLocation, rotateCount)
+	if err != nil {
+		return nil, err
+	}
+	l, err := zapConfig.Build(opts)
+	if err != nil {
+		return nil, err
+	}
+	zl.zap = l.Sugar()
+	return zl, nil
+}
+
 func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotateCount uint) (zap.Option, error) {
 	c := zap.NewProductionEncoderConfig()
 	c.EncodeTime = l.timeEncoder
@@ -267,12 +335,79 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 	}), nil
 }
 
+func (l *ZapLogger) sdkCores(isStdout bool, isJson bool, logLocation string, rotateCount uint) (zap.Option, error) {
+	c := zap.NewProductionEncoderConfig()
+	c.EncodeTime = l.timeEncoder
+	c.EncodeDuration = zapcore.SecondsDurationEncoder
+	c.MessageKey = "msg"
+	c.LevelKey = "level"
+	c.TimeKey = "time"
+	c.CallerKey = "caller"
+	c.NameKey = "logger"
+	var fileEncoder zapcore.Encoder
+	if isJson {
+		c.EncodeLevel = zapcore.CapitalLevelEncoder
+		fileEncoder = zapcore.NewJSONEncoder(c)
+		fileEncoder.AddInt("PID", os.Getpid())
+		fileEncoder.AddString("version", l.moduleVersion)
+	} else {
+		c.EncodeLevel = l.capitalColorLevelEncoder
+		c.EncodeCaller = l.platformCallerEncoder
+		fileEncoder = zapcore.NewConsoleEncoder(c)
+	}
+	fileEncoder = &alignEncoder{Encoder: fileEncoder}
+	writer, err := l.getWriter(logLocation, rotateCount)
+	if err != nil {
+		return nil, err
+	}
+	var cores []zapcore.Core
+	if logLocation != "" {
+		cores = []zapcore.Core{
+			zapcore.NewCore(fileEncoder, writer, zap.NewAtomicLevelAt(l.level)),
+		}
+	}
+	if isStdout {
+		cores = append(cores, zapcore.NewCore(fileEncoder, zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(l.level)))
+	}
+	return zap.WrapCore(func(c zapcore.Core) zapcore.Core {
+		return zapcore.NewTee(cores...)
+	}), nil
+}
+
 func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
 	fixedLength := 50
 	trimmedPath := caller.TrimmedPath()
 	trimmedPath = "[" + trimmedPath + "]"
 	s := stringutil.FormatString(trimmedPath, fixedLength, true)
 	enc.AppendString(s)
+}
+
+func (l *ZapLogger) platformCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+	fixedLength := 50
+
+	sdkPlatform := fmt.Sprintf("[%s/%s]", l.sdkType, l.platformName)
+	sdkPlatformFormatted := stringutil.FormatString(sdkPlatform, fixedLength, true)
+
+	enc.AppendString(sdkPlatformFormatted)
+}
+
+func SDKLog(ctx context.Context, logLevel int, file string, line int, msg string, err error, keysAndValues []any) {
+	nativeCallerKey := "native_caller"
+	nativeCaller := fmt.Sprintf("[%s:%d]", file, line)
+
+	kv := []any{nativeCallerKey, nativeCaller}
+	kv = append(kv, keysAndValues...)
+
+	switch logLevel {
+	case LevelDebugWithSQL:
+		ZDebug(ctx, msg, kv...)
+	case LevelInfo:
+		ZInfo(ctx, msg, kv...)
+	case LevelWarn:
+		ZWarn(ctx, msg, err, kv...)
+	case LevelError:
+		ZError(ctx, msg, err, kv...)
+	}
 }
 
 func (l *ZapLogger) timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
