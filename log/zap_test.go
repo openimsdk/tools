@@ -11,19 +11,21 @@ import (
 
 // TestSDKLog tests the SDKLog function for proper log output including custom [file:line] information
 func TestSDKLog(t *testing.T) {
-	err := InitSDKLogger(
-		"testLogger",   // loggerPrefixName
-		"testModule",   // moduleName
-		"TestSDK",      // sdkType
-		"TestPlatform", // platformName
-		5,              // logLevel (INFO)
-		true,           // isStdout
-		true,           // isJson
-		"./logs",       // logLocation
-		5,              // rotateCount
-		24,             // rotationTime
-		"1.0.0",        // moduleVersion
-		false,          // isSimplify
+	sdkType := "TestSDK"
+	platformName := "testPlatform"
+	err := InitLoggerFromConfig(
+		"testLogger", // loggerPrefixName
+		"testModule", // moduleName
+		sdkType,      // sdkType
+		platformName, // platformName
+		5,            // logLevel (INFO)
+		true,         // isStdout
+		false,        // isJson
+		"./logs",     // logLocation
+		5,            // rotateCount
+		24,           // rotationTime
+		"1.0.0",      // moduleVersion
+		false,        // isSimplify
 	)
 	assert.NoError(t, err)
 

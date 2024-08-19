@@ -52,6 +52,7 @@ const hoursPerDay = 24
 // InitFromConfig initializes a Zap-based logger.
 func InitLoggerFromConfig(
 	loggerPrefixName, moduleName string,
+	sdkType, platformName string,
 	logLevel int,
 	isStdout bool,
 	isJson bool,
@@ -61,11 +62,22 @@ func InitLoggerFromConfig(
 	moduleVersion string,
 	isSimplify bool,
 ) error {
-	l, err := NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation,
-		rotateCount, rotationTime, moduleVersion, isSimplify)
-	if err != nil {
-		return err
+	var l Logger
+	var err error
+
+	if sdkType != "" && platformName != "" {
+		l, err = NewSDKZapLogger(loggerPrefixName, moduleName, sdkType, platformName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime, moduleVersion, isSimplify)
+		if err != nil {
+			return err
+		}
+	} else {
+		l, err = NewZapLogger(loggerPrefixName, moduleName, logLevel, isStdout, isJson, logLocation,
+			rotateCount, rotationTime, moduleVersion, isSimplify)
+		if err != nil {
+			return err
+		}
 	}
+
 	pkgLogger = l.WithCallDepth(callDepth)
 	if isJson {
 		pkgLogger = pkgLogger.WithName(moduleName)
@@ -87,29 +99,6 @@ func InitConsoleLogger(moduleName string,
 	}
 	return nil
 
-}
-
-func InitSDKLogger(
-	loggerPrefixName, moduleName string,
-	sdkType, platformName string,
-	logLevel int,
-	isStdout bool,
-	isJson bool,
-	logLocation string,
-	rotateCount uint,
-	rotationTime uint,
-	moduleVersion string,
-	isSimplify bool,
-) error {
-	l, err := NewSDKZapLogger(loggerPrefixName, moduleName, sdkType, platformName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime, moduleVersion, isSimplify)
-	if err != nil {
-		return err
-	}
-	pkgLogger = l.WithCallDepth(callDepth)
-	if isJson {
-		pkgLogger = pkgLogger.WithName(moduleName)
-	}
-	return nil
 }
 
 func ZDebug(ctx context.Context, msg string, keysAndValues ...any) {
