@@ -21,18 +21,28 @@ type LogFormatter interface {
 	Format() any
 }
 
+const (
+	LevelFatal = iota
+	LevelPanic
+	LevelError
+	LevelWarn
+	LevelInfo
+	LevelDebug
+	LevelDebugWithSQL
+)
+
 var (
 	pkgLogger   Logger
 	osStdout    Logger
 	sp          = string(filepath.Separator)
 	logLevelMap = map[int]zapcore.Level{
-		6: zapcore.DebugLevel,
-		5: zapcore.DebugLevel,
-		4: zapcore.InfoLevel,
-		3: zapcore.WarnLevel,
-		2: zapcore.ErrorLevel,
-		1: zapcore.PanicLevel,
-		0: zapcore.FatalLevel,
+		LevelDebugWithSQL: zapcore.DebugLevel,
+		LevelDebug:        zapcore.DebugLevel,
+		LevelInfo:         zapcore.InfoLevel,
+		LevelWarn:         zapcore.WarnLevel,
+		LevelError:        zapcore.ErrorLevel,
+		LevelPanic:        zapcore.PanicLevel,
+		LevelFatal:        zapcore.FatalLevel,
 	}
 )
 
@@ -382,20 +392,20 @@ func (l *ZapLogger) platformCallerEncoder(caller zapcore.EntryCaller, enc zapcor
 }
 
 func SDKLog(ctx context.Context, logLevel int, file string, line int, msg string, err error, keysAndValues []any) {
-	customCallerKey := "Caller"
+	customCallerKey := "caller"
 	customCaller := fmt.Sprintf("[%s:%d]", file, line)
 
 	kv := []any{customCallerKey, customCaller}
 	kv = append(kv, keysAndValues...)
 
 	switch logLevel {
-	case 6:
+	case LevelDebugWithSQL:
 		ZDebug(ctx, msg, kv...)
-	case 4:
+	case LevelInfo:
 		ZInfo(ctx, msg, kv...)
-	case 3:
+	case LevelWarn:
 		ZWarn(ctx, msg, err, kv...)
-	case 2:
+	case LevelError:
 		ZError(ctx, msg, err, kv...)
 	}
 }

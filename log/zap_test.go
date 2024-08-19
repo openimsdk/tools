@@ -19,7 +19,7 @@ func TestSDKLog(t *testing.T) {
 		"TestPlatform", // platformName
 		5,              // logLevel (INFO)
 		true,           // isStdout
-		false,          // isJson
+		true,          // isJson
 		"./logs",       // logLocation
 		5,              // rotateCount
 		24,             // rotationTime
