@@ -11,7 +11,6 @@ import (
 
 // TestSDKLog tests the SDKLog function for proper log output including custom [file:line] information
 func TestSDKLog(t *testing.T) {
-	// 初始化日志系统
 	err := InitSDKLogger(
 		"testLogger",   // loggerPrefixName
 		"testModule",   // moduleName
@@ -19,7 +18,7 @@ func TestSDKLog(t *testing.T) {
 		"TestPlatform", // platformName
 		5,              // logLevel (INFO)
 		true,           // isStdout
-		true,          // isJson
+		true,           // isJson
 		"./logs",       // logLocation
 		5,              // rotateCount
 		24,             // rotationTime
