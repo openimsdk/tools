@@ -281,6 +281,11 @@ func (l *ZapLogger) customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.
 		sdkPlatform := fmt.Sprintf("[%s/%s]", l.sdkType, l.platformName)
 		sdkPlatformFormatted := stringutil.FormatString(sdkPlatform, fixedLength, true)
 		enc.AppendString(sdkPlatformFormatted)
+
+		trimmedPath := caller.TrimmedPath()
+		trimmedPath = "[" + trimmedPath + "]"
+		s := stringutil.FormatString(trimmedPath, fixedLength, true)
+		enc.AppendString(s)
 	} else {
 		fixedLength := 50
 		trimmedPath := caller.TrimmedPath()

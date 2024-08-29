@@ -19,14 +19,15 @@ func TestSDKLog(t *testing.T) {
 		"testModule", // moduleName
 		sdkType,      // sdkType
 		platformName, // platformName
-		5,            // logLevel (INFO)
+		5,            // logLevel (Debug)
 		true,         // isStdout
 		false,        // isJson
-		"./logs",     // logLocation
-		5,            // rotateCount
-		24,           // rotationTime
-		"1.0.0",      // moduleVersion
-		false,        // isSimplify
+		// "./logs",     // logLocation
+		".",     // logLocation
+		5,       // rotateCount
+		24,      // rotationTime
+		"1.0.0", // moduleVersion
+		false,   // isSimplify
 	)
 	assert.NoError(t, err)
 
@@ -43,6 +44,8 @@ func TestSDKLog(t *testing.T) {
 	SDKLog(context.Background(), 4, "cmd/abc.go", 666, "This is a test message", nil, []any{"key", "value", "key", "key", 1})
 	SDKLog(context.Background(), 3, "cmd/abc.go", 666, "This is a test message", nil, []any{"key", "value"})
 	SDKLog(context.Background(), 2, "cmd/abc.go", 666, "This is a test message", nil, []any{"key", "value"})
+	ZWarn(context.TODO(), "msg", nil)
+	ZInfo(context.TODO(), "msg", nil)
 	ZDebug(context.TODO(), "msg")
 
 	w.Close()
