@@ -21,7 +21,7 @@ func ProgressBar(name string, progress, total int) string {
 		barLength = 50
 		progressLength = int(percentage / 100 * float64(barLength))
 	}
-
+	progressLength = min(progressLength, barLength)
 	bar := strings.Repeat("█", progressLength) + strings.Repeat(" ", barLength-progressLength)
 	return fmt.Sprintf("\r%s: [%s] %3.0f%% (%d/%d)", name, bar, percentage, progress, total)
 }
