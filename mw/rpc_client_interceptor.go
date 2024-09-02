@@ -16,6 +16,7 @@ package mw
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -46,8 +47,11 @@ func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc 
 	if err == nil {
 		log.ZInfo(ctx, fmt.Sprintf("RPC Client Response Success - %s", extractFunctionName(method)), "funcName", method, "resp", resp)
 		return nil
+	} else if errors.Is(err, errs.ErrRecordNotFound) {
+		log.ZWarn(ctx, fmt.Sprintf("RPC Client Response Error - %s", extractFunctionName(method)), err, "funcName", method)
+	} else {
+		log.ZError(ctx, fmt.Sprintf("RPC Client Response Error - %s", extractFunctionName(method)), err, "funcName", method)
 	}
-	log.ZError(ctx, fmt.Sprintf("RPC Client Response Error - %s", extractFunctionName(method)), err, "funcName", method)
 	rpcErr, ok := err.(interface{ GRPCStatus() *status.Status })
 	if !ok {
 		return errs.ErrInternalServer.WrapMsg(err.Error())
