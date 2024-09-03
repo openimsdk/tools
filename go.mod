@@ -74,8 +74,6 @@ require (
 )
 
 require (
-	github.com/Kagami/go-avif v0.1.0
-	github.com/chai2010/webp v1.1.1
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/lestrrat-go/strftime v1.0.6
 )
