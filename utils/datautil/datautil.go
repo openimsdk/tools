@@ -285,7 +285,7 @@ func SliceSetAny[E any, K comparable](es []E, fn func(e E) K) map[K]struct{} {
 }
 
 // MapToSlice map to slice
-func MapToSlice[E any, K comparable](m map[K]E, fn func(e E) K) []E {
+func MapToSlice[E any, K comparable](m map[K]E) []E {
 	es := make([]E, 0, len(m))
 	for _, v := range m {
 		es = append(es, v)
