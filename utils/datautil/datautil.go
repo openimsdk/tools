@@ -284,6 +284,15 @@ func SliceSetAny[E any, K comparable](es []E, fn func(e E) K) map[K]struct{} {
 	})
 }
 
+// MapToSlice map to slice
+func MapToSlice[E any, K comparable](m map[K]E, fn func(e E) K) []E {
+	es := make([]E, 0, len(m))
+	for _, v := range m {
+		es = append(es, v)
+	}
+	return es
+}
+
 func Filter[E, T any](es []E, fn func(e E) (T, bool)) []T {
 	rs := make([]T, 0, len(es))
 	for i := 0; i < len(es); i++ {
