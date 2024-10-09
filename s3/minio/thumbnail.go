@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"golang.org/x/image/bmp"
-	"golang.org/x/image/tiff"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -29,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chai2010/webp"
 	"github.com/minio/minio-go/v7"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
@@ -61,24 +58,12 @@ func (m *Minio) getImageThumbnailURL(ctx context.Context, name string, expire ti
 	switch opt.Format {
 	case formatPng, formatJpeg, formatGif:
 	default:
-		opt.Format = ""
+		opt.Format = formatPng
 	}
 	reqParams := make(url.Values)
 	if opt.Width == info.Width && opt.Height == info.Height && (opt.Format == info.Format || opt.Format == "") {
 		reqParams.Set("response-content-type", "image/"+info.Format)
 		return m.PresignedGetObject(ctx, name, expire, reqParams)
-	}
-	if opt.Format == "" {
-		switch opt.Format {
-		case formatGif:
-			opt.Format = formatGif
-		case formatJpeg:
-			opt.Format = formatJpeg
-		case formatPng:
-			opt.Format = formatPng
-		default:
-			opt.Format = formatPng
-		}
 	}
 	key, err := m.cache.GetThumbnailKey(ctx, name, opt.Format, opt.Width, opt.Height, func(ctx context.Context) (string, error) {
 		if img == nil {
@@ -102,16 +87,6 @@ func (m *Minio) getImageThumbnailURL(ctx context.Context, name string, expire ti
 			err = jpeg.Encode(buf, thumbnail, nil)
 		case formatGif:
 			err = gif.Encode(buf, thumbnail, nil)
-		case formatWebP:
-			err = webp.Encode(buf, thumbnail, nil)
-		case formatTiff:
-			err = tiff.Encode(buf, thumbnail, nil)
-		case formatBmp:
-			err = bmp.Encode(buf, thumbnail)
-		case formatAvif:
-			//err = avif.Encode(buf, img, nil)
-		case formatHeic, formatHeif:
-
 		}
 		if err != nil {
 			return "", errs.WrapMsg(err, "encode failed", "type", opt.Format)
