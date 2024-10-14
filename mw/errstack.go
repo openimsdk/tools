@@ -1,27 +1,54 @@
 package mw
 
 import (
-	"context"
-	"math"
+	"fmt"
+	"runtime"
+	"strings"
 
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/log"
-	"github.com/openimsdk/tools/mw/specialerror"
+	"github.com/pkg/errors"
 )
 
-func HandleCallError(ctx context.Context, funcName string, args []any, err error) error {
-	log.ZWarn(ctx, "fn call WithDetails Response is error", formatError(err), "funcName", funcName, "args", args)
-	unwrap := errs.Unwrap(err)
-	codeErr := specialerror.ErrCode(unwrap)
-	if codeErr == nil {
-		log.ZError(ctx, "internal server error", formatError(err), "funcName", funcName, "args", args)
-		codeErr = errs.ErrInternalServer
+func FormatError(err error) error {
+	type stackTracer interface {
+		StackTrace() errors.StackTrace
 	}
-	code := codeErr.Code()
-	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		log.ZError(ctx, "unknown error code", formatError(err), "funcName", funcName, "args", args, "unknown code:", int64(code))
-		code = errs.ServerInternalError
-	}
+	if e, ok := err.(stackTracer); ok {
+		st := e.StackTrace()
+		var sb strings.Builder
+		sb.WriteString("Error: ")
+		sb.WriteString(err.Error())
+		sb.WriteString(" | Error trace: ")
 
-	return nil
+		var callPath []string
+		for _, f := range st {
+			pc := uintptr(f) - 1
+			fn := runtime.FuncForPC(pc)
+			if fn == nil {
+				continue
+			}
+			if strings.Contains(fn.Name(), "runtime.") {
+				continue
+			}
+			file, line := fn.FileLine(pc)
+			funcName := simplifyFuncName(fn.Name())
+			callPath = append(callPath, fmt.Sprintf("%s (%s:%d)", funcName, file, line))
+		}
+		for i := len(callPath) - 1; i >= 0; i-- {
+			if i != len(callPath)-1 {
+				sb.WriteString(" -> ")
+			}
+			sb.WriteString(callPath[i])
+		}
+		return errors.New(sb.String())
+	}
+	return err
+}
+func simplifyFuncName(fullFuncName string) string {
+	parts := strings.Split(fullFuncName, "/")
+	lastPart := parts[len(parts)-1]
+	parts = strings.Split(lastPart, ".")
+	if len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+	return lastPart
 }
