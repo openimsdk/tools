@@ -229,6 +229,17 @@ func Contain[E comparable](e E, es ...E) bool {
 	return IndexOf(e, es...) >= 0
 }
 
+// Contains Whether to include
+func Contains[E comparable](e []E, es ...E) bool {
+	mp := SliceToMap(e, func(i E) E { return i })
+	for _, e2 := range es {
+		if _, ok := mp[e2]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 // DuplicateAny Whether there are duplicates
 func DuplicateAny[E any, K comparable](es []E, fn func(e E) K) bool {
 	t := make(map[K]struct{})
@@ -282,15 +293,6 @@ func SliceSetAny[E any, K comparable](es []E, fn func(e E) K) map[K]struct{} {
 	return SliceToMapAny(es, func(e E) (K, struct{}) {
 		return fn(e), struct{}{}
 	})
-}
-
-// MapToSlice map to slice
-func MapToSlice[E any, K comparable](m map[K]E) []E {
-	es := make([]E, 0, len(m))
-	for _, v := range m {
-		es = append(es, v)
-	}
-	return es
 }
 
 func Filter[E, T any](es []E, fn func(e E) (T, bool)) []T {

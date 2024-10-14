@@ -350,7 +350,7 @@ func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.Pr
 	if !ok {
 		s = _unknownLevelColor[zapcore.ErrorLevel]
 	}
-	pid := stringutil.FormatString(fmt.Sprintf("["+"PID:"+"%d"+"]", os.Getpid()), 15, true)
+	pid := stringutil.FormatString(fmt.Sprintf("[PID:%d]", os.Getpid()), 15, true)
 	color := _levelToColor[level]
 	enc.AppendString(s)
 	enc.AppendString(color.Add(pid))
@@ -359,7 +359,7 @@ func (l *ZapLogger) capitalColorLevelEncoder(level zapcore.Level, enc zapcore.Pr
 		enc.AppendString(color.Add(moduleName))
 	}
 	if l.moduleVersion != "" {
-		moduleVersion := stringutil.FormatString(fmt.Sprintf("["+"version:"+"%s"+"]", l.moduleVersion), 17, true)
+		moduleVersion := stringutil.FormatString(fmt.Sprintf("[%s]", l.moduleVersion), 30, true)
 		enc.AppendString(moduleVersion)
 	}
 }
@@ -427,12 +427,6 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 			}
 		} else {
 			ZError(ctx, "keysAndValues length is not even", nil)
-		}
-	}
-
-	for i := 1; i < len(keysAndValues); i += 2 {
-		if s, ok := keysAndValues[i].(interface{ String() string }); ok {
-			keysAndValues[i] = s.String()
 		}
 	}
 
