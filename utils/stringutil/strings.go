@@ -290,3 +290,12 @@ func LowerFirst(input string) string {
 	runes[0] = unicode.ToLower(runes[0])
 	return string(runes)
 }
+
+func IsAlphanumeric(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}
