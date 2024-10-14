@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"hash/crc32"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -298,4 +299,10 @@ func IsAlphanumeric(s string) bool {
 		}
 	}
 	return true
+}
+
+// IsValidEmail checks if the input string is a valid email address.
+func IsValidEmail(email string) bool {
+	re := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	return re.MatchString(email)
 }
