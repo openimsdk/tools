@@ -46,8 +46,30 @@ var (
 	}
 )
 
-const callDepth = 2
-const hoursPerDay = 24
+const (
+	callDepth   int    = 2
+	rotateCount uint   = 1
+	hoursPerDay uint   = 24
+	logPath     string = "./logs/"
+	version     string = "undefined version"
+	isSimplify         = false
+)
+
+func init() {
+	InitLoggerFromConfig(
+		"DefaultLogger",
+		"DefaultLoggerModule",
+		"", "",
+		LevelDebug,
+		true,
+		false,
+		logPath,
+		rotateCount,
+		hoursPerDay,
+		version,
+		isSimplify,
+	)
+}
 
 // InitFromConfig initializes a Zap-based logger.
 func InitLoggerFromConfig(
@@ -87,35 +109,23 @@ func InitConsoleLogger(moduleName string,
 	if isJson {
 		osStdout = osStdout.WithName(moduleName)
 	}
-	return nil
 
+	return nil
 }
 
 func ZDebug(ctx context.Context, msg string, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
 	pkgLogger.Debug(ctx, msg, keysAndValues...)
 }
 
 func ZInfo(ctx context.Context, msg string, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
 	pkgLogger.Info(ctx, msg, keysAndValues...)
 }
 
 func ZWarn(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
 	pkgLogger.Warn(ctx, msg, err, keysAndValues...)
 }
 
 func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
 	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
 
