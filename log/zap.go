@@ -58,21 +58,19 @@ const (
 )
 
 func init() {
-	once.Do(func() {
-		InitLoggerFromConfig(
-			"DefaultInitLogger",
-			"LOGGER NEED INIT!!!",
-			"", "",
-			LevelDebug,
-			true,
-			false,
-			logPath,
-			rotateCount,
-			hoursPerDay,
-			version,
-			isSimplify,
-		)
-	})
+	InitLoggerFromConfig(
+		"DefaultLogger",
+		"DefaultLoggerModule",
+		"", "",
+		LevelDebug,
+		true,
+		false,
+		logPath,
+		rotateCount,
+		hoursPerDay,
+		version,
+		isSimplify,
+	)
 }
 
 // InitFromConfig initializes a Zap-based logger.
@@ -118,30 +116,18 @@ func InitConsoleLogger(moduleName string,
 }
 
 func ZDebug(ctx context.Context, msg string, keysAndValues ...any) {
-	// if pkgLogger == nil {
-	// 	DefaultInitLogger()
-	// }
 	pkgLogger.Debug(ctx, msg, keysAndValues...)
 }
 
 func ZInfo(ctx context.Context, msg string, keysAndValues ...any) {
-	// if pkgLogger == nil {
-	// 	DefaultInitLogger()
-	// }
 	pkgLogger.Info(ctx, msg, keysAndValues...)
 }
 
 func ZWarn(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	// if pkgLogger == nil {
-	// 	DefaultInitLogger()
-	// }
 	pkgLogger.Warn(ctx, msg, err, keysAndValues...)
 }
 
 func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	// if pkgLogger == nil {
-	// 	DefaultInitLogger()
-	// }
 	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
 
