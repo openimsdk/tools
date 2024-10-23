@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
@@ -44,10 +45,35 @@ var (
 		LevelPanic:        zapcore.PanicLevel,
 		LevelFatal:        zapcore.FatalLevel,
 	}
+	once sync.Once
 )
 
-const callDepth = 2
-const hoursPerDay = 24
+const (
+	callDepth   int    = 2
+	rotateCount uint   = 1
+	hoursPerDay uint   = 24
+	logPath     string = "./logs/"
+	version     string = "undefined version"
+	isSimplify         = false
+)
+
+func init() {
+	once.Do(func() {
+		InitLoggerFromConfig(
+			"DefaultInitLogger",
+			"LOGGER NEED INIT!!!",
+			"", "",
+			LevelDebug,
+			true,
+			false,
+			logPath,
+			rotateCount,
+			hoursPerDay,
+			version,
+			isSimplify,
+		)
+	})
+}
 
 // InitFromConfig initializes a Zap-based logger.
 func InitLoggerFromConfig(
@@ -87,35 +113,35 @@ func InitConsoleLogger(moduleName string,
 	if isJson {
 		osStdout = osStdout.WithName(moduleName)
 	}
-	return nil
 
+	return nil
 }
 
 func ZDebug(ctx context.Context, msg string, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
+	// if pkgLogger == nil {
+	// 	DefaultInitLogger()
+	// }
 	pkgLogger.Debug(ctx, msg, keysAndValues...)
 }
 
 func ZInfo(ctx context.Context, msg string, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
+	// if pkgLogger == nil {
+	// 	DefaultInitLogger()
+	// }
 	pkgLogger.Info(ctx, msg, keysAndValues...)
 }
 
 func ZWarn(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
+	// if pkgLogger == nil {
+	// 	DefaultInitLogger()
+	// }
 	pkgLogger.Warn(ctx, msg, err, keysAndValues...)
 }
 
 func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	if pkgLogger == nil {
-		return
-	}
+	// if pkgLogger == nil {
+	// 	DefaultInitLogger()
+	// }
 	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
 
