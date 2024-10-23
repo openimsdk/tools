@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
@@ -45,7 +44,6 @@ var (
 		LevelPanic:        zapcore.PanicLevel,
 		LevelFatal:        zapcore.FatalLevel,
 	}
-	once sync.Once
 )
 
 const (
