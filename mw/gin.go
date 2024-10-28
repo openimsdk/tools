@@ -15,15 +15,15 @@
 package mw
 
 import (
+	"github.com/amazing-socrates/next-tools/log"
+	"github.com/amazing-socrates/next-tools/tokenverify"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/openimsdk/tools/log"
-	"github.com/openimsdk/tools/tokenverify"
 	"net/http"
 	"strings"
 
+	"github.com/amazing-socrates/next-tools/apiresp"
 	"github.com/gin-gonic/gin"
 	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/apiresp"
 	"github.com/openimsdk/tools/errs"
 )
 

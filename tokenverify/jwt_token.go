@@ -17,8 +17,8 @@ package tokenverify
 import (
 	"time"
 
+	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/openimsdk/tools/errs"
 )
 
 const HoursOneDay = 24

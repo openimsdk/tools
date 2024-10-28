@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"time"
 
-	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
-	"github.com/openimsdk/tools/utils/stringutil"
+	rotatelogs "github.com/amazing-socrates/next-tools/log/file-rotatelogs"
+	"github.com/amazing-socrates/next-tools/utils/stringutil"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/amazing-socrates/next-tools/mcontext"
 	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/mcontext"
 )
 
 type LogFormatter interface {

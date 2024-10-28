@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/IBM/sarama"
-	"github.com/openimsdk/tools/errs"
+	"github.com/amazing-socrates/next-tools/errs"
 )
 
 func BuildConsumerGroupConfig(conf *Config, initial int64, autoCommitEnable bool) (*sarama.Config, error) {

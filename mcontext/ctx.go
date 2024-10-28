@@ -17,8 +17,8 @@ package mcontext
 import (
 	"context"
 
+	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/errs"
 )
 
 var mapper = []string{constant.OperationID, constant.OpUserID, constant.OpUserPlatform, constant.ConnID}

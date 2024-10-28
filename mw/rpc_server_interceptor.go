@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/openimsdk/tools/checker"
+	"github.com/amazing-socrates/next-tools/checker"
 
+	"github.com/amazing-socrates/next-tools/errs"
+	"github.com/amazing-socrates/next-tools/log"
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
