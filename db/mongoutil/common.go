@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
+	"os"
 	"strings"
 )
 
@@ -28,6 +29,11 @@ const (
 
 // buildMongoURI constructs the MongoDB URI from the provided configuration.
 func buildMongoURI(config *Config) string {
+	deploymentType := os.Getenv("DEPLOYMENT_TYPE")
+	if deploymentType == "kubernetes" {
+		return fmt.Sprintf("mongodb://%s:%s@mongo-service:27017",
+			os.Getenv("MONGO_USER"), os.Getenv("MONGO_PASSWORD"))
+	}
 	credentials := ""
 	if config.Username != "" && config.Password != "" {
 		credentials = fmt.Sprintf("%s:%s@", config.Username, config.Password)
