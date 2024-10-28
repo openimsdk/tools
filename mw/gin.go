@@ -17,14 +17,14 @@ package mw
 import (
 	"github.com/amazing-socrates/next-tools/log"
 	"github.com/amazing-socrates/next-tools/tokenverify"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 	"strings"
 
 	"github.com/amazing-socrates/next-tools/apiresp"
-	"github.com/gin-gonic/gin"
+	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/errs"
 )
 
 // CorsHandler gin cross-domain configuration.

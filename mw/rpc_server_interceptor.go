@@ -23,9 +23,9 @@ import (
 
 	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/amazing-socrates/next-tools/log"
+	"github.com/amazing-socrates/next-tools/mw/specialerror"
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
-	"github.com/openimsdk/tools/mw/specialerror"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

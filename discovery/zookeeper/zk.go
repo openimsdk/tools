@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/amazing-socrates/next-tools/errs"
+	"github.com/amazing-socrates/next-tools/log"
 	"github.com/go-zookeeper/zk"
-	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 )
