@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sync"
@@ -61,7 +62,7 @@ func (k *K8sConnManager) GetConns(ctx context.Context, serviceName string, opts 
 
 // GetConn returns a single gRPC client connection for a given Kubernetes service name
 func (k *K8sConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	return grpc.DialContext(ctx, serviceName, append(k.dialOptions, grpc.WithInsecure())...)
+	return grpc.DialContext(ctx, serviceName, append(k.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))...)
 }
 
 // GetSelfConnTarget returns the connection target for the current service
@@ -91,4 +92,15 @@ func (k *K8sConnManager) Close() {
 		}
 	}
 	k.connMap = make(map[string][]*grpc.ClientConn)
+}
+
+func (k *K8sConnManager) Register(serviceName, host string, port int, opts ...grpc.DialOption) error {
+	return nil
+}
+func (k *K8sConnManager) UnRegister() error {
+	return nil
+}
+
+func (k *K8sConnManager) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
+	return "", nil
 }
