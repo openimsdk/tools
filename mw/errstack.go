@@ -1,8 +1,11 @@
 package mw
 
 import (
+	"context"
 	"fmt"
+	"github.com/openimsdk/tools/log"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -51,4 +54,34 @@ func simplifyFuncName(fullFuncName string) string {
 		return parts[len(parts)-1]
 	}
 	return lastPart
+}
+
+func getPanicStack(skip int) string {
+	var pcs [32]uintptr
+	n := runtime.Callers(skip, pcs[:])
+	frames := runtime.CallersFrames(pcs[:n])
+
+	var sb strings.Builder
+	for {
+		frame, more := frames.Next()
+		//sb.WriteString(frame.File)
+		//sb.WriteString(":")
+		sb.WriteString(frame.Function)
+		sb.WriteString(":")
+		sb.WriteString(strconv.Itoa(frame.Line))
+		if !more {
+			break
+		}
+		sb.WriteString(" -> ")
+	}
+	return sb.String()
+}
+
+func PanicStackToLog(ctx context.Context, err any) {
+	panicStack := getPanicStack(0)
+	if e, ok := err.(error); ok {
+		log.ZError(ctx, "recovered from panic", e, "stack", panicStack)
+	} else {
+		log.ZError(ctx, "recovered from panic with non-error type", e, "stack", panicStack)
+	}
 }
