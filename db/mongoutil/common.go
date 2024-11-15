@@ -26,13 +26,22 @@ const (
 	defaultMaxRetry    = 3
 )
 
-// buildMongoURI constructs the MongoDB URI from the provided configuration.
 func buildMongoURI(config *Config) string {
 	credentials := ""
+	authSource := "admin"
 	if config.Username != "" && config.Password != "" {
-		credentials = fmt.Sprintf("%s:%s@", config.Username, config.Password)
+		credentials = fmt.Sprintf("%s:%s", config.Username, config.Password)
 	}
-	return fmt.Sprintf("mongodb://%s%s/%s?maxPoolSize=%d", credentials, strings.Join(config.Address, ","), config.Database, config.MaxPoolSize)
+
+	// 构建 MongoDB URI
+	return fmt.Sprintf(
+		"mongodb://%s@%s/%s?authSource=%s&maxPoolSize=%d",
+		credentials,
+		strings.Join(config.Address, ","),
+		config.Database,
+		authSource,
+		config.MaxPoolSize,
+	)
 }
 
 // shouldRetry determines whether an error should trigger a retry.
