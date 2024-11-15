@@ -90,31 +90,33 @@ func (k *KubernetesConnManager) initializeConnMap() error {
 
 // GetConns returns gRPC client connections for a given Kubernetes service name.
 func (k *KubernetesConnManager) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
-	k.mu.RLock()
-	defer k.mu.RUnlock()
-	if len(k.connMap) == 0 {
-		if err := k.initializeConnMap(); err != nil {
-			return nil, err
-		}
-	}
+	// k.mu.RLock()
+	// defer k.mu.RUnlock()
+	// if len(k.connMap) == 0 {
+	// 	if err := k.initializeConnMap(); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
-	return k.connMap[serviceName], nil
+	// return k.connMap[serviceName], nil
+	return nil, nil
 }
 
 // GetConn returns a single gRPC client connection for a given Kubernetes service name.
 func (k *KubernetesConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	k.mu.RLock()
-	if len(k.connMap) == 0 {
-		k.mu.RUnlock()
-		if err := k.initializeConnMap(); err != nil {
-			return nil, err
-		}
-		k.mu.RLock()
-	}
+	// k.mu.RLock()
+	// if len(k.connMap) == 0 {
+	// 	k.mu.RUnlock()
+	// 	if err := k.initializeConnMap(); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	k.mu.RLock()
+	// }
 
-	defer k.mu.RUnlock()
+	// defer k.mu.RUnlock()
 
-	return k.connMap[serviceName][0], nil
+	// return k.connMap[serviceName][0], nil
+	return grpc.DialContext(ctx, serviceName, append(k.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))...)
 }
 
 // GetSelfConnTarget returns the connection target for the current service.
