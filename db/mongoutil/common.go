@@ -17,8 +17,9 @@ package mongoutil
 import (
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
 	"strings"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -26,14 +27,13 @@ const (
 	defaultMaxRetry    = 3
 )
 
-func buildMongoURI(config *Config) string {
+func buildMongoURI(config *Config, authSource string) string {
 	credentials := ""
-	authSource := "admin"
+
 	if config.Username != "" && config.Password != "" {
 		credentials = fmt.Sprintf("%s:%s", config.Username, config.Password)
 	}
 
-	// 构建 MongoDB URI
 	return fmt.Sprintf(
 		"mongodb://%s@%s/%s?authSource=%s&maxPoolSize=%d",
 		credentials,

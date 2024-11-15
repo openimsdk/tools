@@ -62,7 +62,12 @@ func (c *Config) ValidateAndSetDefaults() error {
 		c.MaxRetry = defaultMaxRetry
 	}
 	if c.Uri == "" {
-		c.Uri = buildMongoURI(c)
+		// if authSource is not provided, default to admin
+		if c.AuthSource == "" {
+			c.Uri = buildMongoURI(c, "admin")
+		} else {
+			c.Uri = buildMongoURI(c, c.AuthSource)
+		}
 	}
 	return nil
 }
