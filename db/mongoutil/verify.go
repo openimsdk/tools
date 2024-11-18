@@ -64,7 +64,7 @@ func (c *Config) ValidateAndSetDefaults() error {
 	if c.Uri == "" {
 		// if authSource is not provided, default to admin
 		if c.AuthSource == "" {
-			c.Uri = buildMongoURI(c, "admin")
+			c.Uri = buildMongoURI(c, c.Database)
 		} else {
 			c.Uri = buildMongoURI(c, c.AuthSource)
 		}
