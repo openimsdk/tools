@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/IBM/sarama"
-	"github.com/openimsdk/protocol/constant"
-	"github.com/openimsdk/tools/mcontext"
+	"github.com/amazing-socrates/next-protocol/constant"
+	"github.com/amazing-socrates/next-tools/mcontext"
 )
 
 var errEmptyMsg = errors.New("kafka binary msg is empty")

@@ -30,13 +30,13 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/amazing-socrates/next-tools/s3"
 	"github.com/minio/minio-go/v7"
-	"github.com/openimsdk/tools/s3"
 
+	"github.com/amazing-socrates/next-tools/errs"
+	"github.com/amazing-socrates/next-tools/log"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/signer"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/log"
 )
 
 const (

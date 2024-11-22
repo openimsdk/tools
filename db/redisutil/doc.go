@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package redisutil // import "github.com/openimsdk/tools/redisutil"
+package redisutil // import "github.com/amazing-socrates/next-tools/redisutil"

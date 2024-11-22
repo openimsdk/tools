@@ -29,10 +29,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openimsdk/tools/s3"
+	"github.com/amazing-socrates/next-tools/s3"
 	"github.com/tencentyun/cos-go-sdk-v5"
 
-	"github.com/openimsdk/tools/errs"
+	"github.com/amazing-socrates/next-tools/errs"
 )
 
 const (

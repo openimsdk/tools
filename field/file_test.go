@@ -21,7 +21,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/openimsdk/tools/errs"
+	"github.com/amazing-socrates/next-tools/errs"
 )
 
 func TestFileUtils(t *testing.T) {

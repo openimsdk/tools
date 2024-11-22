@@ -17,8 +17,8 @@ package zookeeper
 import (
 	"time"
 
+	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/go-zookeeper/zk"
-	"github.com/openimsdk/tools/errs"
 )
 
 type Config struct {

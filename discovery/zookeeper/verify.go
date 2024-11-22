@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/go-zookeeper/zk"
-	"github.com/openimsdk/tools/errs"
 	"google.golang.org/grpc"
 )
 

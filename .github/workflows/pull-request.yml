@@ -95,10 +95,10 @@ jobs:
 
             Github Actions Status:
 
-            [![Github Pull Request](https://github.com/openimsdk/open-im-server/actions/workflows/pull-request.yml/badge.svg)](https://github.com/openimsdk/open-im-server/actions/workflows/pull-request.yml)
+            [![Github Pull Request](https://https://github.com/amazing-socrates/next-im/actions/workflows/pull-request.yml/badge.svg)](https://https://github.com/amazing-socrates/next-im/actions/workflows/pull-request.yml)
             
             This is an automated PR. 
-            <sub>[workflow](https://github.com/openimsdk/open-im-server/blob/main/.github/workflows/pull-request.yml).</sub>
+            <sub>[workflow](https://https://github.com/amazing-socrates/next-im/blob/main/.github/workflows/pull-request.yml).</sub>
           labels: |
             kind/documentation
             enhancement
