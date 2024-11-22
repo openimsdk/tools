@@ -17,13 +17,13 @@ package mw
 import (
 	"github.com/amazing-socrates/next-tools/log"
 	"github.com/amazing-socrates/next-tools/tokenverify"
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 	"strings"
 
 	"github.com/amazing-socrates/next-tools/apiresp"
 	"github.com/amazing-socrates/next-tools/errs"
+	"github.com/gin-gonic/gin"
 	"github.com/openimsdk/protocol/constant"
 )
 
@@ -116,4 +116,9 @@ func CreateToken(userID string, accessSecret string, accessExpire int64, platfor
 		return "", errs.WrapMsg(err, "token.SignedString")
 	}
 	return tokenString, nil
+}
+
+func GinPanicErr(c *gin.Context, err any) {
+	PanicStackToLog(c, err)
+	c.AbortWithStatus(http.StatusInternalServerError)
 }

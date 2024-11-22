@@ -17,8 +17,9 @@ package mongoutil
 import (
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
 	"strings"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -26,13 +27,21 @@ const (
 	defaultMaxRetry    = 3
 )
 
-// buildMongoURI constructs the MongoDB URI from the provided configuration.
-func buildMongoURI(config *Config) string {
+func buildMongoURI(config *Config, authSource string) string {
 	credentials := ""
+
 	if config.Username != "" && config.Password != "" {
-		credentials = fmt.Sprintf("%s:%s@", config.Username, config.Password)
+		credentials = fmt.Sprintf("%s:%s", config.Username, config.Password)
 	}
-	return fmt.Sprintf("mongodb://%s%s/%s?maxPoolSize=%d", credentials, strings.Join(config.Address, ","), config.Database, config.MaxPoolSize)
+
+	return fmt.Sprintf(
+		"mongodb://%s@%s/%s?authSource=%s&maxPoolSize=%d",
+		credentials,
+		strings.Join(config.Address, ","),
+		config.Database,
+		authSource,
+		config.MaxPoolSize,
+	)
 }
 
 // shouldRetry determines whether an error should trigger a retry.
