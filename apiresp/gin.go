@@ -39,7 +39,6 @@ func GetGinApiResponse(c *gin.Context) *ApiResponse {
 }
 
 func GinError(c *gin.Context, err error) {
-	_ = c.Error(err)
 	ginJson(c, ParseError(err))
 }
 
