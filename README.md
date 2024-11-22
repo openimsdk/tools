@@ -9,12 +9,12 @@
 
 
 <p align=center>
-<a href="https://goreportcard.com/report/github.com/openimsdk/tools"><img src="https://goreportcard.com/badge/github.com/openimsdk/tools" alt="A+"></a>
-<a href="https://github.com/openimsdk/tools/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/openimsdk/tools/good%20first%20issue?logo=%22github%22" alt="good first"></a>
-<a href="https://github.com/openimsdk/tools"><img src="https://img.shields.io/github/stars/openimsdk/tools.svg?style=flat&logo=github&colorB=deeppink&label=stars"></a>
+<a href="https://goreportcard.com/report/github.com/amazing-socrates/next-tools"><img src="https://goreportcard.com/badge/github.com/amazing-socrates/next-tools" alt="A+"></a>
+<a href="https://github.com/amazing-socrates/next-tools/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/openimsdk/tools/good%20first%20issue?logo=%22github%22" alt="good first"></a>
+<a href="https://github.com/amazing-socrates/next-tools"><img src="https://img.shields.io/github/stars/openimsdk/tools.svg?style=flat&logo=github&colorB=deeppink&label=stars"></a>
 <a href="https://join.slack.com/t/openimsdk/shared_invite/zt-22720d66b-o_FvKxMTGXtcnnnHiMqe9Q"><img src="https://img.shields.io/badge/Slack-100%2B-blueviolet?logo=slack&amp;logoColor=white"></a>
-<a href="https://github.com/openimsdk/tools/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green"></a>
-<a href="https://pkg.go.dev/github.com/openimsdk/tools"><img src="https://img.shields.io/badge/Language-Go-blue.svg"></a>
+<a href="https://github.com/amazing-socrates/next-tools/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green"></a>
+<a href="https://pkg.go.dev/github.com/amazing-socrates/next-tools"><img src="https://img.shields.io/badge/Language-Go-blue.svg"></a>
 </p>
 
 
@@ -75,7 +75,7 @@ This project includes a series of tools and libraries applicable to OpenIM, alon
 - `color.go`, `encoder.go`, `logger.go`, `sql_logger.go`, `zap.go`, `zk_logger.go`: Log management module, supporting multiple log formats and outputs.
 
 > [!IMPORTANT]
-> For more information about OpenIM log, please read [https://github.com/openimsdk/open-im-server/blob/main/docs/contrib/logging.md](https://github.com/openimsdk/open-im-server/blob/main/docs/contrib/logging.md)
+> For more information about OpenIM log, please read [https://https://github.com/amazing-socrates/next-im/blob/main/docs/contrib/logging.md](https://https://github.com/amazing-socrates/next-im/blob/main/docs/contrib/logging.md)
 
 ## mcontext
 

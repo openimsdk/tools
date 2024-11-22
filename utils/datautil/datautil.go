@@ -15,10 +15,10 @@
 package datautil
 
 import (
+	"github.com/amazing-socrates/next-tools/db/pagination"
+	"github.com/amazing-socrates/next-tools/errs"
+	"github.com/amazing-socrates/next-tools/utils/jsonutil"
 	"github.com/jinzhu/copier"
-	"github.com/openimsdk/tools/db/pagination"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/utils/jsonutil"
 	"math/rand"
 	"reflect"
 	"sort"

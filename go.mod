@@ -1,4 +1,4 @@
-module github.com/openimsdk/tools
+module github.com/amazing-socrates/next-tools
 
 go 1.22.0
 
@@ -32,7 +32,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/magefile/mage v1.15.0
 	github.com/minio/minio-go/v7 v7.0.69
-	github.com/openimsdk/protocol v0.0.69-alpha.4
+	github.com/amazing-socrates/next-protocol v0.0.69-alpha.4
 	github.com/pkg/errors v0.9.1
 	github.com/qiniu/go-sdk/v7 v7.18.2
 	github.com/redis/go-redis/v9 v9.2.1

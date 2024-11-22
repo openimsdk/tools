@@ -2,7 +2,7 @@ package a2r
 
 import (
 	"context"
-	"github.com/openimsdk/tools/mw"
+	"github.com/amazing-socrates/next-tools/mw"
 	"google.golang.org/grpc"
 )
 

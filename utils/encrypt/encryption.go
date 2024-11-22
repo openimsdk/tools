@@ -20,7 +20,7 @@ import (
 	"crypto/cipher"
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/openimsdk/tools/errs"
+	"github.com/amazing-socrates/next-tools/errs"
 )
 
 // Md5 returns the md5 hash of the input string.

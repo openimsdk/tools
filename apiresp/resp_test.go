@@ -3,9 +3,9 @@ package apiresp
 import (
 	"testing"
 
-	"github.com/openimsdk/protocol/relation"
-	"github.com/openimsdk/protocol/wrapperspb"
-	"github.com/openimsdk/tools/utils/jsonutil"
+	"github.com/amazing-socrates/next-protocol/relation"
+	"github.com/amazing-socrates/next-protocol/wrapperspb"
+	"github.com/amazing-socrates/next-tools/utils/jsonutil"
 )
 
 func TestName(t *testing.T) {

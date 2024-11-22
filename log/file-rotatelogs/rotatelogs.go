@@ -6,7 +6,7 @@ package rotatelogs
 
 import (
 	"fmt"
-	"github.com/openimsdk/tools/log/file-rotatelogs/internal/fileutil"
+	"github.com/amazing-socrates/next-tools/log/file-rotatelogs/internal/fileutil"
 	"io"
 	"os"
 	"path/filepath"

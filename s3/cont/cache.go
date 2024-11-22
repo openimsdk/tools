@@ -2,7 +2,7 @@ package cont
 
 import (
 	"context"
-	"github.com/openimsdk/tools/s3"
+	"github.com/amazing-socrates/next-tools/s3"
 )
 
 type S3Cache interface {
