@@ -29,7 +29,7 @@ func Check(ctx context.Context, config *Config) error {
 	defer client.Close()
 
 	// Ping the Redis server to check connectivity.
-	if err := client.Ping(ctx).Err(); err != nil {
+	if err := client.Echo(ctx, "check redis status").Err(); err != nil {
 		return errs.WrapMsg(err, "Redis ping failed", "config", config)
 	}
 
