@@ -50,14 +50,14 @@ func GetClaimFromToken(tokensString string, secretFunc jwt.Keyfunc) (*Claims, er
 		if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 			return claims, nil
 		}
-		return nil, errs.ErrTokenUnknown
+		return nil, errs.WrapMsg(errs.ErrTokenUnknown, "claims unknown", "token", tokensString)
 	}
 
 	if ve, ok := err.(*jwt.ValidationError); ok {
-		return nil, mapValidationError(ve)
+		return nil, errs.WrapMsg(mapValidationError(ve), "jwt parse error", "token", tokensString)
 	}
 
-	return nil, errs.ErrTokenUnknown
+	return nil, errs.WrapMsg(err, "jwt parse error", "token", tokensString)
 }
 
 func mapValidationError(ve *jwt.ValidationError) error {
@@ -68,5 +68,5 @@ func mapValidationError(ve *jwt.ValidationError) error {
 	} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
 		return errs.ErrTokenNotValidYet
 	}
-	return errs.ErrTokenUnknown
+	return errs.NewCodeError(errs.TokenUnknownError, ve.Error())
 }
