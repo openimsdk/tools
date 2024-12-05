@@ -19,8 +19,10 @@ import (
 	"github.com/openimsdk/tools/db/pagination"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/utils/jsonutil"
+	"math/rand"
 	"reflect"
 	"sort"
+	"time"
 )
 
 // SliceSubFuncs returns elements in slice a that are not present in slice b (a - b) and remove duplicates.
@@ -225,6 +227,17 @@ func DeleteElems[E comparable](es []E, delEs ...E) []E {
 // Contain Whether to include
 func Contain[E comparable](e E, es ...E) bool {
 	return IndexOf(e, es...) >= 0
+}
+
+// Contains Whether to include
+func Contains[E comparable](e []E, es ...E) bool {
+	mp := SliceToMap(e, func(i E) E { return i })
+	for _, e2 := range es {
+		if _, ok := mp[e2]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // DuplicateAny Whether there are duplicates
@@ -695,6 +708,15 @@ func CopySlice[T any](a []T) []T {
 	ns := make([]T, len(a))
 	copy(ns, a)
 	return ns
+}
+
+func ShuffleSlice[T any](a []T) []T {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	shuffled := CopySlice(a)
+	r.Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+	return shuffled
 }
 
 func GetElemByIndex(array []int, index int) (int, error) {

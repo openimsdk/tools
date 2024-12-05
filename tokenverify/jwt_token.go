@@ -22,7 +22,7 @@ import (
 )
 
 const HoursOneDay = 24
-const minutesBefore = 5
+const secondBefore = 5
 
 type Claims struct {
 	UserID     string
@@ -32,14 +32,14 @@ type Claims struct {
 
 func BuildClaims(uid string, platformID int, ttl int64) Claims {
 	now := time.Now()
-	before := now.Add(-time.Minute * time.Duration(minutesBefore))
+	before := now.Add(-time.Second * time.Duration(secondBefore))
 	return Claims{
 		UserID:     uid,
 		PlatformID: platformID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(ttl*HoursOneDay) * time.Hour)), // Expiration time
-			IssuedAt:  jwt.NewNumericDate(now),                                                 // Issuing time
-			NotBefore: jwt.NewNumericDate(before),                                              // Begin Effective time
+			IssuedAt:  jwt.NewNumericDate(before),                                              // Issuing time
+			//NotBefore: jwt.NewNumericDate(before),                                              // Begin Effective time
 		},
 	}
 }
@@ -50,14 +50,14 @@ func GetClaimFromToken(tokensString string, secretFunc jwt.Keyfunc) (*Claims, er
 		if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 			return claims, nil
 		}
-		return nil, errs.ErrTokenUnknown
+		return nil, errs.WrapMsg(errs.ErrTokenUnknown, "claims unknown", "token", tokensString)
 	}
 
 	if ve, ok := err.(*jwt.ValidationError); ok {
-		return nil, mapValidationError(ve)
+		return nil, errs.WrapMsg(mapValidationError(ve), "jwt parse error", "token", tokensString)
 	}
 
-	return nil, errs.ErrTokenUnknown
+	return nil, errs.WrapMsg(err, "jwt parse error", "token", tokensString)
 }
 
 func mapValidationError(ve *jwt.ValidationError) error {
@@ -68,5 +68,5 @@ func mapValidationError(ve *jwt.ValidationError) error {
 	} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
 		return errs.ErrTokenNotValidYet
 	}
-	return errs.ErrTokenUnknown
+	return errs.NewCodeError(errs.TokenUnknownError, ve.Error())
 }

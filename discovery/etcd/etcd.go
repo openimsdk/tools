@@ -139,7 +139,9 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if len(r.connMap) == 0 {
-		r.initializeConnMap()
+		if err := r.initializeConnMap(); err != nil {
+			return nil, err
+		}
 	}
 	return r.connMap[fullServiceKey], nil
 }
