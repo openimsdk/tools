@@ -33,6 +33,10 @@ type Logger interface {
 	// It includes an error object and any supplementary key-value pairs.
 	Error(ctx context.Context, msg string, err error, keysAndValues ...any)
 
+	// Panic logs a message at the panic level, indicating a critical error like nil pointer exception that requires immediate attention.
+	// It includes an error object and any supplementary key-value pairs.
+	Panic(ctx context.Context, msg string, err error, keysAndValues ...any)
+
 	// WithValues returns a new Logger instance that will include the specified key-value pairs
 	// in all subsequent log messages. Useful for adding consistent context to a series of logs.
 	WithValues(keysAndValues ...any) Logger

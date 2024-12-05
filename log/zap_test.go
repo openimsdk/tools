@@ -68,7 +68,6 @@ func TestDefaultLog(t *testing.T) {
 	ZWarn(context.Background(), "3Q", er)
 	ZError(context.Background(), "3Q very much", er)
 
-	
 	sdkType := "TestSDK"
 	platformName := "testPlatform"
 
@@ -77,14 +76,14 @@ func TestDefaultLog(t *testing.T) {
 		"testModule", // moduleName
 		sdkType,      // sdkType
 		platformName, // platformName
-		int(5),            // logLevel (Debug)
+		int(5),       // logLevel (Debug)
 		true,         // isStdout
 		false,        // isJson
 		"./logs",     // logLocation
-		uint(5),       // rotateCount
-		uint(24),      // rotationTime
-		"1.0.0", // moduleVersion
-		false,   // isSimplify
+		uint(5),      // rotateCount
+		uint(24),     // rotationTime
+		"1.0.0",      // moduleVersion
+		false,        // isSimplify
 	)
 	assert.NoError(t, err)
 
