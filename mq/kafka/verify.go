@@ -17,11 +17,12 @@ package kafka
 import (
 	"context"
 	"fmt"
+
 	"github.com/IBM/sarama"
 	"github.com/openimsdk/tools/errs"
 )
 
-func Check(ctx context.Context, conf *Config, topics []string) error {
+func CheckTopics(ctx context.Context, conf *Config, topics []string) error {
 	kfk, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest, false)
 	if err != nil {
 		return err
@@ -47,5 +48,32 @@ func Check(ctx context.Context, conf *Config, topics []string) error {
 			return errs.New("topic not exist", "topic", topic).Wrap()
 		}
 	}
+	return nil
+}
+
+func CheckHealth(ctx context.Context, conf *Config) error {
+	kfk, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest, false)
+	if err != nil {
+		return err
+	}
+	cli, err := sarama.NewClient(conf.Addr, kfk)
+	if err != nil {
+		return errs.WrapMsg(err, "NewClient failed", "config: ", fmt.Sprintf("%+v", conf))
+	}
+	defer cli.Close()
+
+	// Get broker list
+	brokers := cli.Brokers()
+	if len(brokers) == 0 {
+		return errs.New("no brokers found").Wrap()
+	}
+
+	// Check if all brokers are reachable
+	for _, broker := range brokers {
+		if err := broker.Open(kfk); err != nil {
+			return errs.WrapMsg(err, "failed to open broker", "broker", broker.Addr())
+		}
+	}
+
 	return nil
 }

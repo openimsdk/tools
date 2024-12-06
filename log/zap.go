@@ -129,6 +129,10 @@ func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
 
+func ZPanic(ctx context.Context, msg string, err error, keysAndValues ...any) {
+	pkgLogger.Panic(ctx, msg, err, keysAndValues...)
+}
+
 func CInfo(ctx context.Context, msg string, keysAndValues ...any) {
 	if osStdout == nil {
 		return
@@ -407,6 +411,17 @@ func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValu
 
 func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	if l.level > zapcore.ErrorLevel {
+		return
+	}
+	if err != nil {
+		keysAndValues = append(keysAndValues, "error", err.Error())
+	}
+	keysAndValues = l.kvAppend(ctx, keysAndValues)
+	l.zap.Errorw(msg, keysAndValues...)
+}
+
+func (l *ZapLogger) Panic(ctx context.Context, msg string, err error, keysAndValues ...any) {
+	if l.level > zapcore.PanicLevel {
 		return
 	}
 	if err != nil {
