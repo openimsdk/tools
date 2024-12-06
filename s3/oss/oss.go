@@ -290,6 +290,10 @@ func (o *OSS) ListUploadedParts(ctx context.Context, uploadID string, name strin
 }
 
 func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
+	if opt != nil && opt.Image != nil {
+		opt.Filename = ""
+		opt.ContentType = ""
+	}
 	var opts []oss.Option
 	if opt != nil {
 		if opt.Image != nil {
@@ -322,7 +326,7 @@ func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, 
 				opts = append(opts, oss.ResponseContentType(opt.ContentType))
 			}
 			if opt.Filename != "" {
-				opts = append(opts, oss.ResponseContentDisposition(`attachment; filename=`+strconv.Quote(opt.Filename)))
+				opts = append(opts, oss.ResponseContentDisposition(`attachment; filename*=UTF-8''`+url.PathEscape(opt.Filename)))
 			}
 		}
 	}

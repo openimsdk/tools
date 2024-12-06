@@ -100,11 +100,11 @@ func NewKodo(conf Config) (*Kodo, error) {
 	}, nil
 }
 
-func (k Kodo) Engine() string {
+func (k *Kodo) Engine() string {
 	return "kodo"
 }
 
-func (k Kodo) PartLimit() *s3.PartLimit {
+func (k *Kodo) PartLimit() *s3.PartLimit {
 	return &s3.PartLimit{
 		MinPartSize: minPartSize,
 		MaxPartSize: maxPartSize,
@@ -112,7 +112,7 @@ func (k Kodo) PartLimit() *s3.PartLimit {
 	}
 }
 
-func (k Kodo) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
+func (k *Kodo) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
 	result, err := k.Client.CreateMultipartUpload(ctx, &awss3.CreateMultipartUploadInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
@@ -127,7 +127,7 @@ func (k Kodo) InitiateMultipartUpload(ctx context.Context, name string) (*s3.Ini
 	}, nil
 }
 
-func (k Kodo) CompleteMultipartUpload(ctx context.Context, uploadID string, name string, parts []s3.Part) (*s3.CompleteMultipartUploadResult, error) {
+func (k *Kodo) CompleteMultipartUpload(ctx context.Context, uploadID string, name string, parts []s3.Part) (*s3.CompleteMultipartUploadResult, error) {
 	kodoParts := make([]awss3types.CompletedPart, len(parts))
 	for i, part := range parts {
 		kodoParts[i] = awss3types.CompletedPart{
@@ -152,7 +152,7 @@ func (k Kodo) CompleteMultipartUpload(ctx context.Context, uploadID string, name
 	}, nil
 }
 
-func (k Kodo) PartSize(ctx context.Context, size int64) (int64, error) {
+func (k *Kodo) PartSize(ctx context.Context, size int64) (int64, error) {
 	if size <= 0 {
 		return 0, errors.New("size must be greater than 0")
 	}
@@ -169,7 +169,7 @@ func (k Kodo) PartSize(ctx context.Context, size int64) (int64, error) {
 	return partSize, nil
 }
 
-func (k Kodo) AuthSign(ctx context.Context, uploadID string, name string, expire time.Duration, partNumbers []int) (*s3.AuthSignResult, error) {
+func (k *Kodo) AuthSign(ctx context.Context, uploadID string, name string, expire time.Duration, partNumbers []int) (*s3.AuthSignResult, error) {
 	result := s3.AuthSignResult{
 		URL:    k.BucketURL + "/" + name,
 		Query:  url.Values{"uploadId": {uploadID}},
@@ -193,7 +193,7 @@ func (k Kodo) AuthSign(ctx context.Context, uploadID string, name string, expire
 
 }
 
-func (k Kodo) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
+func (k *Kodo) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
 	object, err := k.PresignClient.PresignPutObject(ctx, &awss3.PutObjectInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
@@ -204,7 +204,7 @@ func (k Kodo) PresignedPutObject(ctx context.Context, name string, expire time.D
 
 }
 
-func (k Kodo) DeleteObject(ctx context.Context, name string) error {
+func (k *Kodo) DeleteObject(ctx context.Context, name string) error {
 	_, err := k.Client.DeleteObject(ctx, &awss3.DeleteObjectInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
@@ -212,7 +212,7 @@ func (k Kodo) DeleteObject(ctx context.Context, name string) error {
 	return err
 }
 
-func (k Kodo) CopyObject(ctx context.Context, src string, dst string) (*s3.CopyObjectInfo, error) {
+func (k *Kodo) CopyObject(ctx context.Context, src string, dst string) (*s3.CopyObjectInfo, error) {
 	result, err := k.Client.CopyObject(ctx, &awss3.CopyObjectInput{
 		Bucket:     aws.String(k.Region),
 		CopySource: aws.String(k.Region + "/" + src),
@@ -227,7 +227,7 @@ func (k Kodo) CopyObject(ctx context.Context, src string, dst string) (*s3.CopyO
 	}, nil
 }
 
-func (k Kodo) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, error) {
+func (k *Kodo) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, error) {
 	info, err := k.Client.HeadObject(ctx, &awss3.HeadObjectInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
@@ -241,7 +241,7 @@ func (k Kodo) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, erro
 	return res, nil
 }
 
-func (k Kodo) IsNotFound(err error) bool {
+func (k *Kodo) IsNotFound(err error) bool {
 	if err != nil {
 		var errorType *awss3types.NotFound
 		if errors.As(err, &errorType) {
@@ -251,7 +251,7 @@ func (k Kodo) IsNotFound(err error) bool {
 	return false
 }
 
-func (k Kodo) AbortMultipartUpload(ctx context.Context, uploadID string, name string) error {
+func (k *Kodo) AbortMultipartUpload(ctx context.Context, uploadID string, name string) error {
 	_, err := k.Client.AbortMultipartUpload(ctx, &awss3.AbortMultipartUploadInput{
 		UploadId: aws.String(uploadID),
 		Bucket:   aws.String(k.Region),
@@ -260,7 +260,7 @@ func (k Kodo) AbortMultipartUpload(ctx context.Context, uploadID string, name st
 	return err
 }
 
-func (k Kodo) ListUploadedParts(ctx context.Context, uploadID string, name string, partNumberMarker int, maxParts int) (*s3.ListUploadedPartsResult, error) {
+func (k *Kodo) ListUploadedParts(ctx context.Context, uploadID string, name string, partNumberMarker int, maxParts int) (*s3.ListUploadedPartsResult, error) {
 	result, err := k.Client.ListParts(ctx, &awss3.ListPartsInput{
 		Key:              aws.String(name),
 		UploadId:         aws.String(uploadID),
@@ -294,7 +294,11 @@ func (k Kodo) ListUploadedParts(ctx context.Context, uploadID string, name strin
 	return res, nil
 }
 
-func (k Kodo) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
+func (k *Kodo) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
+	if opt != nil && opt.Image != nil {
+		opt.Filename = ""
+		opt.ContentType = ""
+	}
 	//get object head
 	info, err := k.Client.HeadObject(ctx, &awss3.HeadObjectInput{
 		Bucket: aws.String(k.Region),
