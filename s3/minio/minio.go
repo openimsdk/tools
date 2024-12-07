@@ -421,6 +421,10 @@ func (m *Minio) PresignedGetObject(ctx context.Context, name string, expire time
 }
 
 func (m *Minio) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
+	if opt != nil && opt.Image != nil {
+		opt.Filename = ""
+		opt.ContentType = ""
+	}
 	if err := m.initMinio(ctx); err != nil {
 		return "", err
 	}

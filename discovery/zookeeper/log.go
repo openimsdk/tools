@@ -41,3 +41,5 @@ func (nilLog) WithName(name string) log.Logger {
 func (nilLog) WithCallDepth(depth int) log.Logger {
 	return nilLog{}
 }
+
+func (nilLog) Panic(ctx context.Context, msg string, err error, keysAndValues ...any) {}
