@@ -1,7 +1,6 @@
 package runtimeenv
 
 import (
-	"fmt"
 	"os"
 	"strings"
 )
@@ -22,13 +21,13 @@ func isKubernetes() bool {
 func PrintRuntimeEnvironment() string {
 	var runtimeEnv string
 	if isKubernetes() {
-		fmt.Println("Running inside Kubernetes")
+		// fmt.Println("Running inside Kubernetes")
 		runtimeEnv = "kubernetes"
 	} else if isDocker() {
-		fmt.Println("Running inside Docker")
+		// fmt.Println("Running inside Docker")
 		runtimeEnv = "docker"
 	} else {
-		fmt.Println("Running in a local or non-Docker environment")
+		// fmt.Println("Running in a local or non-Docker environment")
 		runtimeEnv = "source"
 	}
 
