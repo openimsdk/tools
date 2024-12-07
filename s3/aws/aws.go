@@ -296,6 +296,10 @@ func (a *Aws) AccessURL(ctx context.Context, name string, expire time.Duration, 
 	return res.URL, nil
 }
 
+func (a *Aws) FormData(ctx context.Context, name string, size int64, contentType string, duration time.Duration) (*s3.FormData, error) {
+	return nil, errors.New("aws does not currently support form data file uploads")
+}
+
 func withDisableHTTPPresignerHeaderV4(opt *s3.AccessURLOption) func(options *aws3.PresignOptions) {
 	return func(options *aws3.PresignOptions) {
 		options.Presigner = &disableHTTPPresignerHeaderV4{
@@ -331,8 +335,4 @@ func (d *disableHTTPPresignerHeaderV4) setOption(u *url.URL) {
 		query.Set("response-content-disposition", `attachment; filename*=UTF-8''`+url.PathEscape(d.opt.Filename))
 	}
 	u.RawQuery = query.Encode()
-}
-
-func (a *Aws) FormData(ctx context.Context, name string, size int64, contentType string, duration time.Duration) (*s3.FormData, error) {
-	return nil, errors.New("aws does not currently support form data file uploads")
 }

@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/qiniu/go-sdk/v7/storage"
 	"io"
 	"net/http"
 	"net/url"
@@ -36,7 +38,6 @@ import (
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/s3"
 	"github.com/qiniu/go-sdk/v7/auth"
-	"github.com/qiniu/go-sdk/v7/storage"
 )
 
 const (
@@ -84,7 +85,7 @@ func NewKodo(conf Config) (*Kodo, error) {
 		),
 	)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	client := awss3.NewFromConfig(cfg)
 	presignClient := awss3.NewPresignClient(client)
@@ -197,11 +198,11 @@ func (k *Kodo) PresignedPutObject(ctx context.Context, name string, expire time.
 	object, err := k.PresignClient.PresignPutObject(ctx, &awss3.PutObjectInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
-	}, func(po *awss3.PresignOptions) {
-		po.Expires = expire
-	})
-	return object.URL, err
-
+	}, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(nil))
+	if err != nil {
+		return "", err
+	}
+	return object.URL, nil
 }
 
 func (k *Kodo) DeleteObject(ctx context.Context, name string) error {
@@ -295,52 +296,34 @@ func (k *Kodo) ListUploadedParts(ctx context.Context, uploadID string, name stri
 }
 
 func (k *Kodo) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
-	if opt != nil && opt.Image != nil {
-		opt.Filename = ""
-		opt.ContentType = ""
+	if opt == nil || opt.Image == nil {
+		params := &awss3.GetObjectInput{
+			Bucket: aws.String(k.Region),
+			Key:    aws.String(name),
+		}
+		res, err := k.PresignClient.PresignGetObject(ctx, params, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
+		if err != nil {
+			return "", err
+		}
+		return res.URL, nil
 	}
-	//get object head
-	info, err := k.Client.HeadObject(ctx, &awss3.HeadObjectInput{
-		Bucket: aws.String(k.Region),
-		Key:    aws.String(name),
-	})
-	if err != nil {
-		return "", errors.New("AccessURL object not found")
+	//https://developer.qiniu.com/dora/8255/the-zoom
+	process := ""
+	if opt.Image.Width > 0 {
+		process += strconv.Itoa(opt.Image.Width) + "x"
 	}
-	if opt != nil {
-		if opt.ContentType != aws.ToString(info.ContentType) {
-			err := k.SetObjectContentType(ctx, name, opt.ContentType)
-			if err != nil {
-				return "", errors.New("AccessURL setContentType error")
-			}
+	if opt.Image.Height > 0 {
+		if opt.Image.Width > 0 {
+			process += strconv.Itoa(opt.Image.Height)
+		} else {
+			process += "x" + strconv.Itoa(opt.Image.Height)
 		}
 	}
-	imageMogr := ""
-	//image dispose
-	if opt != nil {
-		if opt.Image != nil {
-			//https://developer.qiniu.com/dora/8255/the-zoom
-			process := ""
-			if opt.Image.Width > 0 {
-				process += strconv.Itoa(opt.Image.Width) + "x"
-			}
-			if opt.Image.Height > 0 {
-				if opt.Image.Width > 0 {
-					process += strconv.Itoa(opt.Image.Height)
-				} else {
-					process += "x" + strconv.Itoa(opt.Image.Height)
-				}
-			}
-			imageMogr = "imageMogr2/thumbnail/" + process
-		}
-	}
+	imageMogr := "imageMogr2/thumbnail/" + process
 	//expire
-	deadline := time.Now().Add(time.Second * expire).Unix()
+	deadline := time.Now().Add(expire).Unix()
 	domain := k.BucketURL
-	query := url.Values{}
-	if opt != nil && opt.Filename != "" {
-		query.Add("attname", opt.Filename)
-	}
+	query := make(url.Values)
 	privateURL := storage.MakePrivateURLv2WithQuery(k.Auth, domain, name, query, deadline)
 	if imageMogr != "" {
 		privateURL += "&" + imageMogr
@@ -397,4 +380,41 @@ func (k *Kodo) FormData(ctx context.Context, name string, size int64, contentTyp
 		fd.FormData["accept"] = contentType
 	}
 	return fd, nil
+}
+
+func withDisableHTTPPresignerHeaderV4(opt *s3.AccessURLOption) func(options *awss3.PresignOptions) {
+	return func(options *awss3.PresignOptions) {
+		options.Presigner = &disableHTTPPresignerHeaderV4{
+			opt:       opt,
+			presigner: options.Presigner,
+		}
+	}
+}
+
+type disableHTTPPresignerHeaderV4 struct {
+	opt       *s3.AccessURLOption
+	presigner awss3.HTTPPresignerV4
+}
+
+func (d *disableHTTPPresignerHeaderV4) PresignHTTP(ctx context.Context, credentials aws.Credentials, r *http.Request, payloadHash string, service string, region string, signingTime time.Time, optFns ...func(*v4.SignerOptions)) (url string, signedHeader http.Header, err error) {
+	optFns = append(optFns, func(options *v4.SignerOptions) {
+		options.DisableHeaderHoisting = true
+	})
+	r.Header.Del("Amz-Sdk-Request")
+	d.setOption(r.URL)
+	return d.presigner.PresignHTTP(ctx, credentials, r, payloadHash, service, region, signingTime, optFns...)
+}
+
+func (d *disableHTTPPresignerHeaderV4) setOption(u *url.URL) {
+	if d.opt == nil {
+		return
+	}
+	query := u.Query()
+	if d.opt.ContentType != "" {
+		query.Set("response-content-type", d.opt.ContentType)
+	}
+	if d.opt.Filename != "" {
+		query.Set("response-content-disposition", `attachment; filename*=UTF-8''`+url.PathEscape(d.opt.Filename))
+	}
+	u.RawQuery = query.Encode()
 }
