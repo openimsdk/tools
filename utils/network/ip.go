@@ -37,6 +37,7 @@ func GetLocalIP() (string, error) {
 		return "", err
 	}
 	// Iterate over each interface
+	var publicIP string
 	for _, iface := range interfaces {
 		// Check if the interface is up and not a loopback
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
@@ -61,10 +62,20 @@ func GetLocalIP() (string, error) {
 			if ip4 != nil && !ip4.IsLoopback() {
 				// Ensure the IP is not a multicast address
 				if !ip4.IsMulticast() {
-					return ip4.String(), nil
+					if !ipNet.IP.IsPrivate() && publicIP == "" {
+						// Priority return to internal network IP
+						publicIP = ipNet.IP.String()
+					} else {
+						return ip4.String(), nil
+					}
+
 				}
 			}
 		}
+	}
+
+	if publicIP != "" {
+		return publicIP, nil
 	}
 	// If no suitable IP is found, return an error
 	return "", errors.New("no suitable local IP address found")

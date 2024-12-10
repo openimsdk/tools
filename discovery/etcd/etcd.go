@@ -328,3 +328,7 @@ func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfN
 	}
 	return nil
 }
+
+func (r *SvcDiscoveryRegistryImpl) GetClient() *clientv3.Client {
+	return r.client
+}
