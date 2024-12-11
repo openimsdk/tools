@@ -30,11 +30,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/amazing-socrates/next-tools/s3"
-	"github.com/minio/minio-go/v7"
-
 	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/amazing-socrates/next-tools/log"
+	"github.com/amazing-socrates/next-tools/s3"
+	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/signer"
 )
@@ -421,6 +420,10 @@ func (m *Minio) PresignedGetObject(ctx context.Context, name string, expire time
 }
 
 func (m *Minio) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
+	if opt != nil && opt.Image != nil {
+		opt.Filename = ""
+		opt.ContentType = ""
+	}
 	if err := m.initMinio(ctx); err != nil {
 		return "", err
 	}
@@ -430,7 +433,7 @@ func (m *Minio) AccessURL(ctx context.Context, name string, expire time.Duration
 			reqParams.Set("response-content-type", opt.ContentType)
 		}
 		if opt.Filename != "" {
-			reqParams.Set("response-content-disposition", `attachment; filename=`+strconv.Quote(opt.Filename))
+			reqParams.Set("response-content-disposition", `attachment; filename*=UTF-8''`+url.PathEscape(opt.Filename))
 		}
 	}
 	if opt.Image == nil || (opt.Image.Width < 0 && opt.Image.Height < 0 && opt.Image.Format == "") || (opt.Image.Width > maxImageWidth || opt.Image.Height > maxImageHeight) {
