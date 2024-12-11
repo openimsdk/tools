@@ -15,11 +15,12 @@
 package mw
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/tokenverify"
-	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openimsdk/protocol/constant"
@@ -119,6 +120,6 @@ func CreateToken(userID string, accessSecret string, accessExpire int64, platfor
 }
 
 func GinPanicErr(c *gin.Context, err any) {
-	PanicStackToLog(c, err)
+	log.ZPanic(c, "GinPanicErr panic", err)
 	c.AbortWithStatus(http.StatusInternalServerError)
 }
