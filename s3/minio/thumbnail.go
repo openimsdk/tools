@@ -84,7 +84,7 @@ func (m *Minio) getImageThumbnailURL(ctx context.Context, name string, expire ti
 		case formatPng:
 			err = png.Encode(buf, thumbnail)
 		case formatJpeg:
-			err = jpeg.Encode(buf, thumbnail, nil)
+			err = jpeg.Encode(buf, thumbnail, &jpeg.Options{Quality: 40})
 		case formatGif:
 			err = gif.Encode(buf, thumbnail, nil)
 		}

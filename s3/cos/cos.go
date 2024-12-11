@@ -29,10 +29,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amazing-socrates/next-tools/errs"
 	"github.com/amazing-socrates/next-tools/s3"
 	"github.com/tencentyun/cos-go-sdk-v5"
-
-	"github.com/amazing-socrates/next-tools/errs"
 )
 
 const (
@@ -274,6 +273,10 @@ func (c *Cos) ListUploadedParts(ctx context.Context, uploadID string, name strin
 }
 
 func (c *Cos) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
+	if opt != nil && opt.Image != nil {
+		opt.Filename = ""
+		opt.ContentType = ""
+	}
 	var imageMogr string
 	var option cos.PresignedURLOptions
 	if opt != nil {
@@ -308,7 +311,7 @@ func (c *Cos) AccessURL(ctx context.Context, name string, expire time.Duration, 
 			query.Set("response-content-type", opt.ContentType)
 		}
 		if opt.Filename != "" {
-			query.Set("response-content-disposition", `attachment; filename=`+strconv.Quote(opt.Filename))
+			query.Set("response-content-disposition", `attachment; filename*=UTF-8''`+url.PathEscape(opt.Filename))
 		}
 		if len(query) > 0 {
 			option.Query = &query
