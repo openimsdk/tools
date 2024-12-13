@@ -31,6 +31,7 @@ type Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	SessionToken    string
+	UrlPrefix       string
 }
 
 func NewAws(conf Config) (*Aws, error) {
@@ -40,16 +41,18 @@ func NewAws(conf Config) (*Aws, error) {
 	}
 	client := aws3.NewFromConfig(cfg)
 	return &Aws{
-		bucket:  conf.Bucket,
-		client:  client,
-		presign: aws3.NewPresignClient(client),
+		urlPrefix: conf.UrlPrefix,
+		bucket:    conf.Bucket,
+		client:    client,
+		presign:   aws3.NewPresignClient(client),
 	}, nil
 }
 
 type Aws struct {
-	bucket  string
-	client  *aws3.Client
-	presign *aws3.PresignClient
+	urlPrefix string
+	bucket    string
+	client    *aws3.Client
+	presign   *aws3.PresignClient
 }
 
 func (a *Aws) Engine() string {
@@ -290,11 +293,47 @@ func (a *Aws) AccessURL(ctx context.Context, name string, expire time.Duration, 
 		Bucket: aws.String(a.bucket),
 		Key:    aws.String(name),
 	}
-	res, err := a.presign.PresignGetObject(ctx, params, aws3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
+
+	var (
+		accessURL string
+		err       error
+	)
+	// NOTE:Special handling support for aws s3 lambda function request service, currently only images are handled this way
+	if opt != nil && opt.Image != nil && opt.Image.Width != 0 && opt.Image.Height != 0 {
+		if accessURL, err = buildURL(a.urlPrefix, name, map[string]string{
+			"w": strconv.Itoa(opt.Image.Width),
+			"h": strconv.Itoa(opt.Image.Height),
+		}); err != nil {
+			return "", err
+		}
+	} else {
+		var res *v4.PresignedHTTPRequest
+		res, err = a.presign.PresignGetObject(ctx, params, aws3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
+		if err != nil {
+			return "", err
+		}
+		accessURL = res.URL
+	}
+
+	return accessURL, nil
+}
+
+func buildURL(baseURLStr, path string, queryParams map[string]string) (string, error) {
+	baseURL, err := url.Parse(baseURLStr)
 	if err != nil {
 		return "", err
 	}
-	return res.URL, nil
+
+	baseURL.Path = *aws.String("/" + path)
+
+	query := url.Values{}
+	for key, value := range queryParams {
+		query.Add(key, value)
+	}
+
+	baseURL.RawQuery = query.Encode()
+
+	return baseURL.String(), nil
 }
 
 func (a *Aws) FormData(ctx context.Context, name string, size int64, contentType string, duration time.Duration) (*s3.FormData, error) {
