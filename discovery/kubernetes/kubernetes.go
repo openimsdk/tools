@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openimsdk/tools/errs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/api/core/v1"
@@ -34,12 +35,13 @@ type KubernetesConnManager struct {
 func NewKubernetesConnManager(namespace string, options ...grpc.DialOption) (*KubernetesConnManager, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create in-cluster config: %v", err)
+		return nil, errs.WrapMsg(err, "failed to create in-cluster config:")
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create clientset: %v", err)
+		return nil, errs.WrapMsg(err, "failed to create clientset:")
+
 	}
 
 	k := &KubernetesConnManager{
@@ -57,12 +59,12 @@ func NewKubernetesConnManager(namespace string, options ...grpc.DialOption) (*Ku
 func (k *KubernetesConnManager) initializeConns(serviceName string) error {
 	port, err := k.getServicePort(serviceName)
 	if err != nil {
-		return err
+		return errs.Wrap(err)
 	}
 
 	endpoints, err := k.clientset.CoreV1().Endpoints(k.namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get endpoints for service %s: %v", serviceName, err)
+		return errs.WrapMsg(err, "failed to get endpoints", "serviceName", serviceName)
 	}
 
 	// fmt.Println("Endpoints:", endpoints, "endpoints.Subsets:", endpoints.Subsets)
@@ -74,7 +76,7 @@ func (k *KubernetesConnManager) initializeConns(serviceName string) error {
 			// fmt.Println("IP target:", target)
 			conn, err := grpc.Dial(target, append(k.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))...)
 			if err != nil {
-				return fmt.Errorf("failed to dial endpoint %s: %v", target, err)
+				return errs.WrapMsg(err, "failed to dial endpoint", "target", target)
 			}
 			conns = append(conns, conn)
 		}
@@ -106,8 +108,8 @@ func (k *KubernetesConnManager) GetConns(ctx context.Context, serviceName string
 	k.mu.Unlock()
 
 	if err := k.initializeConns(serviceName); err != nil {
-		fmt.Println("Failed to initialize connections:", err)
-		return nil, fmt.Errorf("failed to initialize connections for service %s: %v", serviceName, err)
+
+		return nil, errs.WrapMsg(err, "Failed to initialize connections for service", "serviceName", serviceName)
 	}
 
 	return k.connMap[serviceName], nil
