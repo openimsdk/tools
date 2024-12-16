@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/mw"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/api/core/v1"
@@ -56,7 +57,7 @@ func NewKubernetesConnManager(namespace string, options ...grpc.DialOption) (*Ku
 	return k, nil
 }
 
-func (k *KubernetesConnManager) initializeConns(serviceName string) error {
+func (k *KubernetesConnManager) initializeConns(serviceName string, opts ...grpc.DialOption) error {
 	port, err := k.getServicePort(serviceName)
 	if err != nil {
 		return errs.Wrap(err)
@@ -74,7 +75,17 @@ func (k *KubernetesConnManager) initializeConns(serviceName string) error {
 		for _, address := range subset.Addresses {
 			target := fmt.Sprintf("%s:%d", address.IP, port)
 			// fmt.Println("IP target:", target)
-			conn, err := grpc.Dial(target, append(k.dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))...)
+
+			dialOpts := append(append(k.dialOptions, opts...),
+				grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+			err := k.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
+			if err != nil {
+				return errs.WrapMsg(err, "checkOpts is failed")
+			}
+
+			conn, err := grpc.DialContext(context.Background(), target,
+				dialOpts...)
 			if err != nil {
 				return errs.WrapMsg(err, "failed to dial endpoint", "target", target)
 			}
@@ -107,7 +118,7 @@ func (k *KubernetesConnManager) GetConns(ctx context.Context, serviceName string
 	}
 	k.mu.Unlock()
 
-	if err := k.initializeConns(serviceName); err != nil {
+	if err := k.initializeConns(serviceName, opts...); err != nil {
 
 		return nil, errs.WrapMsg(err, "Failed to initialize connections for service", "serviceName", serviceName)
 	}
@@ -134,14 +145,15 @@ func (k *KubernetesConnManager) GetConn(ctx context.Context, serviceName string,
 		target = k.rpcTargets[serviceName]
 	}
 
-	return grpc.DialContext(
-		ctx,
-		target,
-		append([]grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*10), grpc.MaxCallSendMsgSize(1024*1024*20)),
-		}, k.dialOptions...)...,
-	)
+	dialOpts := append(append(k.dialOptions, opts...),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	err := k.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
+	if err != nil {
+		return nil, errs.WrapMsg(err, "checkOpts is failed")
+	}
+
+	return grpc.DialContext(ctx, target, dialOpts...)
 }
 
 // GetSelfConnTarget returns the connection target for the current service.
@@ -269,4 +281,16 @@ func (k *KubernetesConnManager) handleEndpointChange(obj interface{}) {
 	if err := k.initializeConns(serviceName); err != nil {
 		fmt.Printf("Error initializing connections for %s: %v\n", serviceName, err)
 	}
+}
+
+func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
+	mwOpt := mw.GrpcClient()
+
+	for _, opt := range opts {
+		if opt == mwOpt {
+			return nil
+		}
+	}
+
+	return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
 }
