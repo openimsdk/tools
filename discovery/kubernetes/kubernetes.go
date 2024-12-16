@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/mw"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/api/core/v1"
@@ -284,13 +283,15 @@ func (k *KubernetesConnManager) handleEndpointChange(obj interface{}) {
 }
 
 func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
-	mwOpt := mw.GrpcClient()
+	// mwOpt := mw.GrpcClient()
 
-	for _, opt := range opts {
-		if opt == mwOpt {
-			return nil
-		}
-	}
+	// for _, opt := range opts {
+	// 	if opt == mwOpt {
+	// 		return nil
+	// 	}
+	// }
 
-	return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
+	// return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
+
+	return nil
 }
