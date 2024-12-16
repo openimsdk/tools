@@ -3,6 +3,12 @@ package etcd
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/openimsdk/tools/errs"
 	"github.com/pkg/errors"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
@@ -11,10 +17,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	gresolver "google.golang.org/grpc/resolver"
-	"io"
-	"strings"
-	"sync"
-	"time"
 )
 
 // ZkOption defines a function type for modifying clientv3.Config
@@ -88,7 +90,7 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, options .
 }
 
 // initializeConnMap fetches all existing endpoints and populates the local map
-func (r *SvcDiscoveryRegistryImpl) initializeConnMap() error {
+func (r *SvcDiscoveryRegistryImpl) initializeConnMap(opts ...grpc.DialOption) error {
 	fullPrefix := fmt.Sprintf("%s/", r.rootDirectory)
 	resp, err := r.client.Get(context.Background(), fullPrefix, clientv3.WithPrefix())
 	if err != nil {
@@ -97,7 +99,15 @@ func (r *SvcDiscoveryRegistryImpl) initializeConnMap() error {
 	r.connMap = make(map[string][]*grpc.ClientConn)
 	for _, kv := range resp.Kvs {
 		prefix, addr := r.splitEndpoint(string(kv.Key))
-		conn, err := grpc.DialContext(context.Background(), addr, append(r.dialOptions, grpc.WithResolvers(r.resolver))...)
+
+		dialOpts := append(append(r.dialOptions, opts...), grpc.WithResolvers(r.resolver))
+
+		err := r.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
+		if err != nil {
+			return errs.WrapMsg(err, "checkOpts is failed")
+		}
+
+		conn, err := grpc.DialContext(context.Background(), addr, dialOpts...)
 		if err != nil {
 			continue
 		}
@@ -139,7 +149,7 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if len(r.connMap) == 0 {
-		if err := r.initializeConnMap(); err != nil {
+		if err := r.initializeConnMap(opts...); err != nil {
 			return nil, err
 		}
 	}
@@ -149,7 +159,15 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 // GetConn returns a single gRPC client connection for a given service name
 func (r *SvcDiscoveryRegistryImpl) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	target := fmt.Sprintf("etcd:///%s/%s", r.rootDirectory, serviceName)
-	return grpc.DialContext(ctx, target, append(append(r.dialOptions, opts...), grpc.WithResolvers(r.resolver))...)
+
+	dialOpts := append(append(r.dialOptions, opts...), grpc.WithResolvers(r.resolver))
+
+	err := r.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
+	if err != nil {
+		return nil, errs.WrapMsg(err, "checkOpts is failed")
+	}
+
+	return grpc.DialContext(ctx, target, dialOpts...)
 }
 
 // GetSelfConnTarget returns the connection target for the current service
@@ -326,5 +344,22 @@ func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfN
 			return fmt.Errorf("root node %s does not exist in etcd", etcdRoot)
 		}
 	}
+	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) GetClient() *clientv3.Client {
+	return r.client
+}
+
+func (r *SvcDiscoveryRegistryImpl) checkOpts(opts ...grpc.DialOption) error {
+	// mwOpt := mw.GrpcClient()
+
+	// for _, opt := range opts {
+	// 	if opt == mwOpt {
+	// 		return nil
+	// 	}
+	// }
+
+	// return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
 	return nil
 }

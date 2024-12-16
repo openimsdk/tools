@@ -50,10 +50,10 @@ func Check(ctx context.Context, config *Config) error {
 // ValidateAndSetDefaults validates the configuration and sets default values.
 func (c *Config) ValidateAndSetDefaults() error {
 	if c.Uri == "" && len(c.Address) == 0 {
-		return errs.New("either Uri or Address must be provided")
+		return errs.Wrap(errs.New("either Uri or Address must be provided"))
 	}
 	if c.Database == "" {
-		return errs.New("database is required")
+		return errs.Wrap(errs.New("database is required"))
 	}
 	if c.MaxPoolSize <= 0 {
 		c.MaxPoolSize = defaultMaxPoolSize
