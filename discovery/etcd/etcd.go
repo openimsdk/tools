@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/mw"
 	"github.com/pkg/errors"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
@@ -353,13 +352,14 @@ func (r *SvcDiscoveryRegistryImpl) GetClient() *clientv3.Client {
 }
 
 func (r *SvcDiscoveryRegistryImpl) checkOpts(opts ...grpc.DialOption) error {
-	mwOpt := mw.GrpcClient()
+	// mwOpt := mw.GrpcClient()
 
-	for _, opt := range opts {
-		if opt == mwOpt {
-			return nil
-		}
-	}
+	// for _, opt := range opts {
+	// 	if opt == mwOpt {
+	// 		return nil
+	// 	}
+	// }
 
-	return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
+	// return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
+	return nil
 }
