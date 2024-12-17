@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func CallV2[A, B any](rpc func(ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), c *gin.Context, opts ...*Option[A, B]) {
+func CallV2[A, B any](c *gin.Context, rpc func(ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), opts ...*Option[A, B]) {
 	req, err := ParseRequestNotCheck[A](c)
 	if err != nil {
 		apiresp.GinError(c, err)
