@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -313,6 +312,16 @@ func (m *Minio) DeleteObject(ctx context.Context, name string) error {
 	if err := m.initMinio(ctx); err != nil {
 		return err
 	}
+	info, err := m.core.Client.StatObject(ctx, m.bucket, name, minio.StatObjectOptions{})
+	if err != nil {
+		if m.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if err := m.clearObjectImageInfoKey(ctx, name, info.ETag); err != nil {
+		return err
+	}
 	return m.core.Client.RemoveObject(ctx, m.bucket, name, minio.RemoveObjectOptions{})
 }
 
@@ -513,6 +522,64 @@ func (m *Minio) GetImageThumbnailKey(ctx context.Context, name string) (string, 
 	}
 	thumbnailWidth, thumbnailHeight := getThumbnailSize(img)
 
-	cacheKey := filepath.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", thumbnailWidth, thumbnailHeight, info.Format))
+	cacheKey := path.Join(imageThumbnailPath, info.Etag, fmt.Sprintf("image_w%d_h%d.%s", thumbnailWidth, thumbnailHeight, info.Format))
 	return cacheKey, nil
+}
+
+func (m *Minio) clearObjectImageInfoKey(ctx context.Context, name string, etag string) error {
+	if err := m.initMinio(ctx); err != nil {
+		return err
+	}
+	prefix := path.Join(imageThumbnailPath, etag)
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	res := m.core.Client.ListObjects(ctx, m.bucket, minio.ListObjectsOptions{Prefix: prefix})
+	var first bool
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case val, ok := <-res:
+			if !ok {
+				return nil
+			}
+			if val.Err != nil {
+				return val.Err
+			}
+			if first == false {
+				first = true
+				// openim/thumbnail/039395be6547fb10724fd0999ea3e834/image_w640_h640.png
+				// MINIO:IMAGE:openim/data/hash/f4061e92af6f0215f9e7ef4d4b78f234
+				if err := m.cache.DelObjectImageInfoKey(ctx, etag); err != nil {
+					return err
+				}
+			}
+			if err := m.deleteThumbnailCache(ctx, name, val.Key); err != nil {
+				return err
+			}
+			if err := m.core.Client.RemoveObject(ctx, m.bucket, val.Key, minio.RemoveObjectOptions{}); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (m *Minio) deleteThumbnailCache(ctx context.Context, name string, key string) error {
+	// openim/thumbnail/ae20fe3d6466fdb11bcf465386b51312/image_w640_h640.jpeg
+	// MINIO:THUMBNAIL:jpeg:w640:h640:openim/data/hash/f4061e92af6f0215f9e7ef4d4b78f234
+	filename := path.Base(key)
+	ext := path.Ext(filename)
+	filename = strings.TrimSuffix(filename, ext)
+	filename = strings.TrimPrefix(filename, "image_w")
+	var (
+		width  int
+		height int
+	)
+	if arr := strings.Split(filename, "_h"); len(arr) == 2 {
+		width, _ = strconv.Atoi(arr[0])
+		height, _ = strconv.Atoi(arr[1])
+	}
+	format := strings.Trim(ext, ".")
+	return m.cache.DelImageThumbnailKey(ctx, name, format, width, height)
 }
