@@ -35,7 +35,7 @@ type Option[A, B any] struct {
 	RespAfter func(*B) error
 }
 
-func Call[A, B, C any](rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, c *gin.Context, opts ...*Option[A, B]) {
+func Call[A, B, C any](c *gin.Context, rpc func(client C, ctx context.Context, req *A, options ...grpc.CallOption) (*B, error), client C, opts ...*Option[A, B]) {
 	req, err := ParseRequestNotCheck[A](c)
 	if err != nil {
 		apiresp.GinError(c, err)
