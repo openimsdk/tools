@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (_ any, err error) {
 	funcName := info.FullMethod
 	md, err := validateMetadata(ctx)
 	if err != nil {
@@ -36,6 +36,7 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	defer func() {
 		if r := recover(); r != nil {
 			log.ZPanic(ctx, "RpcServerInterceptor panic", r)
+			err = errs.ErrInternalServer.WrapMsg("rpc server panic")
 		}
 	}()
 	resp, err := handler(ctx, req)
