@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/openimsdk/tools/errs"
-	"github.com/pkg/errors"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
@@ -303,7 +302,7 @@ func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfN
 	}
 	client, err := clientv3.New(cfg)
 	if err != nil {
-		return errors.Wrap(err, "failed to connect to etcd")
+		return errs.WrapMsg(err, "failed to connect to etcd")
 	}
 	defer client.Close()
 
@@ -318,7 +317,7 @@ func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfN
 
 	resp, err := client.Get(opCtx, etcdRoot)
 	if err != nil {
-		return errors.Wrap(err, "failed to get the root node from etcd")
+		return errs.WrapMsg(err, "failed to get the root node from etcd")
 	}
 
 	if len(resp.Kvs) == 0 {
@@ -328,7 +327,7 @@ func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfN
 			if leaseTTL > 0 {
 				leaseResp, err = client.Grant(opCtx, leaseTTL)
 				if err != nil {
-					return errors.Wrap(err, "failed to create lease in etcd")
+					return errs.WrapMsg(err, "failed to create lease in etcd")
 				}
 			}
 			putOpts := []clientv3.OpOption{}
@@ -338,7 +337,7 @@ func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfN
 
 			_, err := client.Put(opCtx, etcdRoot, "", putOpts...)
 			if err != nil {
-				return errors.Wrap(err, "failed to create the root node in etcd")
+				return errs.WrapMsg(err, "failed to create the root node in etcd")
 			}
 		} else {
 			return fmt.Errorf("root node %s does not exist in etcd", etcdRoot)

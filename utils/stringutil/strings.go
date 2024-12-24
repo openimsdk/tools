@@ -17,7 +17,6 @@ package stringutil
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"hash/crc32"
 	"regexp"
 	"runtime"
@@ -125,15 +124,6 @@ func IsDuplicateStringSlice(arr []string) bool {
 		t[s] = struct{}{}
 	}
 	return false
-}
-
-func WithMessage(err error, message string) error {
-	return errors.WithMessage(err, "==> "+printCallerNameAndLine()+message)
-}
-
-func printCallerNameAndLine() string {
-	pc, _, line, _ := runtime.Caller(2)
-	return runtime.FuncForPC(pc).Name() + "()@" + strconv.Itoa(line) + ": "
 }
 
 func GetSelfFuncName() string {

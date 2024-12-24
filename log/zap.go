@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/openimsdk/tools/errs"
 	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
 	"github.com/openimsdk/tools/utils/stringutil"
 
@@ -130,7 +129,7 @@ func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
 
-func ZPanic(ctx context.Context, msg string, err interface{}, keysAndValues ...any) {
+func ZPanic(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	pkgLogger.Panic(ctx, msg, err, keysAndValues...)
 }
 
@@ -421,21 +420,13 @@ func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndVal
 	l.zap.Errorw(msg, keysAndValues...)
 }
 
-func (l *ZapLogger) Panic(ctx context.Context, msg string, r interface{}, keysAndValues ...any) {
+func (l *ZapLogger) Panic(ctx context.Context, msg string, err error, keysAndValues ...any) {
 	if l.level > zapcore.PanicLevel {
 		return
 	}
-
-	panicStack := errs.GetPanicStack()
-	if e, ok := r.(error); ok {
-		keysAndValues = append(keysAndValues, "error", e.Error())
-	} else {
-		keysAndValues = append(keysAndValues, "recover", r)
-	}
-	keysAndValues = append(keysAndValues, "stacktrace", panicStack)
-
+	keysAndValues = append(keysAndValues, "error", err)
 	keysAndValues = l.kvAppend(ctx, keysAndValues)
-	l.zap.Errorw(msg, keysAndValues...)
+	l.zap.Panicw(msg, keysAndValues...)
 }
 
 func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
