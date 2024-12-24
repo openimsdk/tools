@@ -15,11 +15,13 @@
 package errs
 
 import (
+	"fmt"
+	"github.com/openimsdk/tools/errs/stack"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
+
+const stackSkip = 4
 
 var DefaultCodeRelation = newCodeRelation()
 
@@ -71,11 +73,12 @@ func (e *codeError) WithDetail(detail string) CodeError {
 }
 
 func (e *codeError) Wrap() error {
-	return Wrap(e)
+	return stack.New(e, stackSkip)
 }
 
 func (e *codeError) WrapMsg(msg string, kv ...any) error {
-	return WrapMsg(e, msg, kv...)
+	err := fmt.Errorf("%w: %s", e, toString(msg, kv))
+	return stack.New(err, stackSkip)
 }
 
 func (e *codeError) Is(err error) bool {
@@ -123,15 +126,18 @@ func Unwrap(err error) error {
 }
 
 func Wrap(err error) error {
-	return errors.WithStack(err)
+	if err == nil {
+		return nil
+	}
+	return stack.New(err, stackSkip)
 }
 
 func WrapMsg(err error, msg string, kv ...any) error {
 	if err == nil {
 		return nil
 	}
-	withMessage := errors.WithMessage(err, toString(msg, kv))
-	return errors.WithStack(withMessage)
+	err = fmt.Errorf("%w: %s", err, toString(msg, kv))
+	return stack.New(err, stackSkip)
 }
 
 type CodeRelation interface {

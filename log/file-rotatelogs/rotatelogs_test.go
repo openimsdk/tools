@@ -13,7 +13,6 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -322,7 +321,7 @@ func TestLogSetOutput(t *testing.T) {
 func TestGHIssue16(t *testing.T) {
 	defer func() {
 		if v := recover(); v != nil {
-			assert.NoError(t, errors.Errorf("%s", v), "error should be nil")
+			assert.NoError(t, fmt.Errorf("%s", v), "error should be nil")
 		}
 	}()
 

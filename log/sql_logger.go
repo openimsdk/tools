@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
+	"errors"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
 	gormUtils "gorm.io/gorm/utils"

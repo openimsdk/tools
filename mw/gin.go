@@ -120,6 +120,6 @@ func CreateToken(userID string, accessSecret string, accessExpire int64, platfor
 }
 
 func GinPanicErr(c *gin.Context, err any) {
-	log.ZPanic(c, "GinPanicErr panic", err)
+	log.ZPanic(c, "GinPanicErr panic", errs.ErrPanic(err))
 	c.AbortWithStatus(http.StatusInternalServerError)
 }
