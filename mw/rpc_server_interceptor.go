@@ -1,17 +1,3 @@
-// Copyright © 2023 OpenIM. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package mw
 
 import (
@@ -32,7 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (_ any, err error) {
 	funcName := info.FullMethod
 	md, err := validateMetadata(ctx)
 	if err != nil {
@@ -47,6 +33,12 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 		return nil, err
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			err = errs.ErrPanic(r)
+			log.ZPanic(ctx, "RpcServerInterceptor panic", err)
+		}
+	}()
 	resp, err := handler(ctx, req)
 	if err != nil {
 		return nil, handleError(ctx, funcName, req, err)
@@ -91,26 +83,26 @@ func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Con
 }
 
 func handleError(ctx context.Context, funcName string, req any, err error) error {
-	log.ZWarn(ctx, "rpc server resp WithDetails error", FormatError(err), "funcName", funcName)
+	log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
 	unwrap := errs.Unwrap(err)
 	codeErr := specialerror.ErrCode(unwrap)
 	if codeErr == nil {
-		log.ZError(ctx, "rpc InternalServer error", FormatError(err), "funcName", funcName, "req", req)
+		log.ZError(ctx, "rpc InternalServer error", err, "funcName", funcName, "req", req)
 		codeErr = errs.ErrInternalServer
 	}
 	code := codeErr.Code()
 	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		log.ZError(ctx, "rpc UnknownError", FormatError(err), "funcName", funcName, "rpc UnknownCode:", int64(code))
+		log.ZError(ctx, "rpc UnknownError", err, "funcName", funcName, "rpc UnknownCode:", int64(code))
 		code = errs.ServerInternalError
 	}
 	grpcStatus := status.New(codes.Code(code), err.Error())
 	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
-		log.ZWarn(ctx, "rpc server resp WithDetails error", FormatError(err), "funcName", funcName)
+		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
 		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
-	log.ZWarn(ctx, fmt.Sprintf("RPC Server Response Error - %s", extractFunctionName(funcName)), FormatError(details.Err()), "funcName", funcName, "req", req, "err", err)
+	log.ZWarn(ctx, fmt.Sprintf("RPC Server Response Error - %s", extractFunctionName(funcName)), details.Err(), "funcName", funcName, "req", req, "err", err)
 	return details.Err()
 }
 

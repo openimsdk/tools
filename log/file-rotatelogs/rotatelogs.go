@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	strftime "github.com/lestrrat-go/strftime"
-	"github.com/pkg/errors"
+	"errors"
+	"github.com/lestrrat-go/strftime"
 )
 
 func (c clockFn) Now() time.Time {
@@ -33,7 +33,7 @@ func New(p string, options ...Option) (*RotateLogs, error) {
 
 	pattern, err := strftime.New(p)
 	if err != nil {
-		return nil, errors.Wrap(err, `invalid strftime pattern`)
+		return nil, fmt.Errorf("invalid strftime pattern %w", err)
 	}
 
 	var clock Clock = Local
@@ -109,7 +109,7 @@ func (rl *RotateLogs) Write(p []byte) (n int, err error) {
 
 	out, err := rl.getWriterNolock(false, false)
 	if err != nil {
-		return 0, errors.Wrap(err, `failed to acquite target io.Writer`)
+		return 0, fmt.Errorf("failed to acquite target io.Writer %w", err)
 	}
 
 	return out.Write(p)
@@ -170,11 +170,11 @@ func (rl *RotateLogs) getWriterNolock(bailOnRotateFail, useGenerationalNames boo
 
 	fh, err := fileutil.CreateFile(filename)
 	if err != nil {
-		return nil, errors.Wrapf(err, `failed to create a new file %v`, filename)
+		return nil, fmt.Errorf("failed to create a new file %s %w", filename, err)
 	}
 
-	if err := rl.rotateNolock(filename); err != nil && errors.Is(err, errors.New("The file exists")) {
-		err = errors.Wrap(err, "failed to rotate")
+	if err := rl.rotateNolock(filename); err != nil && errors.Is(err, errors.New("the file exists")) {
+		err = fmt.Errorf("failed to rotate %w", err)
 		if bailOnRotateFail {
 			// Failure to rotate is a problem, but it's really not a great
 			// idea to stop your application just because you couldn't rename
@@ -281,26 +281,26 @@ func (rl *RotateLogs) rotateNolock(filename string) error {
 		if strings.Contains(rl.linkName, baseDir) {
 			tmp, err := filepath.Rel(linkDir, filename)
 			if err != nil {
-				return errors.Wrapf(err, `failed to evaluate relative path from %#v to %#v`, baseDir, rl.linkName)
+				return fmt.Errorf(`failed to evaluate relative path from %#v to %#v %w`, baseDir, rl.linkName, err)
 			}
 
 			linkDest = tmp
 		}
 
 		if err := os.Symlink(linkDest, tmpLinkName); err != nil {
-			return errors.Wrap(err, `failed to create new symlink`)
+			return fmt.Errorf("failed to create new symlink %w", err)
 		}
 
 		// the directory where rl.linkName should be created must exist
 		_, err := os.Stat(linkDir)
 		if err != nil { // Assume err != nil means the directory doesn't exist
 			if err := os.MkdirAll(linkDir, 0755); err != nil {
-				return errors.Wrapf(err, `failed to create directory %s`, linkDir)
+				return fmt.Errorf("failed to create directory %s %w", linkDir, err)
 			}
 		}
 
 		if err := os.Rename(tmpLinkName, rl.linkName); err != nil {
-			return errors.Wrap(err, `failed to rename new symlink`)
+			return fmt.Errorf("failed to rename new symlink %w", err)
 		}
 	}
 

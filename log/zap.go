@@ -424,11 +424,9 @@ func (l *ZapLogger) Panic(ctx context.Context, msg string, err error, keysAndVal
 	if l.level > zapcore.PanicLevel {
 		return
 	}
-	if err != nil {
-		keysAndValues = append(keysAndValues, "error", err.Error())
-	}
+	keysAndValues = append(keysAndValues, "error", err)
 	keysAndValues = l.kvAppend(ctx, keysAndValues)
-	l.zap.Errorw(msg, keysAndValues...)
+	l.zap.Panicw(msg, keysAndValues...)
 }
 
 func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {

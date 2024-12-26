@@ -45,7 +45,8 @@ func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc 
 	log.ZDebug(ctx, fmt.Sprintf("RPC Client Request - %s", extractFunctionName(method)), "funcName", method, "req", req, "conn target", cc.Target())
 	defer func() {
 		if r := recover(); r != nil {
-			PanicStackToLog(ctx, r)
+			err = errs.ErrPanic(r)
+			log.ZPanic(ctx, "RpcClientInterceptor panic", err, "funcName", method)
 		}
 	}()
 	err = invoker(ctx, method, req, resp, cc, opts...)
