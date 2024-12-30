@@ -3,9 +3,8 @@ package mw
 import (
 	"context"
 	"fmt"
-	"math"
-
 	"github.com/openimsdk/tools/checker"
+	"math"
 
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
@@ -19,7 +18,7 @@ import (
 )
 
 func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (_ any, err error) {
-	funcName := info.FullMethod
+	method := info.FullMethod
 	md, err := validateMetadata(ctx)
 	if err != nil {
 		return nil, err
@@ -28,22 +27,21 @@ func RpcServerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if err != nil {
 		return nil, err
 	}
-	log.ZInfo(ctx, fmt.Sprintf("RPC Server Request - %s", extractFunctionName(funcName)), "funcName", funcName, "req", req)
-	if err := checker.Validate(req); err != nil {
-		return nil, err
-	}
-
 	defer func() {
 		if r := recover(); r != nil {
 			err = errs.ErrPanic(r)
-			log.ZPanic(ctx, "RpcServerInterceptor panic", err)
+			log.ZPanic(ctx, "rpc server panic", err, "method", method, "req", req)
 		}
 	}()
+	log.ZInfo(ctx, "rpc server request", "method", method, "req", req)
+	if err := checker.Validate(req); err != nil {
+		return nil, handleError(ctx, method, req, err)
+	}
 	resp, err := handler(ctx, req)
 	if err != nil {
-		return nil, handleError(ctx, funcName, req, err)
+		return nil, handleError(ctx, method, req, err)
 	}
-	log.ZInfo(ctx, fmt.Sprintf("RPC Server Response Success - %s", extractFunctionName(funcName)), "funcName", funcName, "resp", resp)
+	log.ZInfo(ctx, "rpc server response success", "method", method, "req", req, "resp", resp)
 	return resp, nil
 }
 
@@ -82,27 +80,27 @@ func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Con
 	return ctx, nil
 }
 
-func handleError(ctx context.Context, funcName string, req any, err error) error {
-	log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
-	unwrap := errs.Unwrap(err)
-	codeErr := specialerror.ErrCode(unwrap)
+func handleError(ctx context.Context, method string, req any, err error) error {
+	codeErr := specialerror.ErrCode(errs.Unwrap(err))
 	if codeErr == nil {
-		log.ZError(ctx, "rpc InternalServer error", err, "funcName", funcName, "req", req)
 		codeErr = errs.ErrInternalServer
 	}
 	code := codeErr.Code()
 	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		log.ZError(ctx, "rpc UnknownError", err, "funcName", funcName, "rpc UnknownCode:", int64(code))
 		code = errs.ServerInternalError
+	}
+	if _, ok := errs.Unwrap(err).(errs.CodeError); ok {
+		log.ZAdaptive(ctx, "rpc server response failed", err, "method", method, "req", req)
+	} else {
+		log.ZAdaptive(ctx, "rpc server response failed", err, "rawerror", err, "method", method, "req", req)
 	}
 	grpcStatus := status.New(codes.Code(code), err.Error())
 	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
-		log.ZWarn(ctx, "rpc server resp WithDetails error", err, "funcName", funcName)
+		log.ZError(ctx, "rpc server response WithDetails failed", err, "method", method, "req", req)
 		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
-	log.ZWarn(ctx, fmt.Sprintf("RPC Server Response Error - %s", extractFunctionName(funcName)), details.Err(), "funcName", funcName, "req", req, "err", err)
 	return details.Err()
 }
 
