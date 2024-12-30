@@ -16,8 +16,6 @@ package mw
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/openimsdk/protocol/constant"
@@ -33,50 +31,50 @@ func GrpcClient() grpc.DialOption {
 	return grpc.WithChainUnaryInterceptor(RpcClientInterceptor)
 }
 
-func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
+func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 	if ctx == nil {
 		return errs.ErrInternalServer.WrapMsg("call rpc request context is nil")
 	}
-	ctx, err = getRpcContext(ctx, method)
+	ctx, err = getRpcContext(ctx)
 	if err != nil {
 		return err
 	}
-	log.ZDebug(ctx, fmt.Sprintf("RPC Client Request - %s", extractFunctionName(method)), "funcName", method, "req", req, "conn target", cc.Target())
 	defer func() {
 		if r := recover(); r != nil {
 			err = errs.ErrPanic(r)
-			log.ZPanic(ctx, "RpcClientInterceptor panic", err, "funcName", method)
+			log.ZPanic(ctx, "rpc client panic", err, "method", method, "req", req)
 		}
 	}()
+	log.ZInfo(ctx, "rpc client request", "method", method, "target", cc.Target(), "req", req)
 	err = invoker(ctx, method, req, resp, cc, opts...)
 	if err == nil {
-		log.ZInfo(ctx, fmt.Sprintf("RPC Client Response Success - %s", extractFunctionName(method)), "funcName", method, "resp", resp)
+		log.ZInfo(ctx, "rpc client response success", "method", method, "resp", resp)
 		return nil
-	} else if errors.Is(err, errs.ErrRecordNotFound) {
-		log.ZWarn(ctx, fmt.Sprintf("RPC Client Response Error - %s", extractFunctionName(method)), err, "funcName", method)
-	} else {
-		log.ZError(ctx, fmt.Sprintf("RPC Client Response Error - %s", extractFunctionName(method)), err, "funcName", method)
 	}
 	rpcErr, ok := err.(interface{ GRPCStatus() *status.Status })
 	if !ok {
+		log.ZError(ctx, "rpc client response failed not GRPCStatus", err, "method", method, "req", req)
 		return errs.ErrInternalServer.WrapMsg(err.Error())
 	}
 	sta := rpcErr.GRPCStatus()
 	if sta.Code() == 0 {
+		log.ZError(ctx, "rpc client response failed GRPCStatus code is 0", err, "method", method, "req", req)
 		return errs.NewCodeError(errs.ServerInternalError, err.Error()).Wrap()
 	}
 	if details := sta.Details(); len(details) > 0 {
 		errInfo, ok := details[0].(*errinfo.ErrorInfo)
 		if ok {
 			s := strings.Join(errInfo.Warp, "->") + errInfo.Cause
-			return errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap()
+			cErr := errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap()
+			log.ZAdaptive(ctx, "rpc client response failed", cErr, "method", method, "req", req)
 		}
 	}
-	return errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap()
+	cErr := errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap()
+	log.ZAdaptive(ctx, "rpc client response failed", cErr, "method", method, "req", req)
+	return cErr
 }
 
-func getRpcContext(ctx context.Context, method string) (context.Context, error) {
+func getRpcContext(ctx context.Context) (context.Context, error) {
 	md := metadata.Pairs()
 	if keys, _ := ctx.Value(constant.RpcCustomHeader).([]string); len(keys) > 0 {
 		for _, key := range keys {
@@ -93,12 +91,9 @@ func getRpcContext(ctx context.Context, method string) (context.Context, error) 
 	}
 	operationID, ok := ctx.Value(constant.OperationID).(string)
 	if !ok {
-		log.ZWarn(ctx, "ctx missing operationID", errs.New("ctx missing operationID"), "funcName", method)
 		return nil, errs.ErrArgs.WrapMsg("ctx missing operationID")
 	}
 	md.Set(constant.OperationID, operationID)
-	// var checkArgs []string
-	// checkArgs = append(checkArgs, constant.OperationID, operationID)
 	opUserID, ok := ctx.Value(constant.OpUserID).(string)
 	if ok {
 		md.Set(constant.OpUserID, opUserID)
