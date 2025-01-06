@@ -3,11 +3,11 @@ package mw
 import (
 	"context"
 	"fmt"
-	"github.com/openimsdk/tools/checker"
 	"math"
 
 	"github.com/openimsdk/protocol/constant"
 	"github.com/openimsdk/protocol/errinfo"
+	"github.com/openimsdk/tools/checker"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"
@@ -81,27 +81,62 @@ func enrichContextWithMetadata(ctx context.Context, md metadata.MD) (context.Con
 }
 
 func handleError(ctx context.Context, method string, req any, err error) error {
-	codeErr := specialerror.ErrCode(errs.Unwrap(err))
-	if codeErr == nil {
-		codeErr = errs.ErrInternalServer
-	}
-	code := codeErr.Code()
-	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		code = errs.ServerInternalError
-	}
-	if _, ok := errs.Unwrap(err).(errs.CodeError); ok {
-		log.ZAdaptive(ctx, "rpc server response failed", err, "method", method, "req", req)
-	} else {
-		log.ZAdaptive(ctx, "rpc server response failed", err, "rawerror", err, "method", method, "req", req)
-	}
-	grpcStatus := status.New(codes.Code(code), err.Error())
-	errInfo := &errinfo.ErrorInfo{Cause: err.Error()}
+	codeErr := getErrData(err)
+	log.ZAdaptive(ctx, "rpc server response failed", err, "method", method, "req", req)
+	grpcStatus := status.New(codes.Code(codeErr.Code()), codeErr.Msg())
+	errInfo := &errinfo.ErrorInfo{Cause: codeErr.Detail()}
 	details, err := grpcStatus.WithDetails(errInfo)
 	if err != nil {
 		log.ZError(ctx, "rpc server response WithDetails failed", err, "method", method, "req", req)
 		return errs.WrapMsg(err, "rpc server resp WithDetails error", "err", err)
 	}
 	return details.Err()
+}
+
+func getErrData(err error) errs.CodeError {
+	var (
+		code        int
+		msg, detail string
+	)
+	codeErr := specialerror.ErrCode(err)
+	if codeErr != nil {
+		code = codeErr.Code()
+		msg = codeErr.Msg()
+		detail = codeErr.Detail()
+	} else {
+		code = errs.ServerInternalError
+	}
+	if code <= 0 || int64(code) > int64(math.MaxUint32) {
+		code = errs.ServerInternalError
+	}
+
+	if msg == "" || detail == "" {
+		stringErr := specialerror.ErrString(err)
+		wrapErr := specialerror.ErrWrapper(err)
+
+		if stringErr != nil {
+			if msg == "" {
+				msg = stringErr.Error()
+			}
+		}
+
+		if wrapErr != nil {
+			if msg == "" {
+				msg = wrapErr.Error()
+			}
+			if detail == "" {
+				detail = wrapErr.Error()
+			}
+		}
+	}
+	if msg == "" {
+		msg = err.Error()
+	}
+	if detail == "" {
+		detail = msg
+	}
+
+	return errs.NewCodeError(code, msg).WithDetail(detail)
 }
 
 func GrpcServer() grpc.ServerOption {
