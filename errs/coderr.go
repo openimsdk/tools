@@ -2,7 +2,6 @@ package errs
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -65,8 +64,7 @@ func (e *codeError) Wrap() error {
 }
 
 func (e *codeError) WrapMsg(msg string, kv ...any) error {
-	err := fmt.Errorf("%w: %s", e, toString(msg, kv))
-	return stack.New(err, stackSkip)
+	return WrapMsg(e, msg, kv...)
 }
 
 func (e *codeError) Is(err error) bool {
