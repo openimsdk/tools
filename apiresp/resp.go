@@ -81,11 +81,11 @@ func ParseError(err error) *ApiResponse {
 	}
 	var codeErr errs.CodeError
 	if errors.As(err, &codeErr) {
-		resp := ApiResponse{ErrCode: codeErr.Code(), ErrMsg: codeErr.Msg(), ErrDlt: codeErr.Detail()}
-		if resp.ErrDlt == "" {
-			resp.ErrDlt = err.Error()
-		}
-		return &resp
+		//resp := ApiResponse{ErrCode: codeErr.Code(), ErrMsg: codeErr.Msg(), ErrDlt: codeErr.Detail()}
+		//if resp.ErrDlt == "" {
+		//	resp.ErrDlt = err.Error()
+		//}
+		return &ApiResponse{ErrCode: codeErr.Code(), ErrMsg: codeErr.Msg(), ErrDlt: codeErr.Detail()}
 	}
-	return &ApiResponse{ErrCode: errs.ServerInternalError, ErrMsg: err.Error()}
+	return &ApiResponse{ErrCode: errs.ServerInternalError, ErrMsg: errs.Unwrap(err).Error()}
 }
