@@ -258,7 +258,7 @@ func NewConsoleZapLogger(
 func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotateCount uint) (zap.Option, error) {
 	c := zap.NewProductionEncoderConfig()
 	c.EncodeTime = l.timeEncoder
-	c.EncodeDuration = zapcore.SecondsDurationEncoder
+	c.EncodeDuration = zapcore.StringDurationEncoder
 	c.MessageKey = "msg"
 	c.LevelKey = "level"
 	c.TimeKey = "time"
@@ -298,7 +298,7 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, error) {
 	c := zap.NewProductionEncoderConfig()
 	c.EncodeTime = l.timeEncoder
-	c.EncodeDuration = zapcore.SecondsDurationEncoder
+	c.EncodeDuration = zapcore.StringDurationEncoder
 	c.MessageKey = "msg"
 	c.LevelKey = "level"
 	c.TimeKey = "time"
