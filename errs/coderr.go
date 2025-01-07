@@ -1,24 +1,11 @@
-// Copyright © 2023 OpenIM. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package errs
 
 import (
-	"fmt"
-	"github.com/openimsdk/tools/errs/stack"
+	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/openimsdk/tools/errs/stack"
 )
 
 const stackSkip = 4
@@ -77,12 +64,12 @@ func (e *codeError) Wrap() error {
 }
 
 func (e *codeError) WrapMsg(msg string, kv ...any) error {
-	err := fmt.Errorf("%w: %s", e, toString(msg, kv))
-	return stack.New(err, stackSkip)
+	return WrapMsg(e, msg, kv...)
 }
 
 func (e *codeError) Is(err error) bool {
-	codeErr, ok := Unwrap(err).(CodeError)
+	var codeErr CodeError
+	ok := errors.As(Unwrap(err), &codeErr)
 	if !ok {
 		if err == nil && e == nil {
 			return true
@@ -136,7 +123,7 @@ func WrapMsg(err error, msg string, kv ...any) error {
 	if err == nil {
 		return nil
 	}
-	err = fmt.Errorf("%w: %s", err, toString(msg, kv))
+	err = NewErrorWrapper(err, toString(msg, kv))
 	return stack.New(err, stackSkip)
 }
 

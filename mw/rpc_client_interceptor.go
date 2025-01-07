@@ -67,6 +67,7 @@ func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc 
 			s := strings.Join(errInfo.Warp, "->") + errInfo.Cause
 			cErr := errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap()
 			log.ZAdaptive(ctx, "rpc client response failed", cErr, "method", method, "req", req)
+			return cErr
 		}
 	}
 	cErr := errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap()
