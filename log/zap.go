@@ -3,10 +3,12 @@ package log
 import (
 	"context"
 	"fmt"
-	"github.com/openimsdk/tools/errs"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"time"
+
+	"github.com/openimsdk/tools/errs"
 
 	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
 	"github.com/openimsdk/tools/utils/stringutil"
@@ -138,7 +140,7 @@ func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
 }
 
 func ZPanic(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	pkgLogger.Panic(ctx, msg, err, keysAndValues...)
+	pkgLogger.Error(ctx, msg, err, keysAndValues...)
 }
 
 func ZAdaptive(ctx context.Context, msg string, err error, keysAndValues ...any) {
@@ -476,6 +478,7 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 				}
 			}
 		} else {
+			fmt.Println("keysAndValues length is not even\n" + string(debug.Stack()))
 			ZError(ctx, "keysAndValues length is not even", errs.ErrInternalServer.Wrap())
 		}
 	}
