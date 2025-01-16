@@ -18,8 +18,15 @@ import (
 	"context"
 
 	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/mw/specialerror"
 	"github.com/redis/go-redis/v9"
 )
+
+func init() {
+	if err := specialerror.AddReplace(redis.Nil, errs.ErrRecordNotFound); err != nil {
+		panic(err)
+	}
+}
 
 // Config defines the configuration parameters for a Redis client, including
 // options for both single-node and cluster mode connections.
