@@ -29,9 +29,9 @@ type QueueManager[T any, K comparable] struct {
 	lock          sync.RWMutex
 	equalDataFunc func(a, b T) bool
 
-	afterProcessPushFunc []func(key K, data T) // will call after processing Queue push successfully
+	afterProcessPushFunc []func(key K, data T) // will be called after processing Queue push successfully
 
-	// assign key strategy. Determine with key will be assigned when push data without assigning a key
+	// assign key strategy. Determine witch key will be assigned when push data without assigning a key
 	assignStrategy func(*QueueManager[T, K]) (K, bool)
 }
 

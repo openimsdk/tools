@@ -14,7 +14,7 @@ var (
 type BoundedQueue[T any] struct {
 	items    []T
 	capacity int
-	lock     sync.Mutex
+	lock     sync.RWMutex
 }
 
 func NewBoundedQueue[T any](capacity int) *BoundedQueue[T] {
@@ -51,14 +51,14 @@ func (q *BoundedQueue[T]) Pop() (T, error) {
 }
 
 func (q *BoundedQueue[T]) Len() int {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.lock.RLock()
+	defer q.lock.RUnlock()
 	return len(q.items)
 }
 
 func (q *BoundedQueue[T]) Contains(item T, equalFunc func(a, b T) bool) bool {
-	q.lock.Lock()
-	defer q.lock.Unlock()
+	q.lock.RLock()
+	defer q.lock.RUnlock()
 	for _, it := range q.items {
 		if equalFunc(it, item) {
 			return true
