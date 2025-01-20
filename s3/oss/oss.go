@@ -294,6 +294,9 @@ func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, 
 		opt.Filename = ""
 		opt.ContentType = ""
 	}
+	if opt != nil {
+		opt.ContentType = ""
+	}
 	var opts []oss.Option
 	if opt != nil {
 		if opt.Image != nil {
