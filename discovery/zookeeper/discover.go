@@ -111,7 +111,7 @@ func (s *ZkClient) GetUserIdHashGatewayHost(ctx context.Context, userId string) 
 	return "", nil
 }
 
-func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
+func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
 	s.logger.Debug(ctx, "get conns from client", "serviceName", serviceName)
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -139,7 +139,7 @@ func (s *ZkClient) GetConns(ctx context.Context, serviceName string, opts ...grp
 	return conns, nil
 }
 
-func (s *ZkClient) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (s *ZkClient) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
 	newOpts := append(s.options, grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"LoadBalancingPolicy": "%s"}`, s.balancerName)))
 	s.logger.Debug(context.Background(), "get conn from client", "serviceName", serviceName)
 	return grpc.DialContext(ctx, fmt.Sprintf("%s:///%s", s.scheme, serviceName), append(newOpts, opts...)...)
@@ -149,6 +149,14 @@ func (s *ZkClient) GetSelfConnTarget() string {
 	return s.rpcRegisterAddr
 }
 
-func (s *ZkClient) CloseConn(conn *grpc.ClientConn) {
-	conn.Close()
+func (s *ZkClient) IsSelfNode(cc grpc.ClientConnInterface) bool {
+	cli, ok := cc.(*grpc.ClientConn)
+	if !ok {
+		return false
+	}
+	return s.GetSelfConnTarget() == cli.Target()
 }
+
+//func (s *ZkClient) CloseConn(conn *grpc.ClientConn) {
+//	conn.Close()
+//}

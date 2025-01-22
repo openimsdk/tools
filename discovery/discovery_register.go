@@ -44,15 +44,14 @@ import (
 //}
 
 type Conn interface {
-	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) //1
-	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)    //2
-	GetSelfConnTarget() string                                                                             //3
-	AddOption(opts ...grpc.DialOption)                                                                     //4
-	CloseConn(conn *grpc.ClientConn)                                                                       //5
-	// do not use this method for call rpc
+	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error)
+	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error)
+	IsSelfNode(cc grpc.ClientConnInterface) bool
 }
+
 type SvcDiscoveryRegistry interface {
 	Conn
+	AddOption(opts ...grpc.DialOption)
 	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
 	UnRegister() error                                                          //7
 	Close()

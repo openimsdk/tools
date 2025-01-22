@@ -75,7 +75,7 @@ func (s *ZkClient) UnRegister() error {
 	s.rpcRegisterName = ""
 	s.rpcRegisterAddr = ""
 	s.isRegistered = false
-	s.localConns = make(map[string][]*grpc.ClientConn)
+	s.localConns = make(map[string][]grpc.ClientConnInterface)
 	s.resolvers = make(map[string]*Resolver)
 	return nil
 }

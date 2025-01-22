@@ -191,7 +191,7 @@ func (r *SvcDiscoveryRegistryImpl) GetUserIdHashGatewayHost(ctx context.Context,
 }
 
 // GetConns returns gRPC client connections for a given service name
-func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
+func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
 	fullServiceKey := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
 	if len(r.connMap) == 0 {
 		if err := r.initializeConnMap(opts...); err != nil {
@@ -200,11 +200,11 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return datautil.Batch(func(t *addrConn) *grpc.ClientConn { return t.conn }, r.connMap[fullServiceKey]), nil
+	return datautil.Batch(func(t *addrConn) grpc.ClientConnInterface { return t.conn }, r.connMap[fullServiceKey]), nil
 }
 
 // GetConn returns a single gRPC client connection for a given service name
-func (r *SvcDiscoveryRegistryImpl) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (r *SvcDiscoveryRegistryImpl) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
 	target := fmt.Sprintf("etcd:///%s/%s", r.rootDirectory, serviceName)
 
 	dialOpts := append(append(r.dialOptions, opts...), grpc.WithResolvers(r.resolver))
@@ -222,6 +222,14 @@ func (r *SvcDiscoveryRegistryImpl) GetSelfConnTarget() string {
 	return r.rpcRegisterTarget
 }
 
+func (r *SvcDiscoveryRegistryImpl) IsSelfNode(cc grpc.ClientConnInterface) bool {
+	cli, ok := cc.(*grpc.ClientConn)
+	if !ok {
+		return false
+	}
+	return r.GetSelfConnTarget() == cli.Target()
+}
+
 // AddOption appends gRPC dial options to the existing options
 func (r *SvcDiscoveryRegistryImpl) AddOption(opts ...grpc.DialOption) {
 	r.mu.Lock()
@@ -231,9 +239,9 @@ func (r *SvcDiscoveryRegistryImpl) AddOption(opts ...grpc.DialOption) {
 }
 
 // CloseConn closes a given gRPC client connection
-func (r *SvcDiscoveryRegistryImpl) CloseConn(conn *grpc.ClientConn) {
-	conn.Close()
-}
+//func (r *SvcDiscoveryRegistryImpl) CloseConn(conn *grpc.ClientConn) {
+//	conn.Close()
+//}
 
 // Register registers a new service endpoint with etcd
 func (r *SvcDiscoveryRegistryImpl) Register(serviceName, host string, port int, opts ...grpc.DialOption) error {
