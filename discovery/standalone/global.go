@@ -1,13 +1,16 @@
 package standalone
 
-import "google.golang.org/grpc"
+import (
+	"github.com/openimsdk/tools/discovery"
+	"google.golang.org/grpc"
+)
 
-var globalClientConn = newClientConn()
+var globalDiscoveryConn = newDiscoveryConn()
 
-func GetClientConn() grpc.ClientConnInterface {
-	return globalClientConn
+func GetDiscoveryConn() discovery.Conn {
+	return globalDiscoveryConn
 }
 
 func GetServiceRegistrar() grpc.ServiceRegistrar {
-	return globalClientConn.Registry()
+	return globalDiscoveryConn.conn.registry
 }
