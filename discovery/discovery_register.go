@@ -20,8 +20,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-const Standalone = "standalone"
-
 type Conn interface {
 	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error)
 	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error)
@@ -31,8 +29,8 @@ type Conn interface {
 type SvcDiscoveryRegistry interface {
 	Conn
 	AddOption(opts ...grpc.DialOption)
-	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
-	UnRegister() error                                                          //7
+	Register(serviceName, host string, port int, opts ...grpc.DialOption) error
+	//UnRegister() error
 	Close()
-	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) //
+	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error)
 }
