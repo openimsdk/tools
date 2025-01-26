@@ -3,6 +3,11 @@ package etcd
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/pkg/errors"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
@@ -11,10 +16,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	gresolver "google.golang.org/grpc/resolver"
-	"io"
-	"strings"
-	"sync"
-	"time"
 )
 
 // ZkOption defines a function type for modifying clientv3.Config
@@ -258,7 +259,11 @@ func (r *SvcDiscoveryRegistryImpl) UnRegister() error {
 	if r.endpointMgr == nil {
 		return fmt.Errorf("endpoint manager is not initialized")
 	}
-	err := r.endpointMgr.DeleteEndpoint(context.TODO(), r.serviceKey)
+	_, err := r.client.Revoke(context.Background(), r.leaseID)
+	if err != nil {
+		fmt.Printf("etcd revoke err: %v\n", err)
+	}
+	err = r.endpointMgr.DeleteEndpoint(context.TODO(), r.serviceKey)
 	if err != nil {
 		return err
 	}
