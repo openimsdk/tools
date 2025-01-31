@@ -14,6 +14,36 @@
 
 package mongoutil
 
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+func Test_connectWithRetry(t *testing.T) {
+	var config = &Config{
+		Address:                     []string{"staging-im.cluster-czw8k2aoeyoa.us-east-2.docdb.amazonaws.com:27017", "staging-im.cluster-ro-czw8k2aoeyoa.us-east-2.docdb.amazonaws.com:27017"},
+		Database:                    "nextim",
+		Username:                    "rw-nextim",
+		Password:                    "LMnd7jKKsd9nndJHBzB",
+		ReadPreference:              "primaryPreferred",
+		NeedReadPrefMaxStaleness:    true,
+		ReadPrefMaxStaleness:        5 * time.Second,
+		TLSEnabled:                  false,
+		TlsCAFile:                   "",
+		TlsAllowInvalidCertificates: false,
+		MaxPoolSize:                 100,
+		MinPoolSize:                 10,
+		MaxRetry:                    10,
+		RetryWrites:                 false,
+		RetryReads:                  false,
+	}
+	ctx := context.Background()
+	client, err := NewMongoDB(ctx, config)
+	t.Logf("%+v", client)
+	t.Logf("%+v", err)
+}
+
 //func Test_connectWithRetry(t *testing.T) {
 //	type args struct {
 //		ctx         context.Context

@@ -23,6 +23,23 @@ import (
 	"github.com/amazing-socrates/next-tools/mw/specialerror"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+)
+
+// ReadPreferenceMode represents the read preference mode.
+type ReadPreferenceMode string
+
+const (
+	// ReadPreferencePrimary Strongly coherent reads (reads from the master node) values.
+	ReadPreferencePrimary ReadPreferenceMode = "primary"
+	// ReadPreferencePrimaryPreferred Prioritize master nodes, cut slave nodes when master is unavailable
+	ReadPreferencePrimaryPreferred ReadPreferenceMode = "primaryPreferred"
+	// ReadPreferenceSecondary Reads from slave nodes
+	ReadPreferenceSecondary ReadPreferenceMode = "secondary"
+	// ReadPreferenceSecondaryPreferred Extended read capability (prioritize reads from nodes)
+	ReadPreferenceSecondaryPreferred ReadPreferenceMode = "secondaryPreferred"
+	// ReadPreferenceNearest Low latency reads (nearby nodes)
+	ReadPreferenceNearest ReadPreferenceMode = "nearest"
 )
 
 func init() {
@@ -33,17 +50,70 @@ func init() {
 
 // Config represents the MongoDB configuration.
 type Config struct {
-	Uri         string
-	Address     []string
-	Database    string
-	Username    string
-	Password    string
-	AuthSource  string
-	MaxPoolSize int
-	MinPoolSize int
-	MaxRetry    int
-	RetryWrites bool
-	RetryReads  bool
+	Uri                         string
+	Address                     []string
+	Database                    string
+	Username                    string
+	Password                    string
+	AuthSource                  string
+	ReadPreference              ReadPreferenceMode
+	NeedReadPrefMaxStaleness    bool
+	ReadPrefMaxStaleness        time.Duration
+	TLSEnabled                  bool
+	TlsCAFile                   string
+	TlsAllowInvalidCertificates bool
+	MaxPoolSize                 int
+	MinPoolSize                 int
+	MaxRetry                    int
+	RetryWrites                 bool
+	RetryReads                  bool
+}
+
+func (c *Config) SetReadPreference(opts *options.ClientOptions) *options.ClientOptions {
+	if opts == nil {
+		return opts
+	}
+	switch c.ReadPreference {
+	case ReadPreferencePrimary:
+		readPref := readpref.Primary()
+		opts.SetReadPreference(readPref)
+	case ReadPreferencePrimaryPreferred:
+		readPref := readpref.PrimaryPreferred()
+		if c.NeedReadPrefMaxStaleness {
+			readpref.PrimaryPreferred(
+				readpref.WithMaxStaleness(c.ReadPrefMaxStaleness),
+			)
+		}
+		opts.SetReadPreference(readPref)
+	case ReadPreferenceSecondary:
+		readPref := readpref.Secondary()
+		if c.NeedReadPrefMaxStaleness {
+			readpref.Secondary(
+				readpref.WithMaxStaleness(c.ReadPrefMaxStaleness),
+			)
+		}
+		opts.SetReadPreference(readPref)
+	case ReadPreferenceSecondaryPreferred:
+		readPref := readpref.SecondaryPreferred()
+		if c.NeedReadPrefMaxStaleness {
+			readpref.SecondaryPreferred(
+				readpref.WithMaxStaleness(c.ReadPrefMaxStaleness),
+			)
+		}
+		opts.SetReadPreference(readPref)
+	case ReadPreferenceNearest:
+		readPref := readpref.Nearest()
+		if c.NeedReadPrefMaxStaleness {
+			readpref.Nearest(
+				readpref.WithMaxStaleness(c.ReadPrefMaxStaleness),
+			)
+		}
+		opts.SetReadPreference(readPref)
+	default:
+		readPref := readpref.Primary()
+		opts.SetReadPreference(readPref)
+	}
+	return opts
 }
 
 type Client struct {
@@ -70,6 +140,8 @@ func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 		SetMinPoolSize(uint64(config.MinPoolSize)).
 		SetRetryWrites(config.RetryWrites).
 		SetRetryReads(config.RetryReads)
+
+	opts = config.SetReadPreference(opts)
 
 	var (
 		cli *mongo.Client

@@ -17,6 +17,8 @@ package mongoutil
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -34,7 +36,7 @@ func buildMongoURI(config *Config, authSource string) string {
 		credentials = fmt.Sprintf("%s:%s", config.Username, config.Password)
 	}
 
-	return fmt.Sprintf(
+	uri := fmt.Sprintf(
 		"mongodb://%s@%s/%s?authSource=%s&maxPoolSize=%d",
 		credentials,
 		strings.Join(config.Address, ","),
@@ -42,6 +44,25 @@ func buildMongoURI(config *Config, authSource string) string {
 		authSource,
 		config.MaxPoolSize,
 	)
+
+	values := url.Values{}
+	values.Add("tls", strconv.FormatBool(config.TLSEnabled))
+
+	if config.TLSEnabled {
+		if config.TlsCAFile != "" {
+			values.Add("tlsCAFile", config.TlsCAFile)
+		}
+		if config.TlsAllowInvalidCertificates {
+			values.Add("tlsAllowInvalidCertificates", strconv.FormatBool(config.TlsAllowInvalidCertificates))
+		}
+	}
+
+	tlsConfig := values.Encode()
+	if tlsConfig != "" {
+		uri += "&" + tlsConfig
+	}
+
+	return uri
 }
 
 // shouldRetry determines whether an error should trigger a retry.
