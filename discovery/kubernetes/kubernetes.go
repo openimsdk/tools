@@ -224,7 +224,7 @@ func (k *KubernetesConnManager) Close() {
 	k.connMap = make(map[string][]grpc.ClientConnInterface)
 }
 
-func (k *KubernetesConnManager) Register(serviceName, host string, port int, opts ...grpc.DialOption) error {
+func (k *KubernetesConnManager) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -244,15 +245,15 @@ func (r *SvcDiscoveryRegistryImpl) AddOption(opts ...grpc.DialOption) {
 //}
 
 // Register registers a new service endpoint with etcd
-func (r *SvcDiscoveryRegistryImpl) Register(serviceName, host string, port int, opts ...grpc.DialOption) error {
-	r.serviceKey = fmt.Sprintf("%s/%s/%s:%d", r.rootDirectory, serviceName, host, port)
+func (r *SvcDiscoveryRegistryImpl) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
+	r.serviceKey = fmt.Sprintf("%s/%s/%s", r.rootDirectory, serviceName, net.JoinHostPort(host, strconv.Itoa(port)))
 	em, err := endpoints.NewManager(r.client, r.rootDirectory+"/"+serviceName)
 	if err != nil {
 		return err
 	}
 	r.endpointMgr = em
 
-	leaseResp, err := r.client.Grant(context.Background(), 30) //
+	leaseResp, err := r.client.Grant(ctx, 30) //
 	if err != nil {
 		return err
 	}
@@ -267,6 +268,12 @@ func (r *SvcDiscoveryRegistryImpl) Register(serviceName, host string, port int, 
 	}
 
 	go r.keepAliveLease(r.leaseID)
+
+	//_, err := r.client.Put(ctx, BuildDiscoveryKey(serviceName), jsonutil.StructToJsonString(BuildDefaultTarget(host, port)))
+	//if err != nil {
+	//	return err
+	//}
+
 	return nil
 }
 

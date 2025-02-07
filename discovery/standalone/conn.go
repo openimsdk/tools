@@ -2,7 +2,6 @@ package standalone
 
 import (
 	"context"
-	"fmt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,9 +21,9 @@ type clientConn struct {
 }
 
 func (x *clientConn) Invoke(ctx context.Context, method string, args any, reply any, opts ...grpc.CallOption) error {
-	handler := x.registry.getMethod(method)
-	if handler == nil {
-		return fmt.Errorf("service %s not found", method)
+	handler, err := x.registry.getMethod(ctx, method)
+	if err != nil {
+		return err
 	}
 	resp, err := handler(ctx, args, nil)
 	if err != nil {

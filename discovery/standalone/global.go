@@ -36,7 +36,7 @@ type svcDiscoveryRegistry struct {
 
 func (x *svcDiscoveryRegistry) AddOption(opts ...grpc.DialOption) {}
 
-func (x *svcDiscoveryRegistry) Register(serviceName, host string, port int, opts ...grpc.DialOption) error {
+func (x *svcDiscoveryRegistry) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
 	return nil
 }
 

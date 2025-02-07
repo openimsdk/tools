@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -18,9 +19,10 @@ func newRegistry() *registry {
 }
 
 type registry struct {
-	lock       sync.RWMutex
+	lock       sync.Mutex
 	methods    map[string]serverHandler
 	serializer serializer
+	wait       map[string]chan struct{}
 }
 
 func (x *registry) RegisterService(desc *grpc.ServiceDesc, impl any) {
@@ -41,11 +43,43 @@ func (x *registry) RegisterService(desc *grpc.ServiceDesc, impl any) {
 				return x.serializer.Unmarshal(tmp, in)
 			}, interceptor)
 		}
+		if wait, ok := x.wait[name]; ok {
+			delete(x.wait, name)
+			close(wait)
+		}
 	}
 }
 
-func (x *registry) getMethod(name string) serverHandler {
-	x.lock.RLock()
-	defer x.lock.RUnlock()
-	return x.methods[name]
+func (x *registry) getMethod(ctx context.Context, name string) (serverHandler, error) {
+	x.lock.Lock()
+	handler, ok := x.methods[name]
+	if ok {
+		x.lock.Unlock()
+		return handler, nil
+	}
+	if x.wait == nil {
+		x.wait = make(map[string]chan struct{})
+	}
+	wait, ok := x.wait[name]
+	if !ok {
+		wait = make(chan struct{})
+		x.wait[name] = wait
+	}
+	x.lock.Unlock()
+	timeout := time.NewTimer(time.Second * 30)
+	defer timeout.Stop()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-timeout.C:
+		return nil, fmt.Errorf("get service %s timeout", name)
+	case <-wait:
+		x.lock.Lock()
+		handler, ok = x.methods[name]
+		x.lock.Unlock()
+		if !ok {
+			return nil, fmt.Errorf("get service %s internal error", name)
+		}
+		return handler, nil
+	}
 }

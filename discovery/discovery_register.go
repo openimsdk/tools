@@ -29,7 +29,7 @@ type Conn interface {
 type SvcDiscoveryRegistry interface {
 	Conn
 	AddOption(opts ...grpc.DialOption)
-	Register(serviceName, host string, port int, opts ...grpc.DialOption) error
+	Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error
 	//UnRegister() error
 	Close()
 	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error)
