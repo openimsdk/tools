@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/go-zookeeper/zk"
+	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
@@ -197,4 +198,20 @@ func (s *ZkClient) AddOption(opts ...grpc.DialOption) {
 
 func (s *ZkClient) GetClientLocalConns() map[string][]grpc.ClientConnInterface {
 	return s.localConns
+}
+
+func (s *ZkClient) SetKey(ctx context.Context, key string, data []byte) error {
+	return discovery.ErrNotSupported
+}
+
+func (s *ZkClient) GetKey(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupported
+}
+
+func (s *ZkClient) DelData(ctx context.Context, key string) error {
+	return discovery.ErrNotSupported
+}
+
+func (s *ZkClient) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
+	return discovery.ErrNotSupported
 }

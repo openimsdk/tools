@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -305,4 +306,20 @@ func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
 	// return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
 
 	return nil
+}
+
+func (k *KubernetesConnManager) SetKey(ctx context.Context, key string, data []byte) error {
+	return discovery.ErrNotSupported
+}
+
+func (k *KubernetesConnManager) GetKey(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupported
+}
+
+func (k *KubernetesConnManager) DelData(ctx context.Context, key string) error {
+	return discovery.ErrNotSupported
+}
+
+func (k *KubernetesConnManager) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
+	return discovery.ErrNotSupported
 }

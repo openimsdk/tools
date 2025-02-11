@@ -16,8 +16,14 @@ package discovery
 
 import (
 	"context"
+	"errors"
 
 	"google.golang.org/grpc"
+)
+
+var (
+	ErrNotSupported = errors.New("discovery data not supported")
+	ErrNotFound     = errors.New("discovery data not found")
 )
 
 type Conn interface {
@@ -26,11 +32,23 @@ type Conn interface {
 	IsSelfNode(cc grpc.ClientConnInterface) bool
 }
 
+type WatchKey struct {
+	Value []byte
+}
+
+type WatchKeyHandler func(data *WatchKey) error
+
+type KeyValue interface {
+	SetKey(ctx context.Context, key string, value []byte) error
+	GetKey(ctx context.Context, key string) ([]byte, error)
+	WatchKey(ctx context.Context, key string, fn WatchKeyHandler) error
+}
+
 type SvcDiscoveryRegistry interface {
 	Conn
+	KeyValue
 	AddOption(opts ...grpc.DialOption)
 	Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error
-	//UnRegister() error
 	Close()
 	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error)
 }

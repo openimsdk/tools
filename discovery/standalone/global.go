@@ -25,6 +25,10 @@ func GetServiceRegistrar() grpc.ServiceRegistrar {
 	return global
 }
 
+func GetKeyValue() discovery.KeyValue {
+	return global
+}
+
 func GetSvcDiscoveryRegistry() discovery.SvcDiscoveryRegistry {
 	return global
 }
@@ -32,6 +36,7 @@ func GetSvcDiscoveryRegistry() discovery.SvcDiscoveryRegistry {
 type svcDiscoveryRegistry struct {
 	discovery.Conn
 	grpc.ServiceRegistrar
+	keyValue
 }
 
 func (x *svcDiscoveryRegistry) AddOption(opts ...grpc.DialOption) {}

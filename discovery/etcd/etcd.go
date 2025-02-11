@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/utils/datautil"
@@ -419,4 +420,43 @@ func (r *SvcDiscoveryRegistryImpl) resetConnMap() {
 		}
 	}
 	r.connMap = make(map[string][]*addrConn)
+}
+
+func (r *SvcDiscoveryRegistryImpl) SetKey(ctx context.Context, key string, data []byte) error {
+	if _, err := r.client.Put(ctx, key, string(data)); err != nil {
+		return errs.WrapMsg(err, "etcd put err")
+	}
+	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) GetKey(ctx context.Context, key string) ([]byte, error) {
+	resp, err := r.client.Get(ctx, key)
+	if err != nil {
+		return nil, errs.WrapMsg(err, "etcd get err")
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+	return resp.Kvs[0].Value, nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) DelData(ctx context.Context, key string) error {
+	if _, err := r.client.Delete(ctx, key); err != nil {
+		return errs.WrapMsg(err, "etcd delete err")
+	}
+	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
+	watchChan := r.client.Watch(ctx, key)
+	for watchResp := range watchChan {
+		for _, event := range watchResp.Events {
+			if event.IsModify() && string(event.Kv.Key) == key {
+				if err := fn(&discovery.WatchKey{Value: event.Kv.Value}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
