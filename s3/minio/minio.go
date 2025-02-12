@@ -197,12 +197,12 @@ func (m *Minio) Engine() string {
 	return "minio"
 }
 
-func (m *Minio) PartLimit() *s3.PartLimit {
+func (m *Minio) PartLimit() (*s3.PartLimit, error) {
 	return &s3.PartLimit{
 		MinPartSize: minPartSize,
 		MaxPartSize: maxPartSize,
 		MaxNumSize:  maxNumSize,
-	}
+	}, nil
 }
 
 func (m *Minio) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
