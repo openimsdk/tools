@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/utils/datautil"
@@ -191,7 +193,7 @@ func (r *SvcDiscoveryRegistryImpl) GetUserIdHashGatewayHost(ctx context.Context,
 }
 
 // GetConns returns gRPC client connections for a given service name
-func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
+func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
 	fullServiceKey := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
 	if len(r.connMap) == 0 {
 		if err := r.initializeConnMap(opts...); err != nil {
@@ -200,11 +202,11 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return datautil.Batch(func(t *addrConn) *grpc.ClientConn { return t.conn }, r.connMap[fullServiceKey]), nil
+	return datautil.Batch(func(t *addrConn) grpc.ClientConnInterface { return t.conn }, r.connMap[fullServiceKey]), nil
 }
 
 // GetConn returns a single gRPC client connection for a given service name
-func (r *SvcDiscoveryRegistryImpl) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (r *SvcDiscoveryRegistryImpl) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
 	target := fmt.Sprintf("etcd:///%s/%s", r.rootDirectory, serviceName)
 
 	dialOpts := append(append(r.dialOptions, opts...), grpc.WithResolvers(r.resolver))
@@ -222,6 +224,14 @@ func (r *SvcDiscoveryRegistryImpl) GetSelfConnTarget() string {
 	return r.rpcRegisterTarget
 }
 
+func (r *SvcDiscoveryRegistryImpl) IsSelfNode(cc grpc.ClientConnInterface) bool {
+	cli, ok := cc.(*grpc.ClientConn)
+	if !ok {
+		return false
+	}
+	return r.GetSelfConnTarget() == cli.Target()
+}
+
 // AddOption appends gRPC dial options to the existing options
 func (r *SvcDiscoveryRegistryImpl) AddOption(opts ...grpc.DialOption) {
 	r.mu.Lock()
@@ -231,20 +241,20 @@ func (r *SvcDiscoveryRegistryImpl) AddOption(opts ...grpc.DialOption) {
 }
 
 // CloseConn closes a given gRPC client connection
-func (r *SvcDiscoveryRegistryImpl) CloseConn(conn *grpc.ClientConn) {
-	conn.Close()
-}
+//func (r *SvcDiscoveryRegistryImpl) CloseConn(conn *grpc.ClientConn) {
+//	conn.Close()
+//}
 
 // Register registers a new service endpoint with etcd
-func (r *SvcDiscoveryRegistryImpl) Register(serviceName, host string, port int, opts ...grpc.DialOption) error {
-	r.serviceKey = fmt.Sprintf("%s/%s/%s:%d", r.rootDirectory, serviceName, host, port)
+func (r *SvcDiscoveryRegistryImpl) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
+	r.serviceKey = fmt.Sprintf("%s/%s/%s", r.rootDirectory, serviceName, net.JoinHostPort(host, strconv.Itoa(port)))
 	em, err := endpoints.NewManager(r.client, r.rootDirectory+"/"+serviceName)
 	if err != nil {
 		return err
 	}
 	r.endpointMgr = em
 
-	leaseResp, err := r.client.Grant(context.Background(), 30) //
+	leaseResp, err := r.client.Grant(ctx, 30) //
 	if err != nil {
 		return err
 	}
@@ -259,6 +269,12 @@ func (r *SvcDiscoveryRegistryImpl) Register(serviceName, host string, port int, 
 	}
 
 	go r.keepAliveLease(r.leaseID)
+
+	//_, err := r.client.Put(ctx, BuildDiscoveryKey(serviceName), jsonutil.StructToJsonString(BuildDefaultTarget(host, port)))
+	//if err != nil {
+	//	return err
+	//}
+
 	return nil
 }
 
@@ -404,4 +420,43 @@ func (r *SvcDiscoveryRegistryImpl) resetConnMap() {
 		}
 	}
 	r.connMap = make(map[string][]*addrConn)
+}
+
+func (r *SvcDiscoveryRegistryImpl) SetKey(ctx context.Context, key string, data []byte) error {
+	if _, err := r.client.Put(ctx, key, string(data)); err != nil {
+		return errs.WrapMsg(err, "etcd put err")
+	}
+	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) GetKey(ctx context.Context, key string) ([]byte, error) {
+	resp, err := r.client.Get(ctx, key)
+	if err != nil {
+		return nil, errs.WrapMsg(err, "etcd get err")
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+	return resp.Kvs[0].Value, nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) DelData(ctx context.Context, key string) error {
+	if _, err := r.client.Delete(ctx, key); err != nil {
+		return errs.WrapMsg(err, "etcd delete err")
+	}
+	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
+	watchChan := r.client.Watch(ctx, key)
+	for watchResp := range watchChan {
+		for _, event := range watchResp.Events {
+			if event.IsModify() && string(event.Kv.Key) == key {
+				if err := fn(&discovery.WatchKey{Value: event.Kv.Value}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

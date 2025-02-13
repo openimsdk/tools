@@ -72,7 +72,7 @@ func (c *Controller) PartSize(ctx context.Context, size int64) (int64, error) {
 	return c.impl.PartSize(ctx, size)
 }
 
-func (c *Controller) PartLimit() *s3.PartLimit {
+func (c *Controller) PartLimit() (*s3.PartLimit, error) {
 	return c.impl.PartLimit()
 }
 

@@ -21,14 +21,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	"github.com/qiniu/go-sdk/v7/storage"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/qiniu/go-sdk/v7/storage"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3config "github.com/aws/aws-sdk-go-v2/config"
@@ -105,12 +106,12 @@ func (k *Kodo) Engine() string {
 	return "kodo"
 }
 
-func (k *Kodo) PartLimit() *s3.PartLimit {
+func (k *Kodo) PartLimit() (*s3.PartLimit, error) {
 	return &s3.PartLimit{
 		MinPartSize: minPartSize,
 		MaxPartSize: maxPartSize,
 		MaxNumSize:  maxNumSize,
-	}
+	}, nil
 }
 
 func (k *Kodo) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {

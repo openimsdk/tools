@@ -139,7 +139,7 @@ type AccessURLOption struct {
 
 type Interface interface {
 	Engine() string
-	PartLimit() *PartLimit
+	PartLimit() (*PartLimit, error)
 
 	InitiateMultipartUpload(ctx context.Context, name string) (*InitiateMultipartUploadResult, error)
 	CompleteMultipartUpload(ctx context.Context, uploadID string, name string, parts []Part) (*CompleteMultipartUploadResult, error)

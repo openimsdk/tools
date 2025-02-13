@@ -3,11 +3,13 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -28,7 +30,7 @@ type KubernetesConnManager struct {
 	selfTarget string
 
 	mu      sync.RWMutex
-	connMap map[string][]*grpc.ClientConn
+	connMap map[string][]grpc.ClientConnInterface
 }
 
 // NewKubernetesConnManager creates a new connection manager that uses Kubernetes services for service discovery.
@@ -48,7 +50,7 @@ func NewKubernetesConnManager(namespace string, options ...grpc.DialOption) (*Ku
 		clientset:   clientset,
 		namespace:   namespace,
 		dialOptions: options,
-		connMap:     make(map[string][]*grpc.ClientConn),
+		connMap:     make(map[string][]grpc.ClientConnInterface),
 	}
 
 	go k.watchEndpoints()
@@ -69,7 +71,7 @@ func (k *KubernetesConnManager) initializeConns(serviceName string, opts ...grpc
 
 	// fmt.Println("Endpoints:", endpoints, "endpoints.Subsets:", endpoints.Subsets)
 
-	var conns []*grpc.ClientConn
+	var conns []grpc.ClientConnInterface
 	for _, subset := range endpoints.Subsets {
 		for _, address := range subset.Addresses {
 			target := fmt.Sprintf("%s:%d", address.IP, port)
@@ -100,7 +102,7 @@ func (k *KubernetesConnManager) initializeConns(serviceName string, opts ...grpc
 }
 
 // GetConns returns gRPC client connections for a given Kubernetes service name.
-func (k *KubernetesConnManager) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) {
+func (k *KubernetesConnManager) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
 	k.mu.RLock()
 
 	conns, exists := k.connMap[serviceName]
@@ -126,7 +128,7 @@ func (k *KubernetesConnManager) GetConns(ctx context.Context, serviceName string
 }
 
 // GetConn returns a single gRPC client connection for a given Kubernetes service name.
-func (k *KubernetesConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (k *KubernetesConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
 	var target string
 
 	if k.rpcTargets[serviceName] == "" {
@@ -189,6 +191,14 @@ func (k *KubernetesConnManager) GetSelfConnTarget() string {
 	return k.selfTarget
 }
 
+func (k *KubernetesConnManager) IsSelfNode(cc grpc.ClientConnInterface) bool {
+	cli, ok := cc.(*grpc.ClientConn)
+	if !ok {
+		return false
+	}
+	return k.GetSelfConnTarget() == cli.Target()
+}
+
 // AddOption appends gRPC dial options to the existing options.
 func (k *KubernetesConnManager) AddOption(opts ...grpc.DialOption) {
 	k.mu.Lock()
@@ -197,9 +207,9 @@ func (k *KubernetesConnManager) AddOption(opts ...grpc.DialOption) {
 }
 
 // CloseConn closes a given gRPC client connection.
-func (k *KubernetesConnManager) CloseConn(conn *grpc.ClientConn) {
-	conn.Close()
-}
+//func (k *KubernetesConnManager) CloseConn(conn *grpc.ClientConn) {
+//	conn.Close()
+//}
 
 // Close closes all gRPC connections managed by KubernetesConnManager.
 func (k *KubernetesConnManager) Close() {
@@ -207,13 +217,15 @@ func (k *KubernetesConnManager) Close() {
 	defer k.mu.Unlock()
 	for _, conns := range k.connMap {
 		for _, conn := range conns {
-			_ = conn.Close()
+			if closer, ok := conn.(io.Closer); ok {
+				_ = closer.Close()
+			}
 		}
 	}
-	k.connMap = make(map[string][]*grpc.ClientConn)
+	k.connMap = make(map[string][]grpc.ClientConnInterface)
 }
 
-func (k *KubernetesConnManager) Register(serviceName, host string, port int, opts ...grpc.DialOption) error {
+func (k *KubernetesConnManager) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
 	return nil
 }
 
@@ -294,4 +306,20 @@ func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
 	// return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
 
 	return nil
+}
+
+func (k *KubernetesConnManager) SetKey(ctx context.Context, key string, data []byte) error {
+	return discovery.ErrNotSupportedKeyValue
+}
+
+func (k *KubernetesConnManager) GetKey(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupportedKeyValue
+}
+
+func (k *KubernetesConnManager) DelData(ctx context.Context, key string) error {
+	return discovery.ErrNotSupportedKeyValue
+}
+
+func (k *KubernetesConnManager) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
+	return discovery.ErrNotSupportedKeyValue
 }
