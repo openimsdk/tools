@@ -21,10 +21,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	ErrNotSupported = errors.New("discovery data not supported")
-	ErrNotFound     = errors.New("discovery data not found")
-)
+var ErrNotSupportedKeyValue = errors.New("discovery data not supported key value")
 
 type Conn interface {
 	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error)

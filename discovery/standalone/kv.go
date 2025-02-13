@@ -47,5 +47,5 @@ func (x *keyValue) DelData(ctx context.Context, key string) error {
 }
 
 func (x *keyValue) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
-	return discovery.ErrNotSupported
+	return discovery.ErrNotSupportedKeyValue
 }

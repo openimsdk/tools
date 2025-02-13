@@ -309,17 +309,17 @@ func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
 }
 
 func (k *KubernetesConnManager) SetKey(ctx context.Context, key string, data []byte) error {
-	return discovery.ErrNotSupported
+	return discovery.ErrNotSupportedKeyValue
 }
 
 func (k *KubernetesConnManager) GetKey(ctx context.Context, key string) ([]byte, error) {
-	return nil, discovery.ErrNotSupported
+	return nil, discovery.ErrNotSupportedKeyValue
 }
 
 func (k *KubernetesConnManager) DelData(ctx context.Context, key string) error {
-	return discovery.ErrNotSupported
+	return discovery.ErrNotSupportedKeyValue
 }
 
 func (k *KubernetesConnManager) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
-	return discovery.ErrNotSupported
+	return discovery.ErrNotSupportedKeyValue
 }
