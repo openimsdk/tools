@@ -2,9 +2,15 @@ package kafka
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"math/rand"
+	"strings"
+	"sync"
 
 	"github.com/IBM/sarama"
 	"github.com/openimsdk/tools/log"
+	"github.com/openimsdk/tools/mcontext"
 	"github.com/openimsdk/tools/mq"
 )
 
@@ -21,27 +27,26 @@ func NewMConsumerGroupV2(ctx context.Context, conf *Config, groupID string, topi
 		topics:   topics,
 		groupID:  groupID,
 		consumer: group,
-		session:  make(chan *sessionClaim, 1),
-		idle:     make(chan struct{}, 1),
+		msg:      make(chan *consumerMessage, 64),
 	}
-	mcg.idle <- struct{}{}
+	mcg.ctx, mcg.cancel = context.WithCancel(ctx)
 	mcg.loopConsume()
 	return mcg, nil
 }
 
-type sessionClaim struct {
-	session sarama.ConsumerGroupSession
-	claim   sarama.ConsumerGroupClaim
+type consumerMessage struct {
+	Msg     *sarama.ConsumerMessage
+	Session sarama.ConsumerGroupSession
 }
 
 type mqConsumerGroup struct {
 	topics   []string
 	groupID  string
 	consumer sarama.ConsumerGroup
+	ctx      context.Context
 	cancel   context.CancelFunc
-	idle     chan struct{}
-	session  chan *sessionClaim
-	curr     *sessionClaim
+	msg      chan *consumerMessage
+	lock     sync.Mutex
 }
 
 func (*mqConsumerGroup) Setup(sarama.ConsumerGroupSession) error { return nil }
@@ -50,20 +55,29 @@ func (*mqConsumerGroup) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
+func (x *mqConsumerGroup) closeMsgChan() {
+	select {
+	case <-x.ctx.Done():
+		if x.lock.TryLock() {
+			close(x.msg)
+			x.lock.Unlock()
+		}
+	default:
+	}
+}
+
 func (x *mqConsumerGroup) loopConsume() {
-	var ctx context.Context
-	ctx, x.cancel = context.WithCancel(context.Background())
 	go func() {
-		defer func() {
-			close(x.session)
-		}()
+		defer x.closeMsgChan()
+		ctx := mcontext.SetOperationID(x.ctx, fmt.Sprintf("consumer_group_%s_%s_%d", strings.Join(x.topics, "_"), x.groupID, rand.Uint32()))
 		for {
-			select {
-			case <-ctx.Done():
-				return
-			case x.idle <- struct{}{}:
-			}
-			if err := x.consumer.Consume(ctx, x.topics, x); err != nil {
+			if err := x.consumer.Consume(x.ctx, x.topics, x); err != nil {
+				switch {
+				case errors.Is(err, context.Canceled):
+					return
+				case errors.Is(err, sarama.ErrClosedConsumerGroup):
+					return
+				}
 				log.ZWarn(ctx, "consume err", err, "topic", x.topics, "groupID", x.groupID)
 			}
 		}
@@ -71,44 +85,36 @@ func (x *mqConsumerGroup) loopConsume() {
 }
 
 func (x *mqConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	x.session <- &sessionClaim{session, claim}
-	return nil
+	defer x.closeMsgChan()
+	msg := claim.Messages()
+	for {
+		select {
+		case <-x.ctx.Done():
+			return context.Canceled
+		case val, ok := <-msg:
+			if !ok {
+				return nil
+			}
+			x.msg <- &consumerMessage{Msg: val, Session: session}
+		}
+	}
 }
 
 func (x *mqConsumerGroup) Subscribe(ctx context.Context, fn mq.Handler) error {
-	for {
-		curr := x.curr
-		if curr == nil {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case val, ok := <-x.session:
-				if !ok {
-					return sarama.ErrClosedConsumerGroup
-				}
-				curr = val
-				x.curr = val
-			}
+	select {
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	case msg, ok := <-x.msg:
+		if !ok {
+			return sarama.ErrClosedConsumerGroup
 		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case val, ok := <-curr.claim.Messages():
-			if !ok {
-				x.curr = nil
-				select {
-				case <-x.idle:
-				default:
-				}
-				continue
-			}
-			ctx := GetContextWithMQHeader(val.Headers)
-			if err := fn(ctx, string(val.Key), val.Value); err != nil {
-				return err
-			}
-			curr.session.MarkMessage(val, "")
-			curr.session.Commit()
+		ctx := GetContextWithMQHeader(msg.Msg.Headers)
+		if err := fn(ctx, string(msg.Msg.Key), msg.Msg.Value); err != nil {
+			return err
 		}
+		msg.Session.MarkMessage(msg.Msg, "")
+		msg.Session.Commit()
+		return nil
 	}
 }
 
