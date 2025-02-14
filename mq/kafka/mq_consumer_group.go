@@ -9,7 +9,7 @@ import (
 )
 
 func NewMConsumerGroupV2(ctx context.Context, conf *Config, groupID string, topics []string, autoCommitEnable bool) (mq.Consumer, error) {
-	config, err := BuildProducerConfig(*conf)
+	config, err := BuildConsumerGroupConfig(conf, sarama.OffsetNewest, autoCommitEnable)
 	if err != nil {
 		return nil, err
 	}
