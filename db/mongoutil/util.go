@@ -47,6 +47,14 @@ func findOptionToCountOption(opts []*options.FindOptions) *options.CountOptions 
 	return options.Count()
 }
 
+func InsertOne[T any](ctx context.Context, coll *mongo.Collection, val T, opts ...*options.InsertOneOptions) error {
+	_, err := coll.InsertOne(ctx, val, opts...)
+	if err != nil {
+		return errs.WrapMsg(err, "mongo insert one")
+	}
+	return nil
+}
+
 func InsertMany[T any](ctx context.Context, coll *mongo.Collection, val []T, opts ...*options.InsertManyOptions) error {
 	_, err := coll.InsertMany(ctx, anes(val), opts...)
 	if err != nil {
