@@ -15,6 +15,8 @@ const (
 	TokenUnknownError     = 1505
 	TokenKickedError      = 1506
 	TokenNotExistError    = 1507
+
+	OrgUserNoPermissionError = 1520
 )
 
 var (
@@ -30,4 +32,5 @@ var (
 	ErrTokenUnknown     = NewCodeError(TokenUnknownError, "TokenUnknownError")
 	ErrTokenKicked      = NewCodeError(TokenKickedError, "TokenKickedError")
 	ErrTokenNotExist    = NewCodeError(TokenNotExistError, "TokenNotExistError")
+	ErrOrgUserNoPermissionError = NewCodeError(OrgUserNoPermissionError, "OrgUserNoPermissionError")
 )
