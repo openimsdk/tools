@@ -58,6 +58,14 @@ func NewHTTPClient(config *ClientConfig) *HTTPClient {
 	}
 }
 
+// NewHTTPClientWithClient creates a new HTTPSClient with the provided configuration and http.Client.
+func NewHTTPClientWithClient(client *http.Client, config *ClientConfig) *HTTPClient {
+	return &HTTPClient{
+		client: client,
+		config: config,
+	}
+}
+
 // Get performs a HTTP GET request and returns the response body.
 func (c *HTTPClient) Get(url string) ([]byte, error) {
 	resp, err := c.client.Get(url)
