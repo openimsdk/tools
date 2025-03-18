@@ -302,6 +302,14 @@ func (k *Kodo) AccessURL(ctx context.Context, name string, expire time.Duration,
 			Bucket: aws.String(k.Region),
 			Key:    aws.String(name),
 		}
+		if opt != nil {
+			if opt.ContentType != "" {
+				params.ResponseContentType = aws.String(opt.ContentType)
+			}
+			if opt.Filename != "" {
+				params.ResponseContentDisposition = aws.String(`attachment; filename*=UTF-8''` + url.PathEscape(opt.Filename))
+			}
+		}
 		res, err := k.PresignClient.PresignGetObject(ctx, params, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
 		if err != nil {
 			return "", err
