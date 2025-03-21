@@ -104,12 +104,12 @@ func (k *Kodo) Engine() string {
 	return "kodo"
 }
 
-func (k *Kodo) PartLimit() (*s3.PartLimit, error) {
+func (k *Kodo) PartLimit() *s3.PartLimit {
 	return &s3.PartLimit{
 		MinPartSize: minPartSize,
 		MaxPartSize: maxPartSize,
 		MaxNumSize:  maxNumSize,
-	}, nil
+	}
 }
 
 func (k *Kodo) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
