@@ -112,7 +112,7 @@ func (k *Kodo) PartLimit() (*s3.PartLimit, error) {
 	}, nil
 }
 
-func (k *Kodo) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
+func (k *Kodo) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
 	result, err := k.Client.CreateMultipartUpload(ctx, &awss3.CreateMultipartUploadInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
@@ -193,15 +193,15 @@ func (k *Kodo) AuthSign(ctx context.Context, uploadID string, name string, expir
 
 }
 
-func (k *Kodo) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
+func (k *Kodo) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
 	object, err := k.PresignClient.PresignPutObject(ctx, &awss3.PutObjectInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
 	}, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(nil))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return object.URL, nil
+	return &s3.PresignedPutResult{URL: object.URL}, nil
 }
 
 func (k *Kodo) DeleteObject(ctx context.Context, name string) error {

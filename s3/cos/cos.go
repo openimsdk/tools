@@ -100,7 +100,7 @@ func (c *Cos) PartLimit() (*s3.PartLimit, error) {
 	}, nil
 }
 
-func (c *Cos) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
+func (c *Cos) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
 	result, _, err := c.client.Object.InitiateMultipartUpload(ctx, name, nil)
 	if err != nil {
 		return nil, err
@@ -173,12 +173,12 @@ func (c *Cos) AuthSign(ctx context.Context, uploadID string, name string, expire
 	return &result, nil
 }
 
-func (c *Cos) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
+func (c *Cos) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
 	rawURL, err := c.client.Object.GetPresignedURL(ctx, http.MethodPut, name, c.credential.SecretID, c.credential.SecretKey, expire, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return rawURL.String(), nil
+	return &s3.PresignedPutResult{URL: rawURL.String()}, nil
 }
 
 func (c *Cos) DeleteObject(ctx context.Context, name string) error {

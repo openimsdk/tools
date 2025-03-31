@@ -96,12 +96,12 @@ func (a *Aws) IsNotFound(err error) bool {
 	return respErr.Response.StatusCode == http.StatusNotFound
 }
 
-func (a *Aws) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
+func (a *Aws) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
 	res, err := a.presign.PresignPutObject(ctx, &aws3.PutObjectInput{Bucket: aws.String(a.bucket), Key: aws.String(name)}, aws3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(nil))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return res.URL, nil
+	return &s3.PresignedPutResult{URL: res.URL}, nil
 }
 
 func (a *Aws) DeleteObject(ctx context.Context, name string) error {
@@ -151,7 +151,7 @@ func (a *Aws) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, erro
 	return info, nil
 }
 
-func (a *Aws) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
+func (a *Aws) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
 	res, err := a.client.CreateMultipartUpload(ctx, &aws3.CreateMultipartUploadInput{Bucket: aws.String(a.bucket), Key: aws.String(name)})
 	if err != nil {
 		return nil, err

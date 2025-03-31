@@ -108,8 +108,12 @@ func (o *OSS) PartLimit() (*s3.PartLimit, error) {
 	}, nil
 }
 
-func (o *OSS) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
-	result, err := o.bucket.InitiateMultipartUpload(name)
+func (o *OSS) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
+	var opts []oss.Option
+	if opt != nil && opt.ContentType != "" {
+		opts = append(opts, oss.ContentType(opt.ContentType))
+	}
+	result, err := o.bucket.InitiateMultipartUpload(name, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -193,8 +197,21 @@ func (o *OSS) AuthSign(ctx context.Context, uploadID string, name string, expire
 	return &result, nil
 }
 
-func (o *OSS) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
-	return o.bucket.SignURL(name, http.MethodPut, int64(expire/time.Second))
+func (o *OSS) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
+	var opts []oss.Option
+	if opt != nil && opt.ContentType != "" {
+		opts = append(opts, oss.ContentType(opt.ContentType))
+	}
+	rawURL, err := o.bucket.SignURL(name, http.MethodPut, int64(expire/time.Second), opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &s3.PresignedPutResult{
+		URL: rawURL,
+		Header: http.Header{
+			"Content-Type": []string{opt.ContentType},
+		},
+	}, nil
 }
 
 func (o *OSS) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, error) {

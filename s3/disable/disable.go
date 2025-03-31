@@ -25,7 +25,7 @@ func (disableS3) PartLimit() (*s3.PartLimit, error) {
 	return nil, errDisabled
 }
 
-func (disableS3) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
+func (disableS3) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
 	return nil, errDisabled
 }
 
@@ -41,8 +41,8 @@ func (disableS3) AuthSign(ctx context.Context, uploadID string, name string, exp
 	return nil, errDisabled
 }
 
-func (disableS3) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
-	return "", errDisabled
+func (disableS3) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
+	return nil, errDisabled
 }
 
 func (disableS3) DeleteObject(ctx context.Context, name string) error {

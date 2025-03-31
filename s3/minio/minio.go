@@ -205,7 +205,7 @@ func (m *Minio) PartLimit() (*s3.PartLimit, error) {
 	}, nil
 }
 
-func (m *Minio) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
+func (m *Minio) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
 	if err := m.initMinio(ctx); err != nil {
 		return nil, err
 	}
@@ -294,18 +294,18 @@ func (m *Minio) AuthSign(ctx context.Context, uploadID string, name string, expi
 	return &result, nil
 }
 
-func (m *Minio) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
+func (m *Minio) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
 	if err := m.initMinio(ctx); err != nil {
-		return "", err
+		return nil, err
 	}
 	rawURL, err := m.sign.PresignedPutObject(ctx, m.bucket, name, expire)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if m.prefix != "" {
 		rawURL.Path = path.Join(m.prefix, rawURL.Path)
 	}
-	return rawURL.String(), nil
+	return &s3.PresignedPutResult{URL: rawURL.String()}, nil
 }
 
 func (m *Minio) DeleteObject(ctx context.Context, name string) error {
