@@ -24,6 +24,7 @@ var (
 	AdaptiveErrorCodeLevel = map[int]int{
 		errs.ErrInternalServer.Code(): LevelError,
 	}
+	DisableAsync = false
 )
 
 type LogFormatter interface {
@@ -175,6 +176,13 @@ func CInfo(ctx context.Context, msg string, keysAndValues ...any) {
 	osStdout.Info(ctx, msg, keysAndValues...)
 }
 
+func Flush() {
+	if pkgLogger == nil {
+		return
+	}
+	pkgLogger.Flush()
+}
+
 type ZapLogger struct {
 	zap              *zap.SugaredLogger
 	level            zapcore.Level
@@ -280,6 +288,13 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 	writer, err := l.getWriter(logLocation, rotateCount)
 	if err != nil {
 		return nil, err
+	}
+	if isStdout == false && DisableAsync == false {
+		writer = &zapcore.BufferedWriteSyncer{
+			WS:            writer,
+			FlushInterval: time.Second * 2,
+			Size:          1024 * 512,
+		}
 	}
 	var cores []zapcore.Core
 	if logLocation != "" {
@@ -517,6 +532,12 @@ func (l *ZapLogger) WithCallDepth(depth int) Logger {
 	dup := *l
 	dup.zap = l.zap.WithOptions(zap.AddCallerSkip(depth))
 	return &dup
+}
+
+func (l *ZapLogger) Flush() {
+	if err := l.zap.Sync(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "failed to flush zap logger", err)
+	}
 }
 
 func appendError(keysAndValues []any, err error) []any {
