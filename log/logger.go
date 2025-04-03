@@ -48,4 +48,7 @@ type Logger interface {
 	// WithCallDepth returns a new Logger instance that adjusts the call depth for identifying
 	// the source of log messages. Useful in wrapper or middleware layers to maintain accurate log source information.
 	WithCallDepth(depth int) Logger
+
+	// Flush flushes any buffered log entries, ensuring that all logs are written out.
+	Flush()
 }
