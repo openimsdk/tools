@@ -198,19 +198,23 @@ func (o *OSS) AuthSign(ctx context.Context, uploadID string, name string, expire
 }
 
 func (o *OSS) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
-	var opts []oss.Option
+	var (
+		opts   []oss.Option
+		header http.Header
+	)
 	if opt != nil && opt.ContentType != "" {
 		opts = append(opts, oss.ContentType(opt.ContentType))
+		header = http.Header{
+			"Content-Type": []string{opt.ContentType},
+		}
 	}
 	rawURL, err := o.bucket.SignURL(name, http.MethodPut, int64(expire/time.Second), opts...)
 	if err != nil {
 		return nil, err
 	}
 	return &s3.PresignedPutResult{
-		URL: rawURL,
-		Header: http.Header{
-			"Content-Type": []string{opt.ContentType},
-		},
+		URL:    rawURL,
+		Header: header,
 	}, nil
 }
 
