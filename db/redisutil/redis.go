@@ -16,9 +16,11 @@ package redisutil
 
 import (
 	"context"
+	"crypto/tls"
 
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/mw/specialerror"
+	"github.com/openimsdk/tools/xtls"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -31,18 +33,27 @@ func init() {
 // Config defines the configuration parameters for a Redis client, including
 // options for both single-node and cluster mode connections.
 type Config struct {
-	ClusterMode bool     // Whether to use Redis in cluster mode.
-	Address     []string // List of Redis server addresses (host:port).
-	Username    string   // Username for Redis authentication (Redis 6 ACL).
-	Password    string   // Password for Redis authentication.
-	MaxRetry    int      // Maximum number of retries for a command.
-	DB          int      // Database number to connect to, for non-cluster mode.
-	PoolSize    int      // Number of connections to pool.
+	ClusterMode bool               // Whether to use Redis in cluster mode.
+	Address     []string           // List of Redis server addresses (host:port).
+	Username    string             // Username for Redis authentication (Redis 6 ACL).
+	Password    string             // Password for Redis authentication.
+	MaxRetry    int                // Maximum number of retries for a command.
+	DB          int                // Database number to connect to, for non-cluster mode.
+	PoolSize    int                // Number of connections to pool.
+	TLS         *xtls.ClientConfig // TLS configuration for secure connections.
 }
 
 func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient, error) {
 	if len(config.Address) == 0 {
 		return nil, errs.New("redis address is empty").Wrap()
+	}
+	var tlsConf *tls.Config
+	if config.TLS != nil {
+		var err error
+		tlsConf, err = config.TLS.ClientTLSConfig()
+		if err != nil {
+			return nil, errs.WrapMsg(err, "failed to get TLS config")
+		}
 	}
 	var cli redis.UniversalClient
 	if config.ClusterMode || len(config.Address) > 1 {
@@ -52,6 +63,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 			Password:   config.Password,
 			PoolSize:   config.PoolSize,
 			MaxRetries: config.MaxRetry,
+			TLSConfig:  tlsConf,
 		}
 		cli = redis.NewClusterClient(opt)
 	} else {
@@ -62,6 +74,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 			DB:         config.DB,
 			PoolSize:   config.PoolSize,
 			MaxRetries: config.MaxRetry,
+			TLSConfig:  tlsConf,
 		}
 		cli = redis.NewClient(opt)
 	}
