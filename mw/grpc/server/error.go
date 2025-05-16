@@ -3,11 +3,13 @@ package server
 import (
 	"context"
 	"errors"
-	"math"
 
+	"github.com/openimsdk/protocol/errinfo"
 	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -25,53 +27,71 @@ func GrpcServerErrorConvert() grpc.ServerOption {
 		if errors.As(err, &grpcErr) {
 			return
 		}
-		err = getErrData(err)
+		err = codeErrorToGrpcError(ctx, getCodeError(err))
 		return
 	})
 }
 
-func getErrData(err error) errs.CodeError {
-	var (
-		code        int
-		msg, detail string
-	)
-	codeErr := specialerror.ErrCode(err)
-	if codeErr != nil {
-		code = codeErr.Code()
-		msg = codeErr.Msg()
-		detail = codeErr.Detail()
-	} else {
-		code = errs.ServerInternalError
+func getCodeError(err error) errs.CodeError {
+	if codeErr := specialerror.ErrCode(err); codeErr != nil {
+		return codeErr
 	}
-	if code <= 0 || int64(code) > int64(math.MaxUint32) {
-		code = errs.ServerInternalError
-	}
+	return errs.NewCodeError(errs.ServerInternalError, err.Error())
+	//var (
+	//	code        int
+	//	msg, detail string
+	//)
+	//codeErr := specialerror.ErrCode(err)
+	//if codeErr != nil {
+	//	code = codeErr.Code()
+	//	msg = codeErr.Msg()
+	//	detail = codeErr.Detail()
+	//} else {
+	//	code = errs.ServerInternalError
+	//}
+	//if code <= 0 || int64(code) > int64(math.MaxUint32) {
+	//	code = errs.ServerInternalError
+	//}
+	//
+	//if msg == "" || detail == "" {
+	//	stringErr := specialerror.ErrString(err)
+	//	wrapErr := specialerror.ErrWrapper(err)
+	//
+	//	if stringErr != nil {
+	//		if msg == "" {
+	//			msg = stringErr.Error()
+	//		}
+	//	}
+	//
+	//	if wrapErr != nil {
+	//		if msg == "" {
+	//			msg = wrapErr.Error()
+	//		}
+	//		if detail == "" {
+	//			detail = wrapErr.Error()
+	//		}
+	//	}
+	//}
+	//if msg == "" {
+	//	msg = err.Error()
+	//}
+	//if detail == "" {
+	//	detail = msg
+	//}
+	//
+	//return errs.NewCodeError(code, msg).WithDetail(detail)
+}
 
-	if msg == "" || detail == "" {
-		stringErr := specialerror.ErrString(err)
-		wrapErr := specialerror.ErrWrapper(err)
-
-		if stringErr != nil {
-			if msg == "" {
-				msg = stringErr.Error()
-			}
+func codeErrorToGrpcError(ctx context.Context, codeErr errs.CodeError) error {
+	grpcStatus := status.New(codes.Code(codeErr.Code()), codeErr.Msg())
+	if detail := codeErr.Detail(); detail != "" {
+		errInfo := &errinfo.ErrorInfo{Cause: detail}
+		details, err := grpcStatus.WithDetails(errInfo)
+		if err == nil {
+			return details.Err()
+		} else {
+			log.ZError(ctx, "rpc server response WithDetails failed", err, "codeErr", codeErr)
 		}
-
-		if wrapErr != nil {
-			if msg == "" {
-				msg = wrapErr.Error()
-			}
-			if detail == "" {
-				detail = wrapErr.Error()
-			}
-		}
 	}
-	if msg == "" {
-		msg = err.Error()
-	}
-	if detail == "" {
-		detail = msg
-	}
-
-	return errs.NewCodeError(code, msg).WithDetail(detail)
+	return grpcStatus.Err()
 }

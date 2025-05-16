@@ -3,12 +3,14 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/openimsdk/protocol/errinfo"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -32,15 +34,21 @@ func GrpcClientErrorConvert() grpc.DialOption {
 			return errs.ErrInternalServer.WrapMsg(err.Error())
 		}
 		sta := grpcErr.GRPCStatus()
-		if sta.Code() == 0 {
-			log.ZError(ctx, "rpc client response failed GRPCStatus code is 0", err, "method", method, "req", req)
-			return errs.NewCodeError(errs.ServerInternalError, err.Error()).Wrap()
+		if sta.Code() == codes.Unavailable {
+			target := cc.Target()
+			if index := strings.LastIndex(target, "/"); index >= 0 {
+				target = target[index+1:]
+			}
+			msg := fmt.Sprintf("grpc service %s down, grpc message %s", target, sta.Message())
+			return errs.NewCodeError(errs.ServerInternalError, msg).Wrap()
+		}
+		if sta.Code() < 100 {
+			return errs.ErrInternalServer.WrapMsg(err.Error())
 		}
 		if details := sta.Details(); len(details) > 0 {
-			errInfo, ok := details[0].(*errinfo.ErrorInfo)
-			if ok {
-				s := strings.Join(errInfo.Warp, "->") + errInfo.Cause
-				return errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(s).Wrap()
+			if errInfo, ok := details[0].(*errinfo.ErrorInfo); ok {
+				detail := strings.Join(errInfo.Warp, "->") + errInfo.Cause
+				return errs.NewCodeError(int(sta.Code()), sta.Message()).WithDetail(detail).Wrap()
 			}
 		}
 		return errs.NewCodeError(int(sta.Code()), sta.Message()).Wrap()
