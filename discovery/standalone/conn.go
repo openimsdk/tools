@@ -2,7 +2,9 @@ package standalone
 
 import (
 	"context"
+	"time"
 
+	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,7 +27,14 @@ func (x *clientConn) Invoke(ctx context.Context, method string, args any, reply 
 	if err != nil {
 		return err
 	}
+	log.ZInfo(ctx, "standalone rpc server request", "method", method, "req", args)
+	start := time.Now()
 	resp, err := handler(ctx, args, nil)
+	if err == nil {
+		log.ZInfo(ctx, "standalone rpc server response success", "method", method, "cost", time.Since(start), "req", args, "resp", resp)
+	} else {
+		log.ZError(ctx, "standalone rpc server response error", err, "method", method, "cost", time.Since(start), "req", args)
+	}
 	if err != nil {
 		return err
 	}
