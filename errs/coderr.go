@@ -119,12 +119,16 @@ func (e *codeError) Error() string {
 func Unwrap(err error) error {
 	for err != nil {
 		unwrap, ok := err.(interface {
+			error
 			Unwrap() error
 		})
 		if !ok {
 			break
 		}
 		err = unwrap.Unwrap()
+		if err == nil {
+			return unwrap
+		}
 	}
 	return err
 }

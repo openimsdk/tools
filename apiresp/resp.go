@@ -80,12 +80,8 @@ func ParseError(err error) *ApiResponse {
 		return ApiSuccess(nil)
 	}
 	var codeErr errs.CodeError
-	if errors.As(err, &codeErr) {
-		//resp := ApiResponse{ErrCode: codeErr.Code(), ErrMsg: codeErr.Msg(), ErrDlt: codeErr.Detail()}
-		//if resp.ErrDlt == "" {
-		//	resp.ErrDlt = err.Error()
-		//}
-		return &ApiResponse{ErrCode: codeErr.Code(), ErrMsg: codeErr.Msg(), ErrDlt: codeErr.Detail()}
+	if !errors.As(err, &codeErr) {
+		codeErr = errs.ErrInternalServer.WithDetail(errs.Unwrap(err).Error())
 	}
-	return &ApiResponse{ErrCode: errs.ServerInternalError, ErrMsg: errs.Unwrap(err).Error()}
+	return &ApiResponse{ErrCode: codeErr.Code(), ErrMsg: codeErr.Msg(), ErrDlt: codeErr.Detail()}
 }

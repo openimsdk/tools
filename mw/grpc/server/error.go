@@ -36,7 +36,7 @@ func getCodeError(err error) errs.CodeError {
 	if codeErr := specialerror.ErrCode(err); codeErr != nil {
 		return codeErr
 	}
-	return errs.NewCodeError(errs.ServerInternalError, err.Error())
+	return errs.ErrInternalServer.WithDetail(errs.Unwrap(err).Error())
 	//var (
 	//	code        int
 	//	msg, detail string
