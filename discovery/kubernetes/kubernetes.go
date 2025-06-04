@@ -316,6 +316,10 @@ func (k *KubernetesConnManager) GetKey(ctx context.Context, key string) ([]byte,
 	return nil, discovery.ErrNotSupportedKeyValue
 }
 
+func (k *KubernetesConnManager) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupportedKeyValue
+}
+
 func (k *KubernetesConnManager) DelData(ctx context.Context, key string) error {
 	return discovery.ErrNotSupportedKeyValue
 }

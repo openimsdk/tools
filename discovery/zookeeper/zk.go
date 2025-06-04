@@ -208,6 +208,10 @@ func (s *ZkClient) GetKey(ctx context.Context, key string) ([]byte, error) {
 	return nil, discovery.ErrNotSupportedKeyValue
 }
 
+func (s *ZkClient) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupportedKeyValue
+}
+
 func (s *ZkClient) DelData(ctx context.Context, key string) error {
 	return discovery.ErrNotSupportedKeyValue
 }

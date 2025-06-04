@@ -38,6 +38,7 @@ type WatchKeyHandler func(data *WatchKey) error
 type KeyValue interface {
 	SetKey(ctx context.Context, key string, value []byte) error
 	GetKey(ctx context.Context, key string) ([]byte, error)
+	GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error)
 	WatchKey(ctx context.Context, key string, fn WatchKeyHandler) error
 }
 

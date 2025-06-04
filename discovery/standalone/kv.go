@@ -37,6 +37,10 @@ func (x *keyValue) GetKey(ctx context.Context, key string) ([]byte, error) {
 	return nil, nil
 }
 
+func (x *keyValue) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupportedKeyValue
+}
+
 func (x *keyValue) DelData(ctx context.Context, key string) error {
 	x.lock.Lock()
 	if x.kv != nil {
