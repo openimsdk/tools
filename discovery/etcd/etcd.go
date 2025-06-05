@@ -23,8 +23,8 @@ import (
 	gresolver "google.golang.org/grpc/resolver"
 )
 
-// ZkOption defines a function type for modifying clientv3.Config
-type ZkOption func(*clientv3.Config)
+// CfgOption defines a function type for modifying clientv3.Config
+type CfgOption func(*clientv3.Config)
 type addrConn struct {
 	conn        *grpc.ClientConn
 	addr        string
@@ -64,7 +64,7 @@ func createNoOpLogger() *zap.Logger {
 }
 
 // NewSvcDiscoveryRegistry creates a new service discovery registry implementation
-func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, watchNames []string, options ...ZkOption) (*SvcDiscoveryRegistryImpl, error) {
+func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, watchNames []string, options ...CfgOption) (*SvcDiscoveryRegistryImpl, error) {
 	cfg := clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
@@ -166,21 +166,21 @@ func (r *SvcDiscoveryRegistryImpl) initializeConnMap(opts ...grpc.DialOption) er
 }
 
 // WithDialTimeout sets a custom dial timeout for the etcd client
-func WithDialTimeout(timeout time.Duration) ZkOption {
+func WithDialTimeout(timeout time.Duration) CfgOption {
 	return func(cfg *clientv3.Config) {
 		cfg.DialTimeout = timeout
 	}
 }
 
 // WithMaxCallSendMsgSize sets a custom max call send message size for the etcd client
-func WithMaxCallSendMsgSize(size int) ZkOption {
+func WithMaxCallSendMsgSize(size int) CfgOption {
 	return func(cfg *clientv3.Config) {
 		cfg.MaxCallSendMsgSize = size
 	}
 }
 
 // WithUsernameAndPassword sets a username and password for the etcd client
-func WithUsernameAndPassword(username, password string) ZkOption {
+func WithUsernameAndPassword(username, password string) CfgOption {
 	return func(cfg *clientv3.Config) {
 		cfg.Username = username
 		cfg.Password = password
@@ -340,7 +340,7 @@ func (r *SvcDiscoveryRegistryImpl) Close() {
 }
 
 // Check verifies if etcd is running by checking the existence of the root node and optionally creates it with a lease
-func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfNotExist bool, options ...ZkOption) error {
+func Check(ctx context.Context, etcdServers []string, etcdRoot string, createIfNotExist bool, options ...CfgOption) error {
 	cfg := clientv3.Config{
 		Endpoints: etcdServers,
 	}
@@ -429,8 +429,35 @@ func (r *SvcDiscoveryRegistryImpl) SetKey(ctx context.Context, key string, data 
 	return nil
 }
 
+func (r *SvcDiscoveryRegistryImpl) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
+	leaseResp, err := r.client.Grant(ctx, ttl) //
+	if err != nil {
+		return errs.Wrap(err)
+	}
+
+	_, err = r.client.Put(context.TODO(), key, string(val), clientv3.WithLease(leaseResp.ID))
+	if err != nil {
+		return errs.Wrap(err)
+	}
+
+	go r.keepAliveLease(leaseResp.ID)
+
+	return nil
+}
+
 func (r *SvcDiscoveryRegistryImpl) GetKey(ctx context.Context, key string) ([]byte, error) {
 	resp, err := r.client.Get(ctx, key)
+	if err != nil {
+		return nil, errs.WrapMsg(err, "etcd get err")
+	}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+	return resp.Kvs[0].Value, nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+	resp, err := r.client.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, errs.WrapMsg(err, "etcd get err")
 	}

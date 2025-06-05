@@ -201,17 +201,25 @@ func (s *ZkClient) GetClientLocalConns() map[string][]grpc.ClientConnInterface {
 }
 
 func (s *ZkClient) SetKey(ctx context.Context, key string, data []byte) error {
-	return discovery.ErrNotSupportedKeyValue
+	return discovery.ErrNotSupported
+}
+
+func (s *ZkClient) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
+	return discovery.ErrNotSupported
 }
 
 func (s *ZkClient) GetKey(ctx context.Context, key string) ([]byte, error) {
-	return nil, discovery.ErrNotSupportedKeyValue
+	return nil, discovery.ErrNotSupported
+}
+
+func (s *ZkClient) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupported
 }
 
 func (s *ZkClient) DelData(ctx context.Context, key string) error {
-	return discovery.ErrNotSupportedKeyValue
+	return discovery.ErrNotSupported
 }
 
 func (s *ZkClient) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
-	return discovery.ErrNotSupportedKeyValue
+	return discovery.ErrNotSupported
 }

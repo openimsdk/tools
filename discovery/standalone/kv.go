@@ -24,6 +24,10 @@ func (x *keyValue) SetKey(ctx context.Context, key string, data []byte) error {
 	return nil
 }
 
+func (x *keyValue) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
+	return discovery.ErrNotSupported
+}
+
 func (x *keyValue) GetKey(ctx context.Context, key string) ([]byte, error) {
 	x.lock.RLock()
 	defer x.lock.RUnlock()
@@ -37,6 +41,10 @@ func (x *keyValue) GetKey(ctx context.Context, key string) ([]byte, error) {
 	return nil, nil
 }
 
+func (x *keyValue) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+	return nil, discovery.ErrNotSupported
+}
+
 func (x *keyValue) DelData(ctx context.Context, key string) error {
 	x.lock.Lock()
 	if x.kv != nil {
@@ -47,5 +55,5 @@ func (x *keyValue) DelData(ctx context.Context, key string) error {
 }
 
 func (x *keyValue) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
-	return discovery.ErrNotSupportedKeyValue
+	return discovery.ErrNotSupported
 }
