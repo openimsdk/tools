@@ -39,7 +39,7 @@ type KeyValue interface {
 	SetKey(ctx context.Context, key string, value []byte) error
 	SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error
 	GetKey(ctx context.Context, key string) ([]byte, error)
-	GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error)
+	GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error)
 	WatchKey(ctx context.Context, key string, fn WatchKeyHandler) error
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/utils/datautil"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
@@ -456,7 +457,7 @@ func (r *SvcDiscoveryRegistryImpl) GetKey(ctx context.Context, key string) ([]by
 	return resp.Kvs[0].Value, nil
 }
 
-func (r *SvcDiscoveryRegistryImpl) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+func (r *SvcDiscoveryRegistryImpl) GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error) {
 	resp, err := r.client.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, errs.WrapMsg(err, "etcd get err")
@@ -464,7 +465,7 @@ func (r *SvcDiscoveryRegistryImpl) GetKeyWithPrefix(ctx context.Context, key str
 	if len(resp.Kvs) == 0 {
 		return nil, nil
 	}
-	return resp.Kvs[0].Value, nil
+	return datautil.Batch(func(kv *mvccpb.KeyValue) []byte { return kv.Value }, resp.Kvs), nil
 }
 
 func (r *SvcDiscoveryRegistryImpl) DelData(ctx context.Context, key string) error {
