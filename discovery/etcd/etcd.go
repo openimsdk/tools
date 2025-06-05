@@ -429,6 +429,22 @@ func (r *SvcDiscoveryRegistryImpl) SetKey(ctx context.Context, key string, data 
 	return nil
 }
 
+func (r *SvcDiscoveryRegistryImpl) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
+	leaseResp, err := r.client.Grant(ctx, ttl) //
+	if err != nil {
+		return errs.Wrap(err)
+	}
+
+	_, err = r.client.Put(context.TODO(), key, string(val), clientv3.WithLease(leaseResp.ID))
+	if err != nil {
+		return errs.Wrap(err)
+	}
+
+	go r.keepAliveLease(leaseResp.ID)
+
+	return nil
+}
+
 func (r *SvcDiscoveryRegistryImpl) GetKey(ctx context.Context, key string) ([]byte, error) {
 	resp, err := r.client.Get(ctx, key)
 	if err != nil {

@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-var ErrNotSupportedKeyValue = errors.New("discovery data not supported key value")
+var ErrNotSupported = errors.New("discovery data not supported")
 
 type Conn interface {
 	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error)
@@ -37,6 +37,7 @@ type WatchKeyHandler func(data *WatchKey) error
 
 type KeyValue interface {
 	SetKey(ctx context.Context, key string, value []byte) error
+	SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error
 	GetKey(ctx context.Context, key string) ([]byte, error)
 	GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error)
 	WatchKey(ctx context.Context, key string, fn WatchKeyHandler) error
