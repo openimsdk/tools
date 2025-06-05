@@ -320,7 +320,7 @@ func (k *KubernetesConnManager) GetKey(ctx context.Context, key string) ([]byte,
 	return nil, discovery.ErrNotSupported
 }
 
-func (k *KubernetesConnManager) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+func (k *KubernetesConnManager) GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error) {
 	return nil, discovery.ErrNotSupported
 }
 

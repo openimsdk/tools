@@ -212,7 +212,7 @@ func (s *ZkClient) GetKey(ctx context.Context, key string) ([]byte, error) {
 	return nil, discovery.ErrNotSupported
 }
 
-func (s *ZkClient) GetKeyWithPrefix(ctx context.Context, key string) ([]byte, error) {
+func (s *ZkClient) GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error) {
 	return nil, discovery.ErrNotSupported
 }
 
