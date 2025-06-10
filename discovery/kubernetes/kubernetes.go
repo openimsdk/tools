@@ -185,13 +185,20 @@ func (k *KubernetesConnManager) GetSelfConnTarget() string {
 			return ""
 		}
 
-		var selfPort int32
+		var (
+			selfPort, elsePort int32
+		)
 
 		for _, port := range pod.Spec.Containers[0].Ports {
 			if port.Name == GRPCName {
 				selfPort = port.ContainerPort
 				break
+			} else {
+				elsePort = port.ContainerPort
 			}
+		}
+		if selfPort == 0 {
+			selfPort = elsePort
 		}
 
 		k.selfTarget = fmt.Sprintf("%s:%d", pod.Status.PodIP, selfPort)
