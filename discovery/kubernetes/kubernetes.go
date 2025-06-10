@@ -172,13 +172,17 @@ func (k *KubernetesConnManager) GetSelfConnTarget() string {
 			log.ZWarn(ctx, "failed to get pod", err, "selfTarget", hostName)
 		}
 
-		for pod.Status.PodIP == "" {
+		for i := 0; i < 5; i++ {
 			pod, err = k.clientset.CoreV1().Pods(k.namespace).Get(ctx, hostName, metav1.GetOptions{})
-			if err != nil {
-				log.ZWarn(ctx, "Error getting pod", err)
+			if err == nil {
+				break
 			}
 
 			time.Sleep(3 * time.Second)
+		}
+		if err != nil {
+			log.ZWarn(ctx, "Error getting pod", err, "hostName", hostName)
+			return ""
 		}
 
 		var selfPort int32
