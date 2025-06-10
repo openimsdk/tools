@@ -4,21 +4,26 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+)
+
+const (
+	GRPCName = "grpc"
 )
 
 type KubernetesConnManager struct {
@@ -63,7 +68,6 @@ func (k *KubernetesConnManager) initializeConns(serviceName string, opts ...grpc
 	if err != nil {
 		return errs.Wrap(err)
 	}
-
 	endpoints, err := k.clientset.CoreV1().Endpoints(k.namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
 	if err != nil {
 		return errs.WrapMsg(err, "failed to get endpoints", "serviceName", serviceName)
@@ -160,17 +164,18 @@ func (k *KubernetesConnManager) GetConn(ctx context.Context, serviceName string,
 // GetSelfConnTarget returns the connection target for the current service.
 func (k *KubernetesConnManager) GetSelfConnTarget() string {
 	if k.selfTarget == "" {
+		ctx := context.TODO()
 		hostName := os.Getenv("HOSTNAME")
 
-		pod, err := k.clientset.CoreV1().Pods(k.namespace).Get(context.Background(), hostName, metav1.GetOptions{})
+		pod, err := k.clientset.CoreV1().Pods(k.namespace).Get(ctx, hostName, metav1.GetOptions{})
 		if err != nil {
-			log.Printf("failed to get pod %s: %v \n", hostName, err)
+			log.ZWarn(ctx, "failed to get pod", err, "selfTarget", hostName)
 		}
 
 		for pod.Status.PodIP == "" {
-			pod, err = k.clientset.CoreV1().Pods(k.namespace).Get(context.TODO(), hostName, metav1.GetOptions{})
+			pod, err = k.clientset.CoreV1().Pods(k.namespace).Get(ctx, hostName, metav1.GetOptions{})
 			if err != nil {
-				log.Printf("Error getting pod: %v \n", err)
+				log.ZWarn(ctx, "Error getting pod", err)
 			}
 
 			time.Sleep(3 * time.Second)
@@ -179,7 +184,7 @@ func (k *KubernetesConnManager) GetSelfConnTarget() string {
 		var selfPort int32
 
 		for _, port := range pod.Spec.Containers[0].Ports {
-			if port.ContainerPort != 10001 {
+			if port.Name == GRPCName {
 				selfPort = port.ContainerPort
 				break
 			}
@@ -242,17 +247,15 @@ func (k *KubernetesConnManager) getServicePort(serviceName string) (int32, error
 
 	svc, err := k.clientset.CoreV1().Services(k.namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
 	if err != nil {
-		fmt.Print("namespace:", k.namespace)
+		if errors.IsNotFound(err) {
+			log.ZWarn(context.Background(), "service not found", err, "serviceName", serviceName)
+			return 0, nil
+		}
 		return 0, fmt.Errorf("failed to get service %s: %v", serviceName, err)
 	}
 
-	if len(svc.Spec.Ports) == 0 {
-		return 0, fmt.Errorf("service %s has no ports defined", serviceName)
-	}
-
 	for _, port := range svc.Spec.Ports {
-		// fmt.Println(serviceName, " Now Get Port:", port.Port)
-		if port.Port != 10001 {
+		if port.Name == GRPCName {
 			svcPort = port.Port
 			break
 		}
@@ -267,7 +270,7 @@ func (k *KubernetesConnManager) watchEndpoints() {
 	informer := informerFactory.Core().V1().Pods().Informer()
 
 	// Watch for Pod changes (add, update, delete)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			k.handleEndpointChange(obj)
 		},
@@ -290,7 +293,7 @@ func (k *KubernetesConnManager) handleEndpointChange(obj interface{}) {
 	}
 	serviceName := endpoint.Name
 	if err := k.initializeConns(serviceName); err != nil {
-		fmt.Printf("Error initializing connections for %s: %v\n", serviceName, err)
+		log.ZWarn(context.Background(), "Error initializing connections", err, "serviceName", serviceName)
 	}
 }
 
