@@ -41,12 +41,29 @@ type Config struct {
 	DB          int                // Database number to connect to, for non-cluster mode.
 	PoolSize    int                // Number of connections to pool.
 	TLS         *xtls.ClientConfig // TLS configuration for secure connections.
+	Sentinel    *Sentinel          // Sentinel configuration for high availability.
+}
+
+type Sentinel struct {
+	Enable        bool     `yaml:"enable"`
+	MasterName    string   `yaml:"masterName"`
+	SentinelAddrs []string `yaml:"sentinelsAddrs"`
 }
 
 func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient, error) {
 	if len(config.Address) == 0 {
 		return nil, errs.New("redis address is empty").Wrap()
 	}
+
+	if config.Sentinel != nil && config.Sentinel.Enable {
+		if config.Sentinel.MasterName == "" {
+			return nil, errs.New("sentinel master name is required").Wrap()
+		}
+		if len(config.Sentinel.SentinelAddrs) == 0 {
+			return nil, errs.New("sentinel addresses are required").Wrap()
+		}
+	}
+
 	var tlsConf *tls.Config
 	if config.TLS != nil {
 		var err error
@@ -56,7 +73,19 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 		}
 	}
 	var cli redis.UniversalClient
-	if config.ClusterMode || len(config.Address) > 1 {
+	if config.Sentinel != nil && config.Sentinel.Enable {
+		opt := &redis.FailoverOptions{
+			MasterName:    config.Sentinel.MasterName,
+			SentinelAddrs: config.Sentinel.SentinelAddrs,
+			Username:      config.Username,
+			Password:      config.Password,
+			DB:            config.DB,
+			PoolSize:      config.PoolSize,
+			MaxRetries:    config.MaxRetry,
+			TLSConfig:     tlsConf,
+		}
+		cli = redis.NewFailoverClient(opt)
+	} else if config.ClusterMode || len(config.Address) > 1 {
 		opt := &redis.ClusterOptions{
 			Addrs:      config.Address,
 			Username:   config.Username,
