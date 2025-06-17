@@ -323,8 +323,10 @@ func (k *ConnManager) handleEndpointChange(obj interface{}) {
 		return
 	}
 	serviceName := endpoint.Name
-	if err := k.initializeConns(serviceName); err != nil {
-		log.ZWarn(context.Background(), "Error initializing connections", err, "serviceName", serviceName)
+	if datautil.Contain(serviceName, k.watchNames...) {
+		if err := k.initializeConns(serviceName); err != nil {
+			log.ZWarn(context.Background(), "Error initializing connections", err, "serviceName", serviceName)
+		}
 	}
 }
 
