@@ -196,12 +196,14 @@ func (r *SvcDiscoveryRegistryImpl) GetUserIdHashGatewayHost(ctx context.Context,
 // GetConns returns gRPC client connections for a given service name
 func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
 	fullServiceKey := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
+	r.mu.RLock()
 	if len(r.connMap) == 0 {
+		r.mu.RUnlock()
 		if err := r.initializeConnMap(opts...); err != nil {
 			return nil, err
 		}
+		r.mu.RLock()
 	}
-	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return datautil.Batch(func(t *addrConn) grpc.ClientConnInterface { return t.conn }, r.connMap[fullServiceKey]), nil
 }

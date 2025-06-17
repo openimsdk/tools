@@ -3,7 +3,6 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"sync"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
+	"github.com/openimsdk/tools/utils/datautil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/api/core/v1"
@@ -26,20 +26,28 @@ const (
 	GRPCName = "grpc"
 )
 
-type KubernetesConnManager struct {
+type addrConn struct {
+	conn        *grpc.ClientConn
+	addr        string
+	isConnected bool
+}
+
+type ConnManager struct {
 	clientset   *kubernetes.Clientset
 	namespace   string
 	dialOptions []grpc.DialOption
 
-	rpcTargets map[string]string
 	selfTarget string
 
-	mu      sync.RWMutex
-	connMap map[string][]grpc.ClientConnInterface
+	// watchNames denotes the service names for which notifications may need to be sent to all nodes (pods),
+	// and maintains a separate list of direct connections to pods that bypass the Service.
+	watchNames []string
+	connsMu    sync.RWMutex
+	connsMap   map[string][]*addrConn
 }
 
-// NewKubernetesConnManager creates a new connection manager that uses Kubernetes services for service discovery.
-func NewKubernetesConnManager(namespace string, options ...grpc.DialOption) (*KubernetesConnManager, error) {
+// NewConnManager creates a new connection manager that uses Kubernetes services for service discovery.
+func NewConnManager(namespace string, watchNames []string, options ...grpc.DialOption) (*ConnManager, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, errs.WrapMsg(err, "failed to create in-cluster config:")
@@ -51,11 +59,12 @@ func NewKubernetesConnManager(namespace string, options ...grpc.DialOption) (*Ku
 
 	}
 
-	k := &KubernetesConnManager{
+	k := &ConnManager{
 		clientset:   clientset,
 		namespace:   namespace,
 		dialOptions: options,
-		connMap:     make(map[string][]grpc.ClientConnInterface),
+		watchNames:  watchNames,
+		connsMap:    make(map[string][]*addrConn),
 	}
 
 	go k.watchEndpoints()
@@ -63,97 +72,107 @@ func NewKubernetesConnManager(namespace string, options ...grpc.DialOption) (*Ku
 	return k, nil
 }
 
-func (k *KubernetesConnManager) initializeConns(serviceName string, opts ...grpc.DialOption) error {
-	port, err := k.getServicePort(serviceName)
-	if err != nil {
-		return errs.Wrap(err)
-	}
-	endpoints, err := k.clientset.CoreV1().Endpoints(k.namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
-	if err != nil {
-		return errs.WrapMsg(err, "failed to get endpoints", "serviceName", serviceName)
+func (k *ConnManager) buildTarget(serviceName string, svcPort int32) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, k.namespace, svcPort)
+}
+
+func (k *ConnManager) initializeConns(serviceName string, opts ...grpc.DialOption) error {
+	k.connsMu.Lock()
+	defer k.connsMu.Unlock()
+
+	// 1. take a snapshot of old connections
+	oldList := k.connsMap[serviceName]
+	addrMap := make(map[string]*addrConn, len(oldList))
+	for _, ac := range oldList {
+		addrMap[ac.addr] = ac
 	}
 
-	// fmt.Println("Endpoints:", endpoints, "endpoints.Subsets:", endpoints.Subsets)
+	// 2. fetch all Endpoints for this Service
+	eps, err := k.clientset.CoreV1().
+		Endpoints(k.namespace).
+		Get(context.Background(), serviceName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get endpoints for %q: %w", serviceName, err)
+	}
 
-	var conns []grpc.ClientConnInterface
-	for _, subset := range endpoints.Subsets {
+	// 3. rebuild connection list
+	var newList []*addrConn
+	for _, subset := range eps.Subsets {
 		for _, address := range subset.Addresses {
-			target := fmt.Sprintf("%s:%d", address.IP, port)
-			// fmt.Println("IP target:", target)
+			for _, port := range subset.Ports {
+				if port.Name != GRPCName {
+					continue
+				}
+				addr := fmt.Sprintf("%s:%d", address.IP, port.Port)
 
-			dialOpts := append(append(k.dialOptions, opts...),
-				grpc.WithTransportCredentials(insecure.NewCredentials()))
+				// reuse existing if present
+				if ac, ok := addrMap[addr]; ok {
+					ac.isConnected = true
+					continue
+				}
 
-			err := k.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
-			if err != nil {
-				return errs.WrapMsg(err, "checkOpts is failed")
+				// dial a brand-new connection
+				dialOpts := append(append(k.dialOptions, opts...), grpc.WithTransportCredentials(insecure.NewCredentials()))
+				if err := k.checkOpts(dialOpts...); err != nil {
+					return fmt.Errorf("checkOpts failed for %q: %w", addr, err)
+				}
+				conn, err := grpc.DialContext(context.Background(), addr, dialOpts...)
+				if err != nil {
+					// skip unreachable endpoints
+					continue
+				}
+				newList = append(newList, &addrConn{conn: conn, addr: addr, isConnected: false})
 			}
-
-			conn, err := grpc.DialContext(context.Background(), target,
-				dialOpts...)
-			if err != nil {
-				return errs.WrapMsg(err, "failed to dial endpoint", "target", target)
-			}
-			conns = append(conns, conn)
 		}
 	}
 
-	k.mu.Lock()
-	k.connMap[serviceName] = conns
-	k.mu.Unlock()
+	// 4. close any old connections that weren’t reused
+	for _, conn := range oldList {
+		if conn.isConnected {
+			conn.isConnected = false
+			newList = append(newList, conn)
+			continue
+		}
+		if err = conn.conn.Close(); err != nil {
+			log.ZWarn(context.TODO(), "close conn err", err)
+		}
+	}
 
+	// 5. replace map entry
+	k.connsMap[serviceName] = newList
 	return nil
 }
 
 // GetConns returns gRPC client connections for a given Kubernetes service name.
-func (k *KubernetesConnManager) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
-	k.mu.RLock()
-
-	conns, exists := k.connMap[serviceName]
-	k.mu.RUnlock()
-	if exists {
-		return conns, nil
+func (k *ConnManager) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
+	k.connsMu.RLock()
+	if len(k.connsMap) == 0 {
+		k.connsMu.RUnlock()
+		if err := k.initializeConns(serviceName, opts...); err != nil {
+			return nil, err
+		}
+		k.connsMu.RLock()
 	}
+	defer k.connsMu.RUnlock()
 
-	k.mu.Lock()
-	// Check if another goroutine has already initialized the connections when we released the read lock
-	conns, exists = k.connMap[serviceName]
-	if exists {
-		return conns, nil
-	}
-	k.mu.Unlock()
+	return datautil.Batch(func(t *addrConn) grpc.ClientConnInterface { return t.conn }, k.connsMap[serviceName]), nil
 
-	if err := k.initializeConns(serviceName, opts...); err != nil {
-
-		return nil, errs.WrapMsg(err, "Failed to initialize connections for service", "serviceName", serviceName)
-	}
-
-	return k.connMap[serviceName], nil
 }
 
 // GetConn returns a single gRPC client connection for a given Kubernetes service name.
-func (k *KubernetesConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
-	var target string
+func (k *ConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
 
-	if k.rpcTargets[serviceName] == "" {
-		var err error
-
-		svcPort, err := k.getServicePort(serviceName)
-		if err != nil {
-			return nil, err
-		}
-
-		target = fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, k.namespace, svcPort)
-
-		// fmt.Println("SVC target:", target)
-	} else {
-		target = k.rpcTargets[serviceName]
+	svcPort, err := k.getServicePort(serviceName)
+	if err != nil {
+		return nil, err
 	}
+
+	target := k.buildTarget(serviceName, svcPort)
 
 	dialOpts := append(append(k.dialOptions, opts...),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	err := k.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
+	err = k.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
 	if err != nil {
 		return nil, errs.WrapMsg(err, "checkOpts is failed")
 	}
@@ -162,7 +181,7 @@ func (k *KubernetesConnManager) GetConn(ctx context.Context, serviceName string,
 }
 
 // GetSelfConnTarget returns the connection target for the current service.
-func (k *KubernetesConnManager) GetSelfConnTarget() string {
+func (k *ConnManager) GetSelfConnTarget() string {
 	if k.selfTarget == "" {
 		ctx := context.TODO()
 		hostName := os.Getenv("HOSTNAME")
@@ -189,6 +208,8 @@ func (k *KubernetesConnManager) GetSelfConnTarget() string {
 			selfPort, elsePort int32
 		)
 
+		log.ZDebug(ctx, "getSelfPods containers length", len(pod.Spec.Containers), "hostname", hostName)
+
 		for _, port := range pod.Spec.Containers[0].Ports {
 			if port.Name == GRPCName {
 				selfPort = port.ContainerPort
@@ -196,64 +217,63 @@ func (k *KubernetesConnManager) GetSelfConnTarget() string {
 			} else {
 				elsePort = port.ContainerPort
 			}
+			log.ZDebug(ctx, "getSelfPods port", port.ContainerPort)
 		}
 		if selfPort == 0 {
 			selfPort = elsePort
 		}
 
 		k.selfTarget = fmt.Sprintf("%s:%d", pod.Status.PodIP, selfPort)
+		log.ZDebug(ctx, "getSelfPods selfTarget", k.selfTarget)
 	}
 
 	return k.selfTarget
 }
 
-func (k *KubernetesConnManager) IsSelfNode(cc grpc.ClientConnInterface) bool {
+func (k *ConnManager) IsSelfNode(cc grpc.ClientConnInterface) bool {
 	cli, ok := cc.(*grpc.ClientConn)
+	ctx := context.TODO()
+	log.ZDebug(ctx, "isSelfNode ok", ok)
 	if !ok {
 		return false
 	}
+	log.ZDebug(ctx, "isSelfNode target", cli.Target())
 	return k.GetSelfConnTarget() == cli.Target()
 }
 
 // AddOption appends gRPC dial options to the existing options.
-func (k *KubernetesConnManager) AddOption(opts ...grpc.DialOption) {
-	k.mu.Lock()
-	defer k.mu.Unlock()
+func (k *ConnManager) AddOption(opts ...grpc.DialOption) {
+	k.connsMu.Lock()
+	defer k.connsMu.Unlock()
+	k.resetConnMap()
 	k.dialOptions = append(k.dialOptions, opts...)
 }
 
 // CloseConn closes a given gRPC client connection.
-//func (k *KubernetesConnManager) CloseConn(conn *grpc.ClientConn) {
+//func (k *ConnManager) CloseConn(conn *grpc.ClientConn) {
 //	conn.Close()
 //}
 
-// Close closes all gRPC connections managed by KubernetesConnManager.
-func (k *KubernetesConnManager) Close() {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	for _, conns := range k.connMap {
-		for _, conn := range conns {
-			if closer, ok := conn.(io.Closer); ok {
-				_ = closer.Close()
-			}
-		}
-	}
-	k.connMap = make(map[string][]grpc.ClientConnInterface)
+// Close closes all gRPC connections managed by ConnManager.
+func (k *ConnManager) Close() {
+	k.connsMu.Lock()
+	defer k.connsMu.Unlock()
+	k.resetConnMap()
 }
 
-func (k *KubernetesConnManager) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
+func (k *ConnManager) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
 	return nil
 }
 
-func (k *KubernetesConnManager) UnRegister() error {
+func (k *ConnManager) UnRegister() error {
 	return nil
 }
 
-func (k *KubernetesConnManager) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
+func (k *ConnManager) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
 	return "", nil
 }
 
-func (k *KubernetesConnManager) getServicePort(serviceName string) (int32, error) {
+func (k *ConnManager) getServicePort(serviceName string) (int32, error) {
 	var svcPort int32
 
 	svc, err := k.clientset.CoreV1().Services(k.namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
@@ -276,7 +296,7 @@ func (k *KubernetesConnManager) getServicePort(serviceName string) (int32, error
 }
 
 // watchEndpoints listens for changes in Pod resources.
-func (k *KubernetesConnManager) watchEndpoints() {
+func (k *ConnManager) watchEndpoints() {
 	informerFactory := informers.NewSharedInformerFactory(k.clientset, time.Minute*10)
 	informer := informerFactory.Core().V1().Pods().Informer()
 
@@ -297,7 +317,7 @@ func (k *KubernetesConnManager) watchEndpoints() {
 	<-context.Background().Done() // Block forever
 }
 
-func (k *KubernetesConnManager) handleEndpointChange(obj interface{}) {
+func (k *ConnManager) handleEndpointChange(obj interface{}) {
 	endpoint, ok := obj.(*v1.Endpoints)
 	if !ok {
 		return
@@ -308,7 +328,7 @@ func (k *KubernetesConnManager) handleEndpointChange(obj interface{}) {
 	}
 }
 
-func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
+func (k *ConnManager) checkOpts(opts ...grpc.DialOption) error {
 	// mwOpt := mw.GrpcClient()
 
 	// for _, opt := range opts {
@@ -322,26 +342,38 @@ func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
 	return nil
 }
 
-func (k *KubernetesConnManager) SetKey(ctx context.Context, key string, data []byte) error {
+func (k *ConnManager) SetKey(ctx context.Context, key string, data []byte) error {
 	return discovery.ErrNotSupported
 }
 
-func (k *KubernetesConnManager) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
+func (k *ConnManager) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
 	return discovery.ErrNotSupported
 }
 
-func (k *KubernetesConnManager) GetKey(ctx context.Context, key string) ([]byte, error) {
+func (k *ConnManager) GetKey(ctx context.Context, key string) ([]byte, error) {
 	return nil, discovery.ErrNotSupported
 }
 
-func (k *KubernetesConnManager) GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error) {
+func (k *ConnManager) GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error) {
 	return nil, discovery.ErrNotSupported
 }
 
-func (k *KubernetesConnManager) DelData(ctx context.Context, key string) error {
+func (k *ConnManager) DelData(ctx context.Context, key string) error {
 	return discovery.ErrNotSupported
 }
 
-func (k *KubernetesConnManager) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
+func (k *ConnManager) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
 	return discovery.ErrNotSupported
+}
+
+func (k *ConnManager) resetConnMap() {
+	ctx := context.Background()
+	for _, conn := range k.connsMap {
+		for _, c := range conn {
+			if err := c.conn.Close(); err != nil {
+				log.ZWarn(ctx, "failed to close conn", err)
+			}
+		}
+	}
+	k.connsMap = make(map[string][]*addrConn)
 }
