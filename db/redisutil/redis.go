@@ -52,8 +52,10 @@ type Config struct {
 }
 
 type Sentinel struct {
-	MasterName    string   `yaml:"masterName"`
-	SentinelAddrs []string `yaml:"sentinelsAddrs"`
+	MasterName     string   `yaml:"masterName"`
+	SentinelAddrs  []string `yaml:"sentinelsAddrs"`
+	RouteByLatency bool     `yaml:"routeByLatency"` // Route by latency if true.
+	RouteRandomly  bool     `yaml:"routeRandomly"`  // Route randomly if true.
 }
 
 func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient, error) {
@@ -81,18 +83,22 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 	var cli redis.UniversalClient
 	if config.Sentinel != nil && config.RedisMode == SentinelMode {
 		opt := &redis.FailoverOptions{
-			MasterName:    config.Sentinel.MasterName,
-			SentinelAddrs: config.Sentinel.SentinelAddrs,
-			Username:      config.Username,
-			Password:      config.Password,
-			DB:            config.DB,
-			PoolSize:      config.PoolSize,
-			MaxRetries:    config.MaxRetry,
-			RouteByLatency: true,
-			RouteRandomly:  true,
-			TLSConfig:     tlsConf,
+			MasterName:     config.Sentinel.MasterName,
+			SentinelAddrs:  config.Sentinel.SentinelAddrs,
+			Username:       config.Username,
+			Password:       config.Password,
+			DB:             config.DB,
+			PoolSize:       config.PoolSize,
+			MaxRetries:     config.MaxRetry,
+			RouteByLatency: config.Sentinel.RouteByLatency,
+			RouteRandomly:  config.Sentinel.RouteRandomly,
+			TLSConfig:      tlsConf,
 		}
-		cli = redis.NewFailoverClient(opt)
+		if opt.RouteByLatency || opt.RouteRandomly {
+			cli = redis.NewFailoverClusterClient(opt)
+		} else {
+			cli = redis.NewFailoverClient(opt)
+		}
 	} else if config.RedisMode == ClusterMode && len(config.Address) > 1 {
 		opt := &redis.ClusterOptions{
 			Addrs:      config.Address,
