@@ -30,22 +30,28 @@ func init() {
 	}
 }
 
+// RedisMode
+const (
+	ClusterMode    = "cluster"    // Cluster mode for Redis.
+	SentinelMode   = "sentinel"   // Sentinel mode for Redis.
+	StandaloneMode = "standalone" // Standalone mode for Redis.
+)
+
 // Config defines the configuration parameters for a Redis client, including
 // options for both single-node and cluster mode connections.
 type Config struct {
-	ClusterMode bool               // Whether to use Redis in cluster mode.
-	Address     []string           // List of Redis server addresses (host:port).
-	Username    string             // Username for Redis authentication (Redis 6 ACL).
-	Password    string             // Password for Redis authentication.
-	MaxRetry    int                // Maximum number of retries for a command.
-	DB          int                // Database number to connect to, for non-cluster mode.
-	PoolSize    int                // Number of connections to pool.
-	TLS         *xtls.ClientConfig // TLS configuration for secure connections.
-	Sentinel    *Sentinel          // Sentinel configuration for high availability.
+	RedisMode string             // RedisMode can be "cluster", "sentinel", or "standalone".
+	Address   []string           // List of Redis server addresses (host:port).
+	Username  string             // Username for Redis authentication (Redis 6 ACL).
+	Password  string             // Password for Redis authentication.
+	MaxRetry  int                // Maximum number of retries for a command.
+	DB        int                // Database number to connect to, for non-cluster mode.
+	PoolSize  int                // Number of connections to pool.
+	TLS       *xtls.ClientConfig // TLS configuration for secure connections.
+	Sentinel  *Sentinel          // Sentinel configuration for high availability.
 }
 
 type Sentinel struct {
-	Enable        bool     `yaml:"enable"`
 	MasterName    string   `yaml:"masterName"`
 	SentinelAddrs []string `yaml:"sentinelsAddrs"`
 }
@@ -55,7 +61,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 		return nil, errs.New("redis address is empty").Wrap()
 	}
 
-	if config.Sentinel != nil && config.Sentinel.Enable {
+	if config.RedisMode == SentinelMode && config.Sentinel != nil {
 		if config.Sentinel.MasterName == "" {
 			return nil, errs.New("sentinel master name is required").Wrap()
 		}
@@ -73,7 +79,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 		}
 	}
 	var cli redis.UniversalClient
-	if config.Sentinel != nil && config.Sentinel.Enable {
+	if config.Sentinel != nil && config.RedisMode == SentinelMode {
 		opt := &redis.FailoverOptions{
 			MasterName:    config.Sentinel.MasterName,
 			SentinelAddrs: config.Sentinel.SentinelAddrs,
@@ -82,10 +88,12 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 			DB:            config.DB,
 			PoolSize:      config.PoolSize,
 			MaxRetries:    config.MaxRetry,
+			RouteByLatency: true,
+			RouteRandomly:  true,
 			TLSConfig:     tlsConf,
 		}
 		cli = redis.NewFailoverClient(opt)
-	} else if config.ClusterMode || len(config.Address) > 1 {
+	} else if config.RedisMode == ClusterMode && len(config.Address) > 1 {
 		opt := &redis.ClusterOptions{
 			Addrs:      config.Address,
 			Username:   config.Username,
@@ -108,7 +116,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 		cli = redis.NewClient(opt)
 	}
 	if err := cli.Ping(ctx).Err(); err != nil {
-		return nil, errs.WrapMsg(err, "Redis Ping failed", "Address", config.Address, "Username", config.Username, "ClusterMode", config.ClusterMode)
+		return nil, errs.WrapMsg(err, "Redis Ping failed", "Address", config.Address, "Username", config.Username, "RedisMode", config.RedisMode)
 	}
 	return cli, nil
 }
