@@ -52,10 +52,10 @@ type Config struct {
 }
 
 type Sentinel struct {
-	MasterName     string   `yaml:"masterName"`
-	SentinelAddrs  []string `yaml:"sentinelsAddrs"`
-	RouteByLatency bool     `yaml:"routeByLatency"` // Route by latency if true.
-	RouteRandomly  bool     `yaml:"routeRandomly"`  // Route randomly if true.
+	MasterName     string   `json:"masterName" yaml:"masterName" config:"allowempty"`
+	SentinelAddrs  []string `json:"sentinelAddrs" yaml:"sentinelAddrs" config:"allowempty"`
+	RouteByLatency bool     `json:"routeByLatency" yaml:"routeByLatency" config:"allowempty"` // Route by latency if true.
+	RouteRandomly  bool     `json:"routeRandomly" yaml:"routeRandomly" config:"allowempty"`   // Route randomly if true.
 }
 
 func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient, error) {

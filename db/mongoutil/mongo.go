@@ -77,28 +77,28 @@ type Config struct {
 	MaxRetry    int
 	MongoMode   string // "replicaSet" or "standalone"
 
-	ReplicaSet     *ReplicaSetConfig   `json:"replicaSet,omitempty"`
-	ReadPreference *ReadPrefConfig     `json:"readPreference,omitempty"`
-	WriteConcern   *WriteConcernConfig `json:"writeConcern,omitempty"`
+	ReplicaSet     *ReplicaSetConfig  
+	ReadPreference *ReadPrefConfig    
+	WriteConcern   *WriteConcernConfig 
 }
 
 type ReplicaSetConfig struct {
-	Name         string        `json:"name"`         // Replica set name
-	Hosts        []string      `json:"hosts"`        // Replica set host list
-	ReadConcern  string        `json:"readConcern"`  // Read concern level: local, available, majority, linearizable, snapshot
-	MaxStaleness time.Duration `json:"maxStaleness"` // Maximum staleness time
+	Name         string        `json:"name" yaml:"name" config:"allowempty"`                 // Replica set name
+	Hosts        []string      `json:"hosts" yaml:"hosts" config:"allowempty"`               // Replica set host list
+	ReadConcern  string        `json:"readConcern" yaml:"readConcern" config:"allowempty"`   // Read concern level: local, available, majority, linearizable, snapshot
+	MaxStaleness time.Duration `json:"maxStaleness" yaml:"maxStaleness" config:"allowempty"` // Maximum staleness time
 }
 
 type ReadPrefConfig struct {
-	Mode         string              `json:"mode"`         // primary, secondary, secondaryPreferred, nearest
-	TagSets      []map[string]string `json:"tagSets"`      // Tag sets
-	MaxStaleness time.Duration       `json:"maxStaleness"` // Maximum staleness time
+	Mode         string              `json:"mode" yaml:"mode" config:"allowempty"`                 // primary, secondary, secondaryPreferred, nearest
+	TagSets      []map[string]string `json:"tagSets" yaml:"tagSets" config:"allowempty"`           // Tag sets
+	MaxStaleness time.Duration       `json:"maxStaleness" yaml:"maxStaleness" config:"allowempty"` // Maximum staleness time
 }
 
 type WriteConcernConfig struct {
-	W        any           `json:"w"`        // Write node count or tag (int, "majority", or custom tag)
-	J        bool          `json:"j"`        // Whether to wait for journal confirmation
-	WTimeout time.Duration `json:"wtimeout"` // Write timeout duration
+	W        any           `json:"w" yaml:"w" config:"allowempty"`               // Write node count or tag (int, "majority", or custom tag)
+	J        bool          `json:"j" yaml:"j" config:"allowempty"`               // Whether to wait for journal confirmation
+	WTimeout time.Duration `json:"wtimeout" yaml:"wtimeout" config:"allowempty"` // Write timeout duration
 }
 
 type Client struct {
