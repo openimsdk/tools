@@ -18,31 +18,20 @@ import (
 	"context"
 
 	"github.com/openimsdk/tools/errs"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // CheckMongo tests the MongoDB connection without retries.
 func Check(ctx context.Context, config *Config) error {
-	if err := config.ValidateAndSetDefaults(); err != nil {
-		return err
-	}
-
-	clientOpts := options.Client().ApplyURI(config.Uri)
-	mongoClient, err := mongo.Connect(ctx, clientOpts)
+	client, err := NewMongoDB(ctx, config)
 	if err != nil {
-		return errs.WrapMsg(err, "MongoDB connect failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
+		return errs.WrapMsg(err, "MongoDB connection test failed")
 	}
 
 	defer func() {
-		if err := mongoClient.Disconnect(ctx); err != nil {
-			_ = mongoClient.Disconnect(ctx)
+		if client != nil && client.db != nil {
+			client.db.Client().Disconnect(ctx)
 		}
 	}()
-
-	if err = mongoClient.Ping(ctx, nil); err != nil {
-		return errs.WrapMsg(err, "MongoDB ping failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
-	}
 
 	return nil
 }
