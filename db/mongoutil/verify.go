@@ -24,7 +24,11 @@ import (
 func Check(ctx context.Context, config *Config) error {
 	client, err := NewMongoDB(ctx, config)
 	if err != nil {
-		return errs.WrapMsg(err, "MongoDB connection test failed")
+		if config.MongoMode == ReplicaSetMode {
+			return errs.WrapMsg(err, "failed to connect to MongoDB replica set", "config", config)
+		} else {
+			return errs.WrapMsg(err, "MongoDB connect failed", "URI", config.Uri, "Database", config.Database, "MaxPoolSize", config.MaxPoolSize)
+		}
 	}
 
 	defer func() {
