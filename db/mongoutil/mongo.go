@@ -23,6 +23,40 @@ import (
 	"github.com/openimsdk/tools/mw/specialerror"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/tag"
+)
+
+// MongoMode
+const (
+	StandaloneMode = "standalone" // Standalone MongoDB mode
+	ReplicaSetMode = "replicaSet" // Replica set MongoDB mode
+)
+
+// ReadPreference
+const (
+	PrimaryMode            = "primary"            // Primary read preference mode
+	PrimaryPreferredMode   = "primaryPreferred"   // Primary preferred read preference mode
+	SecondaryMode          = "secondary"          // Secondary read preference mode
+	SecondaryPreferredMode = "secondaryPreferred" // Secondary preferred read preference mode
+	NearestMode            = "nearest"            // Nearest read preference mode
+)
+
+// WriteConcern
+const (
+	MajorityWriteConcern = "majority" // Majority write concern level
+	// JournalWriteConcern  = "journal"  // Journal write concern level
+)
+
+// ReadConcern levels
+const (
+	LocalReadConcern        = "local"        // Local read concern level
+	AvailableReadConcern    = "available"    // Available read concern level
+	MajorityReadConcern     = "majority"     // Majority read concern level
+	LinearizableReadConcern = "linearizable" // Linearizable read concern level
+	SnapshotReadConcern     = "snapshot"     // Snapshot read concern level
 )
 
 func init() {
@@ -41,6 +75,30 @@ type Config struct {
 	AuthSource  string
 	MaxPoolSize int
 	MaxRetry    int
+	MongoMode   string // "replicaSet" or "standalone"
+
+	ReplicaSet     *ReplicaSetConfig   `json:"replicaSet,omitempty"`
+	ReadPreference *ReadPrefConfig     `json:"readPreference,omitempty"`
+	WriteConcern   *WriteConcernConfig `json:"writeConcern,omitempty"`
+}
+
+type ReplicaSetConfig struct {
+	Name         string        `json:"name"`         // Replica set name
+	Hosts        []string      `json:"hosts"`        // Replica set host list
+	ReadConcern  string        `json:"readConcern"`  // Read concern level: local, available, majority, linearizable, snapshot
+	MaxStaleness time.Duration `json:"maxStaleness"` // Maximum staleness time
+}
+
+type ReadPrefConfig struct {
+	Mode         string              `json:"mode"`         // primary, secondary, secondaryPreferred, nearest
+	TagSets      []map[string]string `json:"tagSets"`      // Tag sets
+	MaxStaleness time.Duration       `json:"maxStaleness"` // Maximum staleness time
+}
+
+type WriteConcernConfig struct {
+	W        any           `json:"w"`        // Write node count or tag (int, "majority", or custom tag)
+	J        bool          `json:"j"`        // Whether to wait for journal confirmation
+	WTimeout time.Duration `json:"wtimeout"` // Write timeout duration
 }
 
 type Client struct {
@@ -61,12 +119,38 @@ func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 	if err := config.ValidateAndSetDefaults(); err != nil {
 		return nil, err
 	}
-	opts := options.Client().ApplyURI(config.Uri).SetMaxPoolSize(uint64(config.MaxPoolSize))
+
+	var opts *options.ClientOptions
+
+	if config.MongoMode == ReplicaSetMode {
+		if config.ReplicaSet == nil {
+			return nil, errs.New("replicaSet configuration required for replicaSet mode")
+		}
+		if config.ReplicaSet.Name == "" {
+			return nil, errs.New("replicaSet name required for replicaSet mode")
+		}
+		if len(config.ReplicaSet.Hosts) == 0 && len(config.Address) == 0 {
+			return nil, errs.New("replicaSet hosts or address required for replicaSet mode")
+		}
+	} else {
+		if config.Uri == "" && config.Address == nil {
+			return nil, errs.New("address required for standalone mode")
+		}
+	}
+
+	switch config.MongoMode {
+	case ReplicaSetMode:
+		opts = buildReplicaSetOptions(config)
+	case StandaloneMode:
+		opts = options.Client().ApplyURI(config.Uri).SetMaxPoolSize(uint64(config.MaxPoolSize))
+	}
+
 	var (
 		cli *mongo.Client
 		err error
 	)
-	for i := 0; i < config.MaxRetry; i++ {
+
+	for range config.MaxRetry {
 		cli, err = connectMongo(ctx, opts)
 		if err != nil && shouldRetry(ctx, err) {
 			time.Sleep(time.Second / 2)
@@ -85,6 +169,125 @@ func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 		tx: mtx,
 		db: cli.Database(config.Database),
 	}, nil
+}
+
+func buildReplicaSetOptions(config *Config) *options.ClientOptions {
+	opts := options.Client()
+
+	hosts := config.ReplicaSet.Hosts
+	if len(hosts) == 0 {
+		hosts = config.Address
+	}
+	opts.SetHosts(hosts)
+
+	opts.SetReplicaSet(config.ReplicaSet.Name)
+
+	if config.Username != "" && config.Password != "" {
+		credential := options.Credential{
+			Username:   config.Username,
+			Password:   config.Password,
+			AuthSource: config.AuthSource,
+		}
+		if credential.AuthSource == "" {
+			credential.AuthSource = config.Database
+		}
+		opts.SetAuth(credential)
+	}
+
+	if config.MaxPoolSize > 0 {
+		opts.SetMaxPoolSize(uint64(config.MaxPoolSize))
+	}
+
+	if config.ReadPreference != nil {
+		readPref := buildReadPreference(config.ReadPreference)
+		opts.SetReadPreference(readPref)
+	}
+
+	if config.WriteConcern != nil {
+		writeConcern := buildWriteConcern(config.WriteConcern)
+		opts.SetWriteConcern(writeConcern)
+	}
+
+	if config.ReplicaSet.ReadConcern != "" {
+		readConcern := buildReadConcern(config.ReplicaSet.ReadConcern)
+		opts.SetReadConcern(readConcern)
+	}
+
+	return opts
+}
+
+func buildReadPreference(config *ReadPrefConfig) *readpref.ReadPref {
+	var mode readpref.Mode
+	switch config.Mode {
+	case PrimaryMode:
+		mode = readpref.PrimaryMode
+	case PrimaryPreferredMode:
+		mode = readpref.PrimaryPreferredMode
+	case SecondaryMode:
+		mode = readpref.SecondaryMode
+	case SecondaryPreferredMode:
+		mode = readpref.SecondaryPreferredMode
+	case NearestMode:
+		mode = readpref.NearestMode
+	default:
+		mode = readpref.PrimaryMode
+	}
+
+	opts := make([]readpref.Option, 0)
+
+	if len(config.TagSets) > 0 {
+		tagSets := tag.NewTagSetsFromMaps(config.TagSets)
+		opts = append(opts, readpref.WithTagSets(tagSets...))
+	}
+
+	if config.MaxStaleness > 0 {
+		opts = append(opts, readpref.WithMaxStaleness(config.MaxStaleness))
+	}
+
+	readPref, _ := readpref.New(mode, opts...)
+	return readPref
+}
+
+func buildWriteConcern(config *WriteConcernConfig) *writeconcern.WriteConcern {
+	wc := &writeconcern.WriteConcern{}
+
+	switch w := config.W.(type) {
+	case int:
+		wc.W = w
+	case string:
+		if w == MajorityWriteConcern { // Use majority
+			wc.W = MajorityWriteConcern
+		} else { // Use custom tag
+			wc.W = w
+		}
+	}
+
+	if config.J {
+		wc.Journal = &config.J
+	}
+
+	if config.WTimeout > 0 {
+		wc.WTimeout = config.WTimeout
+	}
+
+	return wc
+}
+
+func buildReadConcern(level string) *readconcern.ReadConcern {
+	switch level {
+	case LocalReadConcern:
+		return readconcern.Local()
+	case AvailableReadConcern:
+		return readconcern.Available()
+	case MajorityReadConcern:
+		return readconcern.Majority()
+	case LinearizableReadConcern:
+		return readconcern.Linearizable()
+	case SnapshotReadConcern:
+		return readconcern.Snapshot()
+	default:
+		return readconcern.Local()
+	}
 }
 
 func connectMongo(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
