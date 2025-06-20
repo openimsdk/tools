@@ -20,6 +20,7 @@ import (
 
 	"github.com/openimsdk/tools/db/tx"
 	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -77,9 +78,9 @@ type Config struct {
 	MaxRetry    int
 	MongoMode   string // "replicaSet" or "standalone"
 
-	ReplicaSet     *ReplicaSetConfig  
-	ReadPreference *ReadPrefConfig    
-	WriteConcern   *WriteConcernConfig 
+	ReplicaSet     *ReplicaSetConfig
+	ReadPreference *ReadPrefConfig
+	WriteConcern   *WriteConcernConfig
 }
 
 type ReplicaSetConfig struct {
@@ -116,9 +117,6 @@ func (c *Client) GetTx() tx.Tx {
 
 // NewMongoDB initializes a new MongoDB connection.
 func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
-	if err := config.ValidateAndSetDefaults(); err != nil {
-		return nil, err
-	}
 
 	var opts *options.ClientOptions
 
@@ -142,6 +140,10 @@ func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 	case ReplicaSetMode:
 		opts = buildReplicaSetOptions(config)
 	case StandaloneMode:
+		if err := config.ValidateAndSetDefaults(); err != nil {
+			return nil, err
+		}
+
 		opts = options.Client().ApplyURI(config.Uri).SetMaxPoolSize(uint64(config.MaxPoolSize))
 	}
 
@@ -153,6 +155,7 @@ func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 	for range config.MaxRetry {
 		cli, err = connectMongo(ctx, opts)
 		if err != nil && shouldRetry(ctx, err) {
+			log.ZError(ctx, "Fail to connect Mongo", err)
 			time.Sleep(time.Second / 2)
 			continue
 		}
