@@ -46,7 +46,7 @@ type mqConsumerGroup struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	msg      chan *consumerMessage
-	lock     sync.Mutex
+	once     sync.Once
 }
 
 func (*mqConsumerGroup) Setup(sarama.ConsumerGroupSession) error { return nil }
@@ -58,10 +58,9 @@ func (*mqConsumerGroup) Cleanup(sarama.ConsumerGroupSession) error {
 func (x *mqConsumerGroup) closeMsgChan() {
 	select {
 	case <-x.ctx.Done():
-		if x.lock.TryLock() {
+		x.once.Do(func() {
 			close(x.msg)
-			x.lock.Unlock()
-		}
+		})
 	default:
 	}
 }
@@ -85,7 +84,10 @@ func (x *mqConsumerGroup) loopConsume() {
 }
 
 func (x *mqConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	defer x.closeMsgChan()
+	defer func() {
+		_ = recover()
+		x.closeMsgChan()
+	}()
 	msg := claim.Messages()
 	for {
 		select {
