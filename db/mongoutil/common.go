@@ -17,6 +17,7 @@ package mongoutil
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -31,9 +32,11 @@ func buildMongoURI(config *Config, authSource string) string {
 	credentials := ""
 
 	if config.Username != "" && config.Password != "" {
-		credentials = fmt.Sprintf("%s:%s", config.Username, config.Password)
+		credentials = fmt.Sprintf("%s:%s",
+			url.QueryEscape(config.Username),
+			url.QueryEscape(config.Password),
+		)
 	}
-
 	return fmt.Sprintf(
 		"mongodb://%s@%s/%s?authSource=%s&maxPoolSize=%d",
 		credentials,
