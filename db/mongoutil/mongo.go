@@ -143,8 +143,9 @@ func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 		if err := config.ValidateAndSetDefaults(); err != nil {
 			return nil, err
 		}
-
 		opts = options.Client().ApplyURI(config.Uri).SetMaxPoolSize(uint64(config.MaxPoolSize)).SetDirect(true)
+	default:
+		return nil, errs.New("invalid MongoDB mode")
 	}
 
 	var (
