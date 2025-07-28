@@ -111,11 +111,9 @@ func (x *mqConsumerGroup) Subscribe(ctx context.Context, fn mq.Handler) error {
 			return sarama.ErrClosedConsumerGroup
 		}
 		ctx := GetContextWithMQHeader(msg.Msg.Headers)
-		if err := fn(ctx, string(msg.Msg.Key), msg.Msg.Value); err != nil {
+		if err := fn(kafkaMessage{ctx: ctx, msg: msg}); err != nil {
 			return err
 		}
-		msg.Session.MarkMessage(msg.Msg, "")
-		msg.Session.Commit()
 		return nil
 	}
 }

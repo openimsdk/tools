@@ -13,12 +13,6 @@ var (
 	errClosed = errors.New("memory mq closed")
 )
 
-type message struct {
-	ctx   context.Context
-	key   string
-	value []byte
-}
-
 func NewMemory(size int) (mq.Producer, mq.Consumer) {
 	m := newMemory(size, nil)
 	return m, m
@@ -48,7 +42,7 @@ func (x *memory) Subscribe(ctx context.Context, fn mq.Handler) error {
 		if !ok {
 			return errClosed
 		}
-		if err := fn(msg.ctx, msg.key, msg.value); err != nil {
+		if err := fn(msg); err != nil {
 			return err
 		}
 		return nil
