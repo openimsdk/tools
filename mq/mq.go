@@ -2,7 +2,15 @@ package mq
 
 import "context"
 
-type Handler func(ctx context.Context, key string, value []byte) error
+type Message interface {
+	Context() context.Context
+	Key() string
+	Value() []byte
+	Mark()
+	Commit()
+}
+
+type Handler func(msg Message) error
 
 type Consumer interface {
 	Subscribe(ctx context.Context, fn Handler) error
