@@ -17,12 +17,12 @@ var (
 // Queue will pop data from its waiting Queue. If it`s empty, it will pop data from global Queue(in QueueManager),
 // and then push to process Queue.
 type Queue[T any] struct {
-	processing *bound.BoundedQueue[T]
-	waiting    *bound.BoundedQueue[T]
+	processing *bound.Queue[T]
+	waiting    *bound.Queue[T]
 }
 
 type QueueManager[T any, K comparable] struct {
-	globalQueue   *bound.BoundedQueue[T]
+	globalQueue   *bound.Queue[T]
 	taskQueues    map[K]*Queue[T]
 	maxProcessing int
 	maxWaiting    int
@@ -41,7 +41,7 @@ func NewQueueManager[T any, K comparable](
 	opts ...Options[T, K],
 ) *QueueManager[T, K] {
 	tm := &QueueManager[T, K]{
-		globalQueue:    bound.NewBoundedQueue[T](maxGlobal),
+		globalQueue:    bound.NewQueue[T](maxGlobal),
 		taskQueues:     make(map[K]*Queue[T]),
 		maxProcessing:  maxProcessing,
 		maxWaiting:     maxWaiting,
@@ -65,8 +65,8 @@ func (tm *QueueManager[T, K]) getOrCreateTaskQueues(k K) *Queue[T] {
 		return q
 	}
 	q := &Queue[T]{
-		processing: bound.NewBoundedQueue[T](tm.maxProcessing),
-		waiting:    bound.NewBoundedQueue[T](tm.maxWaiting),
+		processing: bound.NewQueue[T](tm.maxProcessing),
+		waiting:    bound.NewQueue[T](tm.maxWaiting),
 	}
 	tm.taskQueues[k] = q
 	return q
