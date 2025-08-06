@@ -21,18 +21,29 @@ type Queue[T any] struct {
 	waiting    *bound.Queue[T]
 }
 
+func NewQueue[T any](maxProcessing, maxWaiting int) *Queue[T] {
+	return &Queue[T]{
+		processing: bound.NewQueue[T](maxProcessing),
+		waiting:    bound.NewQueue[T](maxWaiting),
+	}
+}
+
 type QueueManager[T any, K comparable] struct {
 	globalQueue   *bound.Queue[T]
 	taskQueues    map[K]*Queue[T]
 	maxProcessing int
 	maxWaiting    int
-	lock          sync.RWMutex
+	lock          sync.RWMutex // lock for taskQueue
 	equalDataFunc func(a, b T) bool
 
 	afterProcessPushFunc []func(key K, data T) // will be called after processing Queue push successfully
 
 	// assign key strategy. Determine witch key will be assigned when push data without assigning a key
 	assignStrategy func(*QueueManager[T, K]) (K, bool)
+
+	// round-robin state
+	lastAssignedIndex int
+	orderedKeys       []K // maintain consistent ordering for round-robin
 }
 
 func NewQueueManager[T any, K comparable](
@@ -41,12 +52,14 @@ func NewQueueManager[T any, K comparable](
 	opts ...Options[T, K],
 ) *QueueManager[T, K] {
 	tm := &QueueManager[T, K]{
-		globalQueue:    bound.NewQueue[T](maxGlobal),
-		taskQueues:     make(map[K]*Queue[T]),
-		maxProcessing:  maxProcessing,
-		maxWaiting:     maxWaiting,
-		equalDataFunc:  equalFunc,
-		assignStrategy: getStrategy[T, K](Least),
+		globalQueue:       bound.NewQueue[T](maxGlobal),
+		taskQueues:        make(map[K]*Queue[T]),
+		maxProcessing:     maxProcessing,
+		maxWaiting:        maxWaiting,
+		equalDataFunc:     equalFunc,
+		assignStrategy:    getStrategy[T, K](RoundRobin), // Default to round-robin
+		lastAssignedIndex: -1,
+		orderedKeys:       make([]K, 0),
 	}
 
 	tm.applyOpts(opts)
@@ -64,17 +77,26 @@ func (tm *QueueManager[T, K]) getOrCreateTaskQueues(k K) *Queue[T] {
 	if q, exists := tm.taskQueues[k]; exists {
 		return q
 	}
-	q := &Queue[T]{
-		processing: bound.NewQueue[T](tm.maxProcessing),
-		waiting:    bound.NewQueue[T](tm.maxWaiting),
-	}
+	q := NewQueue[T](tm.maxProcessing, tm.maxWaiting)
 	tm.taskQueues[k] = q
+
+	// Add to orderedKeys for round-robin
+	tm.orderedKeys = append(tm.orderedKeys, k)
+
 	return q
 }
 
 func (tm *QueueManager[T, K]) assignKey() (K, bool) {
 	return tm.assignStrategy(tm)
 
+}
+
+func (tm *QueueManager[T, K]) AddKey(key K) {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	tm.getOrCreateTaskQueues(key)
+	return
 }
 
 func (tm *QueueManager[T, K]) Insert(data T) error {
@@ -158,6 +180,30 @@ func (tm *QueueManager[T, K]) GetProcessingQueueLengths() map[K]int {
 	return lengths
 }
 
+// DeleteKey removes a task queue and updates orderedKeys
+func (tm *QueueManager[T, K]) DeleteKey(key K) {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	if _, exists := tm.taskQueues[key]; !exists {
+		return
+	}
+
+	delete(tm.taskQueues, key)
+
+	// Remove from orderedKeys
+	for i, k := range tm.orderedKeys {
+		if k == key {
+			tm.orderedKeys = append(tm.orderedKeys[:i], tm.orderedKeys[i+1:]...)
+			// Adjust lastAssignedIndex if necessary
+			if tm.lastAssignedIndex >= len(tm.orderedKeys) && len(tm.orderedKeys) > 0 {
+				tm.lastAssignedIndex = len(tm.orderedKeys) - 1
+			}
+			break
+		}
+	}
+}
+
 func (tm *QueueManager[T, K]) pushToProcess(taskQueues *Queue[T], key K, data T) error {
 	err := taskQueues.processing.Push(data)
 	if err != nil {
@@ -167,4 +213,21 @@ func (tm *QueueManager[T, K]) pushToProcess(taskQueues *Queue[T], key K, data T)
 		f(key, data)
 	}
 	return nil
+}
+
+func (tm *QueueManager[T, K]) TransformProcessingData(fromKey, toKey K, data T) {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+	fromQ, exists := tm.taskQueues[fromKey]
+	if !exists {
+		return
+	}
+
+	toQ := tm.getOrCreateTaskQueues(toKey)
+	ok := fromQ.processing.Remove(data, tm.equalDataFunc)
+	if !ok {
+		return
+	}
+
+	toQ.processing.ForcePush(data)
 }

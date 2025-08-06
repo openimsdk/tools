@@ -38,6 +38,14 @@ func (q *Queue[T]) Push(item T) error {
 	return nil
 }
 
+// ForcePush pushes an item to the queue regardless of capacity.
+// If the queue is at capacity, it will exceed the capacity limit.
+func (q *Queue[T]) ForcePush(item T) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = append(q.items, item)
+}
+
 func (q *Queue[T]) Pop() (T, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
