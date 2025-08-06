@@ -1,10 +1,11 @@
-package task
+package standalone
 
 import (
 	"errors"
 	"sync"
 
 	"github.com/openimsdk/tools/queue/bound"
+	"github.com/openimsdk/tools/queue/task"
 )
 
 var (
@@ -50,7 +51,7 @@ func NewQueueManager[T any, K comparable](
 	maxGlobal, maxProcessing, maxWaiting int,
 	equalFunc func(a, b T) bool,
 	opts ...Options[T, K],
-) *QueueManager[T, K] {
+) task.QueueManager[T, K] {
 	tm := &QueueManager[T, K]{
 		globalQueue:       bound.NewQueue[T](maxGlobal),
 		taskQueues:        make(map[K]*Queue[T]),

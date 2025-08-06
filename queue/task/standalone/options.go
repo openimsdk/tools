@@ -1,4 +1,4 @@
-package task
+package standalone
 
 type Options[T any, K comparable] func(*QueueManager[T, K])
 
