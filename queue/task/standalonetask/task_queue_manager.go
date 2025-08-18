@@ -1,18 +1,11 @@
-package standalone
+package standalonetask
 
 import (
-	"errors"
+	"context"
 	"sync"
 
 	"github.com/openimsdk/tools/queue/bound"
 	"github.com/openimsdk/tools/queue/task"
-)
-
-var (
-	ErrGlobalQueueFull     = errors.New("global Queue is full")
-	ErrWaitingQueueFull    = errors.New("waiting Queue is full")
-	ErrProcessingQueueFull = errors.New("processing Queue is full")
-	ErrDataNotFound        = errors.New("data not found")
 )
 
 // Queue will pop data from its waiting Queue. If it`s empty, it will pop data from global Queue(in QueueManager),
@@ -92,15 +85,15 @@ func (tm *QueueManager[T, K]) assignKey() (K, bool) {
 
 }
 
-func (tm *QueueManager[T, K]) AddKey(key K) {
+func (tm *QueueManager[T, K]) AddKey(ctx context.Context, key K) error {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
 	tm.getOrCreateTaskQueues(key)
-	return
+	return nil
 }
 
-func (tm *QueueManager[T, K]) Insert(data T) error {
+func (tm *QueueManager[T, K]) Insert(ctx context.Context, data T) error {
 	tm.lock.Lock()
 	k, assigned := tm.assignKey()
 	defer tm.lock.Unlock()
@@ -109,7 +102,7 @@ func (tm *QueueManager[T, K]) Insert(data T) error {
 		if !tm.globalQueue.Full() {
 			return tm.globalQueue.Push(data)
 		}
-		return ErrGlobalQueueFull
+		return task.ErrGlobalQueueFull
 	}
 
 	taskQueues := tm.taskQueues[k]
@@ -121,10 +114,10 @@ func (tm *QueueManager[T, K]) Insert(data T) error {
 		return tm.globalQueue.Push(data)
 	}
 
-	return ErrGlobalQueueFull
+	return task.ErrGlobalQueueFull
 }
 
-func (tm *QueueManager[T, K]) InsertByKey(key K, data T) error {
+func (tm *QueueManager[T, K]) InsertByKey(ctx context.Context, key K, data T) error {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
@@ -138,17 +131,17 @@ func (tm *QueueManager[T, K]) InsertByKey(key K, data T) error {
 		return taskQueues.waiting.Push(data)
 	}
 
-	return ErrWaitingQueueFull
+	return task.ErrWaitingQueueFull
 }
 
 // Delete will delete a data in key queues. If delete a data in processing Queue, taskQueue will pop data from its
 // waiting Queue. If it`s empty, it will pop data from global Queue, and then push to process Queue.
-func (tm *QueueManager[T, K]) Delete(key K, data T) error {
+func (tm *QueueManager[T, K]) Delete(ctx context.Context, key K, data T) error {
 	tm.lock.Lock()
 	taskQueue, exists := tm.taskQueues[key]
 	tm.lock.Unlock()
 	if !exists {
-		return ErrDataNotFound
+		return task.ErrDataNotFound
 	}
 
 	if removed := taskQueue.processing.Remove(data, tm.equalDataFunc); removed {
@@ -167,10 +160,10 @@ func (tm *QueueManager[T, K]) Delete(key K, data T) error {
 		return nil
 	}
 
-	return ErrDataNotFound
+	return task.ErrDataNotFound
 }
 
-func (tm *QueueManager[T, K]) GetProcessingQueueLengths() map[K]int {
+func (tm *QueueManager[T, K]) GetProcessingQueueLengths(ctx context.Context) (map[K]int, error) {
 	tm.lock.RLock()
 	defer tm.lock.RUnlock()
 
@@ -178,16 +171,16 @@ func (tm *QueueManager[T, K]) GetProcessingQueueLengths() map[K]int {
 	for id, q := range tm.taskQueues {
 		lengths[id] = q.processing.Len()
 	}
-	return lengths
+	return lengths, nil
 }
 
 // DeleteKey removes a task queue and updates orderedKeys
-func (tm *QueueManager[T, K]) DeleteKey(key K) {
+func (tm *QueueManager[T, K]) DeleteKey(ctx context.Context, key K) error {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
 	if _, exists := tm.taskQueues[key]; !exists {
-		return
+		return nil
 	}
 
 	delete(tm.taskQueues, key)
@@ -203,6 +196,7 @@ func (tm *QueueManager[T, K]) DeleteKey(key K) {
 			break
 		}
 	}
+	return nil
 }
 
 func (tm *QueueManager[T, K]) pushToProcess(taskQueues *Queue[T], key K, data T) error {
@@ -216,19 +210,20 @@ func (tm *QueueManager[T, K]) pushToProcess(taskQueues *Queue[T], key K, data T)
 	return nil
 }
 
-func (tm *QueueManager[T, K]) TransformProcessingData(fromKey, toKey K, data T) {
+func (tm *QueueManager[T, K]) TransformProcessingData(ctx context.Context, fromKey, toKey K, data T) error {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 	fromQ, exists := tm.taskQueues[fromKey]
 	if !exists {
-		return
+		return task.ErrDataNotFound
 	}
 
 	toQ := tm.getOrCreateTaskQueues(toKey)
 	ok := fromQ.processing.Remove(data, tm.equalDataFunc)
 	if !ok {
-		return
+		return task.ErrDataNotFound
 	}
 
 	toQ.processing.ForcePush(data)
+	return nil
 }

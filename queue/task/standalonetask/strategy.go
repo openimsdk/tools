@@ -1,4 +1,4 @@
-package standalone
+package standalonetask
 
 // strategy: assign key strategy
 type strategy int
