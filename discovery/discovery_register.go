@@ -48,7 +48,6 @@ type Conn interface {
 	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)    //2
 	GetSelfConnTarget() string                                                                             //3
 	AddOption(opts ...grpc.DialOption)                                                                     //4
-	CloseConn(conn *grpc.ClientConn)                                                                       //5
 	// do not use this method for call rpc
 }
 type SvcDiscoveryRegistry interface {
