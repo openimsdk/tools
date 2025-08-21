@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"github.com/openimsdk/tools/utils/datautil"
 	"io"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/openimsdk/tools/log"
 )
 
-func GinLogger() gin.HandlerFunc {
+func GinLogger(skipPath ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		httpID := uuid.New().String()
@@ -28,6 +29,12 @@ func GinLogger() gin.HandlerFunc {
 			"contentLength", c.Request.ContentLength,
 			"method", c.Request.Method, "host", c.Request.Host,
 			"requestURI", c.Request.RequestURI)
+		if len(skipPath) > 0 {
+			if datautil.Contain(c.Request.URL.Path, skipPath...) {
+				c.Next()
+				return
+			}
+		}
 		body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1024*1024*16))
 		if err != nil {
 			log.ZWarn(c, "read request body failed", err, "httpID", httpID, "operationID", operationID, "method", c.Request.Method, "requestURI", c.Request.RequestURI, "cost", time.Since(start))
