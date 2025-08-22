@@ -297,7 +297,8 @@ func (k *ConnManager) getServicePort(serviceName string) (int32, error) {
 
 // watchEndpoints listens for changes in Pod resources.
 func (k *ConnManager) watchEndpoints() {
-	informerFactory := informers.NewSharedInformerFactory(k.clientset, time.Minute*10)
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(k.clientset, time.Minute*10,
+		informers.WithNamespace(k.namespace))
 	informer := informerFactory.Core().V1().Pods().Informer()
 
 	// Watch for Pod changes (add, update, delete)
