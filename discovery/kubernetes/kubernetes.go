@@ -162,7 +162,7 @@ func (k *ConnManager) GetConns(ctx context.Context, serviceName string, opts ...
 // GetConn returns a single gRPC client connection for a given Kubernetes service name.
 func (k *ConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 
-	svcPort, err := k.getServicePort(serviceName)
+	svcPort, err := k.getServicePort(ctx, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -273,19 +273,20 @@ func (k *ConnManager) GetUserIdHashGatewayHost(ctx context.Context, userId strin
 	return "", nil
 }
 
-func (k *ConnManager) getServicePort(serviceName string) (int32, error) {
+func (k *ConnManager) getServicePort(ctx context.Context, serviceName string) (int32, error) {
 	var svcPort int32
 
 	svc, err := k.clientset.CoreV1().Services(k.namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.ZWarn(context.Background(), "service not found", err, "serviceName", serviceName)
+			log.ZWarn(ctx, "service not found", err, "serviceName", serviceName)
 			return 0, nil
 		}
 		return 0, fmt.Errorf("failed to get service %s: %v", serviceName, err)
 	}
 
 	for _, port := range svc.Spec.Ports {
+		log.ZDebug(ctx, "get port in getServicePort", "name", port.Name, "port", port.Port, "nodePort", port.NodePort, "targetPort", port.TargetPort)
 		if port.Name == GRPCName {
 			svcPort = port.Port
 			break
