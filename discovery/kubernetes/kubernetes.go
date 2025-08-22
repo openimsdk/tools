@@ -276,7 +276,7 @@ func (k *ConnManager) getServicePort(ctx context.Context, serviceName string) (i
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.ZWarn(ctx, "service not found", err, "serviceName", serviceName)
-			return 0, errs.WrapMsg(err, "service not found")
+			return 0, nil
 		}
 		return 0, errs.WrapMsg(err, "failed to get service")
 	}
