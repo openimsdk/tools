@@ -276,13 +276,13 @@ func (k *ConnManager) GetUserIdHashGatewayHost(ctx context.Context, userId strin
 func (k *ConnManager) getServicePort(ctx context.Context, serviceName string) (int32, error) {
 	var svcPort int32
 
-	svc, err := k.clientset.CoreV1().Services(k.namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
+	svc, err := k.clientset.CoreV1().Services(k.namespace).Get(ctx, serviceName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.ZWarn(ctx, "service not found", err, "serviceName", serviceName)
-			return 0, nil
+			return 0, errs.WrapMsg(err, "service not found")
 		}
-		return 0, fmt.Errorf("failed to get service %s: %v", serviceName, err)
+		return 0, errs.WrapMsg(err, "failed to get service")
 	}
 
 	for _, port := range svc.Spec.Ports {
