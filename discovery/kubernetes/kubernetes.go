@@ -11,6 +11,7 @@ import (
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/utils/datautil"
+	"github.com/sercand/kuberesolver/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/api/core/v1"
@@ -59,6 +60,8 @@ func NewConnManager(namespace string, watchNames []string, options ...grpc.DialO
 
 	}
 
+	kuberesolver.RegisterInCluster()
+
 	k := &ConnManager{
 		clientset:   clientset,
 		namespace:   namespace,
@@ -74,6 +77,10 @@ func NewConnManager(namespace string, watchNames []string, options ...grpc.DialO
 
 func (k *ConnManager) buildTarget(serviceName string, svcPort int32) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, k.namespace, svcPort)
+}
+
+func (k *ConnManager) buildAddr(serviceName string) string {
+	return "kubernetes:///" + serviceName
 }
 
 func (k *ConnManager) initializeConns(serviceName string, opts ...grpc.DialOption) error {
@@ -163,7 +170,7 @@ func (k *ConnManager) GetConns(ctx context.Context, serviceName string, opts ...
 func (k *ConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	// In Kubernetes, we can directly use the service name for service discovery
 	// Using headless service approach - just serviceName without getting port
-	target := serviceName
+	target := k.buildAddr(serviceName)
 
 	dialOpts := append(append(k.dialOptions, opts...),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
