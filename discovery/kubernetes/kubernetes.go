@@ -299,13 +299,13 @@ func (k *ConnManager) getServicePort(ctx context.Context, serviceName string) (i
 	return svcPort, nil
 }
 
-// watchEndpoints listens for changes in Pod resources.
+// watchEndpoints listens for changes in Endpoints resources.
 func (k *ConnManager) watchEndpoints() {
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(k.clientset, time.Minute*10,
 		informers.WithNamespace(k.namespace))
-	informer := informerFactory.Core().V1().Pods().Informer()
+	informer := informerFactory.Core().V1().Endpoints().Informer()
 
-	// Watch for Pod changes (add, update, delete)
+	// Watch for Endpoints changes (add, update, delete)
 	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			k.handleEndpointChange(obj)
