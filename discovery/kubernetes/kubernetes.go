@@ -167,7 +167,7 @@ func (k *ConnManager) GetConns(ctx context.Context, serviceName string, opts ...
 }
 
 // GetConn returns a single gRPC client connection for a given Kubernetes service name.
-func (k *ConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (k *ConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
 	// In Kubernetes, we can directly use the service name for service discovery
 	// Using headless service approach - just serviceName without getting port
 	target := k.buildAddr(serviceName)
