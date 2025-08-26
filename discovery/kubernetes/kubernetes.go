@@ -11,6 +11,7 @@ import (
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/utils/datautil"
+	"github.com/sercand/kuberesolver/v6"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	v1 "k8s.io/api/core/v1"
@@ -59,6 +60,8 @@ func NewConnManager(namespace string, watchNames []string, options ...grpc.DialO
 
 	}
 
+	kuberesolver.RegisterInCluster()
+
 	k := &ConnManager{
 		clientset:   clientset,
 		namespace:   namespace,
@@ -74,6 +77,10 @@ func NewConnManager(namespace string, watchNames []string, options ...grpc.DialO
 
 func (k *ConnManager) buildTarget(serviceName string, svcPort int32) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, k.namespace, svcPort)
+}
+
+func (k *ConnManager) buildAddr(serviceName string) string {
+	return "kubernetes:///" + serviceName
 }
 
 func (k *ConnManager) initializeConns(serviceName string, opts ...grpc.DialOption) error {
@@ -92,7 +99,7 @@ func (k *ConnManager) initializeConns(serviceName string, opts ...grpc.DialOptio
 		Endpoints(k.namespace).
 		Get(context.Background(), serviceName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get endpoints for %q: %w", serviceName, err)
+		return errs.WrapMsg(err, "failed to get endpoints", "serviceName", serviceName)
 	}
 
 	// 3. rebuild connection list
@@ -114,7 +121,7 @@ func (k *ConnManager) initializeConns(serviceName string, opts ...grpc.DialOptio
 				// dial a brand-new connection
 				dialOpts := append(append(k.dialOptions, opts...), grpc.WithTransportCredentials(insecure.NewCredentials()))
 				if err := k.checkOpts(dialOpts...); err != nil {
-					return fmt.Errorf("checkOpts failed for %q: %w", addr, err)
+					return errs.WrapMsg(err, "checkOpts failed", "addr", addr)
 				}
 				conn, err := grpc.DialContext(context.Background(), addr, dialOpts...)
 				if err != nil {
@@ -160,19 +167,15 @@ func (k *ConnManager) GetConns(ctx context.Context, serviceName string, opts ...
 }
 
 // GetConn returns a single gRPC client connection for a given Kubernetes service name.
-func (k *ConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
-
-	svcPort, err := k.getServicePort(serviceName)
-	if err != nil {
-		return nil, err
-	}
-
-	target := k.buildTarget(serviceName, svcPort)
+func (k *ConnManager) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	// In Kubernetes, we can directly use the service name for service discovery
+	// Using headless service approach - just serviceName without getting port
+	target := k.buildAddr(serviceName)
 
 	dialOpts := append(append(k.dialOptions, opts...),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	err = k.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
+	err := k.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
 	if err != nil {
 		return nil, errs.WrapMsg(err, "checkOpts is failed")
 	}
@@ -282,7 +285,7 @@ func (k *ConnManager) getServicePort(serviceName string) (int32, error) {
 			log.ZWarn(context.Background(), "service not found", err, "serviceName", serviceName)
 			return 0, nil
 		}
-		return 0, fmt.Errorf("failed to get service %s: %v", serviceName, err)
+		return 0, errs.WrapMsg(err, "failed to get service", "serviceName", serviceName)
 	}
 
 	for _, port := range svc.Spec.Ports {
@@ -295,12 +298,13 @@ func (k *ConnManager) getServicePort(serviceName string) (int32, error) {
 	return svcPort, nil
 }
 
-// watchEndpoints listens for changes in Pod resources.
+// watchEndpoints listens for changes in Endpoints resources.
 func (k *ConnManager) watchEndpoints() {
-	informerFactory := informers.NewSharedInformerFactory(k.clientset, time.Minute*10)
-	informer := informerFactory.Core().V1().Pods().Informer()
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(k.clientset, time.Minute*10,
+		informers.WithNamespace(k.namespace))
+	informer := informerFactory.Core().V1().Endpoints().Informer()
 
-	// Watch for Pod changes (add, update, delete)
+	// Watch for Endpoints changes (add, update, delete)
 	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			k.handleEndpointChange(obj)
