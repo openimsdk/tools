@@ -227,3 +227,13 @@ func (tm *QueueManager[T, K]) TransformProcessingData(ctx context.Context, fromK
 	toQ.processing.ForcePush(data)
 	return nil
 }
+
+// GetGlobalQueuePosition returns the position of data in the global queue (0-based, -1 if not found)
+func (tm *QueueManager[T, K]) GetGlobalQueuePosition(ctx context.Context, data T) (int, error) {
+	tm.lock.RLock()
+	defer tm.lock.RUnlock()
+
+	// Get all items in the global queue
+	index := tm.globalQueue.Peek(data, tm.equalDataFunc)
+	return index, nil
+}

@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openimsdk/tools/db/redisutil"
 	"github.com/openimsdk/tools/queue/task"
 	"github.com/redis/go-redis/v9"
 )
@@ -41,16 +40,11 @@ type QueueManager[T any, K comparable] struct {
 
 func NewQueueManager[T any, K comparable](
 	ctx context.Context,
-	config *redisutil.Config,
+	client redis.UniversalClient,
 	maxGlobal, maxProcessing, maxWaiting int,
 	equalFunc func(a, b T) bool,
 	opts ...Option[T, K],
 ) (task.QueueManager[T, K], error) {
-	client, err := redisutil.NewRedisClient(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
 	m := &QueueManager[T, K]{
 		client:         client,
 		namespace:      "default",
@@ -119,20 +113,23 @@ func (m *QueueManager[T, K]) AddKey(ctx context.Context, key K) error {
 	return err
 }
 
-func (m *QueueManager[T, K]) Insert(ctx context.Context, data T) error {
+func (m *QueueManager[T, K]) Insert(ctx context.Context, data T) (K, error) {
+	var zero K
 	key, hasKey := m.assignStrategy(ctx, m)
 	if !hasKey {
 		// No key available, push to global queue
-		return m.pushToGlobalQueue(ctx, data)
+		err := m.pushToGlobalQueue(ctx, data)
+		return zero, err
 	}
 
 	// Try to push to processing queue first
 	if err := m.pushToProcessingQueue(ctx, key, data); err == nil {
-		return nil
+		return key, nil
 	}
 
 	// If processing queue is full, push to global queue
-	return m.pushToGlobalQueue(ctx, data)
+	err := m.pushToGlobalQueue(ctx, data)
+	return zero, err
 }
 
 func (m *QueueManager[T, K]) InsertByKey(ctx context.Context, key K, data T) error {
@@ -229,14 +226,11 @@ func (m *QueueManager[T, K]) TransformProcessingData(ctx context.Context, fromKe
 		return task.ErrDataNotFound
 	}
 
-	// Try to add to target processing queue
-	if err := m.pushToProcessingQueue(ctx, toKey, data); err != nil {
-		// If target is full, add to waiting queue
-		if err := m.pushToWaitingQueue(ctx, toKey, data); err != nil {
-			// If both queues are full, push back to source to avoid data loss
-			m.pushToProcessingQueue(ctx, fromKey, data)
-			return err
-		}
+	// Force push to target processing queue (bypass capacity limit)
+	if err := m.forcePushToProcessingQueue(ctx, toKey, data); err != nil {
+		// If force push fails, try to push back to source to avoid data loss
+		m.forcePushToProcessingQueue(ctx, fromKey, data)
+		return err
 	}
 
 	// Backfill source processing queue
@@ -262,6 +256,30 @@ func (m *QueueManager[T, K]) pushToProcessingQueue(ctx context.Context, key K, d
 		return err
 	}
 
+	err = m.client.LPush(ctx, queueKey, dataBytes).Err()
+	if err != nil {
+		return err
+	}
+
+	// Call after process push functions
+	for _, fn := range m.afterProcessPushFunc {
+		fn(key, data)
+	}
+
+	return nil
+}
+
+// forcePushToProcessingQueue pushes data to processing queue without checking capacity
+func (m *QueueManager[T, K]) forcePushToProcessingQueue(ctx context.Context, key K, data T) error {
+	queueKey := m.getProcessingQueueKey(key)
+
+	// Marshal data
+	dataBytes, err := m.marshalFunc(data)
+	if err != nil {
+		return err
+	}
+
+	// Force push without checking length
 	err = m.client.LPush(ctx, queueKey, dataBytes).Err()
 	if err != nil {
 		return err
@@ -358,6 +376,36 @@ func (m *QueueManager[T, K]) removeFromQueue(ctx context.Context, queueKey strin
 	}
 
 	return false, nil
+}
+
+// GetGlobalQueuePosition returns the position of data in the global queue (0-based, -1 if not found)
+func (m *QueueManager[T, K]) GetGlobalQueuePosition(ctx context.Context, data T) (int, error) {
+	globalKey := m.getGlobalQueueKey()
+
+	// Get all items in the global queue
+	items, err := m.client.LRange(ctx, globalKey, 0, -1).Result()
+	if err != nil {
+		return -1, err
+	}
+
+	// Marshal the data to compare
+	dataBytes, err := m.marshalFunc(data)
+	if err != nil {
+		return -1, err
+	}
+	dataStr := string(dataBytes)
+
+	// Find position (Redis lists are stored in reverse order for LPUSH/RPOP pattern)
+	// Items at the end of the list are at the front of the queue
+	for i := len(items) - 1; i >= 0; i-- {
+		if items[i] == dataStr {
+			// Return position from front of queue
+			return len(items) - 1 - i, nil
+		}
+	}
+
+	// Not found in queue
+	return -1, nil
 }
 
 func (m *QueueManager[T, K]) backfillProcessingQueue(ctx context.Context, key K) error {

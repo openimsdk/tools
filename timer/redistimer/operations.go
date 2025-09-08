@@ -17,6 +17,12 @@ func (r *RedisTimer[T]) Register(ctx context.Context, timerType string, item T, 
 	return r.RegisterAt(ctx, timerType, item, time.Now().Add(timeout))
 }
 
+// RegisterIfNotExists adds an item with a timeout duration only if it doesn't exist
+// Returns false if timer already exists, true if newly registered
+func (r *RedisTimer[T]) RegisterIfNotExists(ctx context.Context, timerType string, item T, timeout time.Duration) (bool, error) {
+	return r.RegisterAtIfNotExists(ctx, timerType, item, time.Now().Add(timeout))
+}
+
 // RegisterAt adds an item that expires at a specific time for a specific type
 func (r *RedisTimer[T]) RegisterAt(ctx context.Context, timerType string, item T, expireAt time.Time) error {
 	itemKey := r.keyFunc(item)
@@ -48,6 +54,53 @@ func (r *RedisTimer[T]) RegisterAt(ctx context.Context, timerType string, item T
 	}
 
 	return nil
+}
+
+// RegisterAtIfNotExists adds an item that expires at a specific time only if it doesn't exist
+// Returns false if timer already exists, true if newly registered
+func (r *RedisTimer[T]) RegisterAtIfNotExists(ctx context.Context, timerType string, item T, expireAt time.Time) (bool, error) {
+	itemKey := r.keyFunc(item)
+	timerKey := r.getKey(timerType)
+
+	// Check if timer already exists using ZSCORE
+	// ZSCORE returns the score if the member exists, redis.Nil if not
+	_, err := r.client.ZScore(ctx, timerKey, itemKey).Result()
+	if err == nil {
+		// Timer already exists
+		return false, nil
+	} else if !errors.Is(err, redis.Nil) {
+		// Actual error occurred
+		return false, errs.WrapMsg(err, "failed to check timer existence")
+	}
+
+	// Timer doesn't exist, register it
+	score := float64(expireAt.Unix())
+
+	// Use pipeline for atomic operations
+	pipe := r.client.Pipeline()
+
+	// Add to sorted set with expiration time as score
+	pipe.ZAdd(ctx, timerKey, redis.Z{
+		Score:  score,
+		Member: itemKey,
+	})
+
+	// If not self-contained, also store data in hash
+	if !r.selfContainedKey {
+		data, err := r.marshal(item)
+		if err != nil {
+			return false, errs.WrapMsg(err, "failed to marshal item")
+		}
+		dataKey := r.getDataKey(timerType)
+		pipe.HSet(ctx, dataKey, itemKey, data)
+	}
+
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return false, errs.WrapMsg(err, "failed to register timer")
+	}
+
+	return true, nil
 }
 
 // Cancel removes a timer for an item of a specific type

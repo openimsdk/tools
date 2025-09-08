@@ -86,3 +86,14 @@ func (q *Queue[T]) Remove(item T, equalFunc func(a, b T) bool) bool {
 	}
 	return false
 }
+
+func (q *Queue[T]) Peek(item T, equalFunc func(a, b T) bool) int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	for i, it := range q.items {
+		if equalFunc(it, item) {
+			return i
+		}
+	}
+	return -1
+}
