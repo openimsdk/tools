@@ -492,18 +492,18 @@ func (m *Minio) FormData(ctx context.Context, name string, size int64, contentTy
 	if err := policy.SetBucket(m.bucket); err != nil {
 		return nil, err
 	}
-	u, fd, err := m.core.PresignedPostPolicy(ctx, policy)
+	_, fd, err := m.sign.PresignedPostPolicy(ctx, policy)
 	if err != nil {
 		return nil, err
 	}
-	sign, err := url.Parse(m.signEndpoint)
-	if err != nil {
-		return nil, err
+	endpoint := m.conf.SignEndpoint
+	if strings.HasSuffix(endpoint, "/") {
+		endpoint = endpoint + m.conf.Bucket
+	} else {
+		endpoint = endpoint + "/" + m.bucket
 	}
-	u.Scheme = sign.Scheme
-	u.Host = sign.Host
 	return &s3.FormData{
-		URL:          u.String(),
+		URL:          endpoint,
 		File:         "file",
 		Header:       nil,
 		FormData:     fd,
