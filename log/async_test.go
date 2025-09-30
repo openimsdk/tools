@@ -10,7 +10,7 @@ import (
 )
 
 func TestName(t *testing.T) {
-	DisableAsync = true
+	AsyncWrite = false
 	sdkType := "TestSDK"
 	platformName := runtime.GOOS
 	err := InitLoggerFromConfig(
