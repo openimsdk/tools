@@ -24,7 +24,7 @@ var (
 	AdaptiveErrorCodeLevel = map[int]int{
 		errs.ErrInternalServer.Code(): LevelError,
 	}
-	DisableAsync = false
+	AsyncWrite = false
 )
 
 type LogFormatter interface {
@@ -274,6 +274,7 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 	c.CallerKey = "caller"
 	c.NameKey = "logger"
 	var fileEncoder zapcore.Encoder
+
 	if isJson {
 		c.EncodeLevel = zapcore.CapitalLevelEncoder
 		fileEncoder = zapcore.NewJSONEncoder(c)
@@ -284,28 +285,32 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 		c.EncodeCaller = l.customCallerEncoder
 		fileEncoder = zapcore.NewConsoleEncoder(c)
 	}
+
 	fileEncoder = &alignEncoder{Encoder: fileEncoder}
 	writer, err := l.getWriter(logLocation, rotateCount)
 	if err != nil {
 		return nil, err
 	}
-	if isStdout == false && DisableAsync == false {
+
+	if !isStdout && AsyncWrite {
 		writer = &zapcore.BufferedWriteSyncer{
 			WS:            writer,
 			FlushInterval: time.Second * 2,
 			Size:          1024 * 512,
 		}
 	}
+
 	var cores []zapcore.Core
 	if logLocation != "" {
 		cores = []zapcore.Core{
 			zapcore.NewCore(fileEncoder, writer, zap.NewAtomicLevelAt(l.level)),
 		}
 	}
+
 	if isStdout {
 		cores = append(cores, zapcore.NewCore(fileEncoder, zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(l.level)))
-		// cores = append(cores, zapcore.NewCore(fileEncoder, zapcore.Lock(os.Stderr), zap.NewAtomicLevelAt(l.level)))
 	}
+
 	return zap.WrapCore(func(c zapcore.Core) zapcore.Core {
 		return zapcore.NewTee(cores...)
 	}), nil
