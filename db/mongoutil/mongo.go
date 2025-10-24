@@ -117,7 +117,6 @@ func (c *Client) GetTx() tx.Tx {
 
 // NewMongoDB initializes a new MongoDB connection.
 func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
-
 	var opts *options.ClientOptions
 
 	if config.MongoMode == ReplicaSetMode {
@@ -134,6 +133,10 @@ func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
 		if config.Uri == "" && config.Address == nil {
 			return nil, errs.New("address required for standalone mode")
 		}
+	}
+
+	if config.MongoMode == "" {
+		config.MongoMode = StandaloneMode
 	}
 
 	switch config.MongoMode {
