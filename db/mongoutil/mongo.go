@@ -20,7 +20,6 @@ import (
 
 	"github.com/openimsdk/tools/db/tx"
 	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/mw/specialerror"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -117,46 +116,17 @@ func (c *Client) GetTx() tx.Tx {
 
 // NewMongoDB initializes a new MongoDB connection.
 func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
-
-	var opts *options.ClientOptions
-
-	if config.MongoMode == ReplicaSetMode {
-		if config.ReplicaSet == nil {
-			return nil, errs.New("replicaSet configuration required for replicaSet mode")
-		}
-		if config.ReplicaSet.Name == "" {
-			return nil, errs.New("replicaSet name required for replicaSet mode")
-		}
-		if len(config.ReplicaSet.Hosts) == 0 && len(config.Address) == 0 {
-			return nil, errs.New("replicaSet hosts or address required for replicaSet mode")
-		}
-	} else {
-		if config.Uri == "" && config.Address == nil {
-			return nil, errs.New("address required for standalone mode")
-		}
+	if err := config.ValidateAndSetDefaults(); err != nil {
+		return nil, err
 	}
-
-	switch config.MongoMode {
-	case ReplicaSetMode:
-		opts = buildReplicaSetOptions(config)
-	case StandaloneMode:
-		if err := config.ValidateAndSetDefaults(); err != nil {
-			return nil, err
-		}
-		opts = options.Client().ApplyURI(config.Uri).SetMaxPoolSize(uint64(config.MaxPoolSize)).SetDirect(true)
-	default:
-		return nil, errs.New("invalid MongoDB mode")
-	}
-
+	opts := options.Client().ApplyURI(config.Uri).SetMaxPoolSize(uint64(config.MaxPoolSize))
 	var (
 		cli *mongo.Client
 		err error
 	)
-	log.ZInfo(ctx, "Connecting to MongoDB", "URI", config.Uri)
-	for range config.MaxRetry {
+	for i := 0; i < config.MaxRetry; i++ {
 		cli, err = connectMongo(ctx, opts)
 		if err != nil && shouldRetry(ctx, err) {
-			log.ZError(ctx, "Fail to connect Mongo", err)
 			time.Sleep(time.Second / 2)
 			continue
 		}
