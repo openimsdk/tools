@@ -17,6 +17,7 @@ package discovery
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"google.golang.org/grpc"
 )
@@ -29,8 +30,28 @@ type Conn interface {
 	IsSelfNode(cc grpc.ClientConnInterface) bool
 }
 
+type WatchType int
+
+func (t WatchType) String() string {
+	switch t {
+	case WatchTypePut:
+		return "PUT"
+	case WatchTypeDelete:
+		return "DELETE"
+	default:
+		return strconv.Itoa(int(t))
+	}
+}
+
+const (
+	WatchTypePut    WatchType = 0
+	WatchTypeDelete WatchType = 1
+)
+
 type WatchKey struct {
+	Key   []byte
 	Value []byte
+	Type  WatchType
 }
 
 type WatchKeyHandler func(data *WatchKey) error

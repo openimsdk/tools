@@ -24,6 +24,13 @@ import (
 	gresolver "google.golang.org/grpc/resolver"
 )
 
+const (
+	defaultRegisterTimeout = 5 * time.Second
+	defaultLeaseTTL        = int64(30)
+	keepAliveRetryDelay    = time.Second
+	defaultCloseTimeout    = 5 * time.Second
+)
+
 // CfgOption defines a function type for modifying clientv3.Config
 type CfgOption func(*clientv3.Config)
 type addrConn struct {
@@ -45,8 +52,141 @@ type SvcDiscoveryRegistryImpl struct {
 
 	rootDirectory string
 
-	mu      sync.RWMutex
-	connMap map[string][]*addrConn
+	mu                 sync.RWMutex
+	connMap            map[string][]*addrConn
+	serviceDialOptions map[string][]grpc.DialOption
+	serviceWatchMu     sync.Mutex
+	serviceWatchers    map[string]context.CancelFunc
+	watchKeyMu         sync.Mutex
+	watchKeyEntries    map[string]*watchKeyEntry
+
+	regMu             sync.Mutex
+	keepAliveCancel   context.CancelFunc
+	registeredService string
+	registeredHost    string
+	registeredPort    int
+}
+
+type watchKeyEntry struct {
+	key    string
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	mu   sync.RWMutex
+	subs map[*watchKeySubscriber]struct{}
+}
+
+type watchKeySubscriber struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	events chan *discovery.WatchKey
+}
+
+func (e *watchKeyEntry) addSubscriber(sub *watchKeySubscriber) {
+	e.mu.Lock()
+	if e.subs == nil {
+		e.subs = make(map[*watchKeySubscriber]struct{})
+	}
+	e.subs[sub] = struct{}{}
+	e.mu.Unlock()
+}
+
+func (e *watchKeyEntry) removeSubscriber(sub *watchKeySubscriber) bool {
+	e.mu.Lock()
+	if e.subs == nil {
+		e.mu.Unlock()
+		return true
+	}
+	delete(e.subs, sub)
+	empty := len(e.subs) == 0
+	e.mu.Unlock()
+	return empty
+}
+
+func (e *watchKeyEntry) broadcast(r *SvcDiscoveryRegistryImpl, event *discovery.WatchKey) {
+	e.mu.RLock()
+	if len(e.subs) == 0 {
+		e.mu.RUnlock()
+		return
+	}
+	subs := make([]*watchKeySubscriber, 0, len(e.subs))
+	for sub := range e.subs {
+		subs = append(subs, sub)
+	}
+	e.mu.RUnlock()
+
+	for _, sub := range subs {
+		if !sub.push(event) {
+			r.removeWatchKeySubscriber(e.key, e, sub)
+		}
+	}
+}
+
+func (e *watchKeyEntry) closeSubscribers() {
+	e.mu.RLock()
+	if len(e.subs) == 0 {
+		e.mu.RUnlock()
+		return
+	}
+	subs := make([]*watchKeySubscriber, 0, len(e.subs))
+	for sub := range e.subs {
+		subs = append(subs, sub)
+	}
+	e.mu.RUnlock()
+
+	for _, sub := range subs {
+		sub.cancel()
+	}
+}
+
+func (s *watchKeySubscriber) push(event *discovery.WatchKey) bool {
+	select {
+	case <-s.ctx.Done():
+		return false
+	default:
+	}
+
+	select {
+	case s.events <- event:
+		return true
+	case <-s.ctx.Done():
+		return false
+	}
+}
+
+func (e *watchKeyEntry) run(r *SvcDiscoveryRegistryImpl) {
+	defer func() {
+		e.closeSubscribers()
+		r.removeWatchKeyEntry(e.key, e)
+	}()
+
+	watchChan := r.client.Watch(e.ctx, e.key, clientv3.WithPrefix())
+	for {
+		select {
+		case <-e.ctx.Done():
+			return
+		case resp, ok := <-watchChan:
+			if !ok {
+				return
+			}
+			if resp.Err() != nil {
+				log.ZWarn(context.Background(), "watch key resp err", resp.Err(), zap.String("key", e.key))
+				continue
+			}
+			for _, event := range resp.Events {
+				watchKey := &discovery.WatchKey{Key: event.Kv.Key, Value: event.Kv.Value}
+				switch event.Type {
+				case mvccpb.PUT:
+					watchKey.Type = discovery.WatchTypePut
+				case mvccpb.DELETE:
+					watchKey.Type = discovery.WatchTypeDelete
+				default:
+					continue
+				}
+				e.broadcast(r, watchKey)
+			}
+		}
+	}
 }
 
 func createNoOpLogger() *zap.Logger {
@@ -90,78 +230,90 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, watchName
 	}
 
 	s := &SvcDiscoveryRegistryImpl{
-		client:        client,
-		resolver:      r,
-		rootDirectory: rootDirectory,
-		connMap:       make(map[string][]*addrConn),
-		watchNames:    watchNames,
+		client:             client,
+		resolver:           r,
+		rootDirectory:      rootDirectory,
+		connMap:            make(map[string][]*addrConn),
+		serviceDialOptions: make(map[string][]grpc.DialOption),
+		watchNames:         watchNames,
+		serviceWatchers:    make(map[string]context.CancelFunc),
+		watchKeyEntries:    make(map[string]*watchKeyEntry),
 	}
 
 	s.watchServiceChanges()
 	return s, nil
 }
 
-// initializeConnMap fetches all existing endpoints and populates the local map
-func (r *SvcDiscoveryRegistryImpl) initializeConnMap(opts ...grpc.DialOption) error {
+// initializeConnMap fetches all existing endpoints for the given service and populates the local map
+func (r *SvcDiscoveryRegistryImpl) initializeConnMap(service string, opts ...grpc.DialOption) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	ctx := context.Background()
-	for _, name := range r.watchNames {
-		fullPrefix := fmt.Sprintf("%s/%s", r.rootDirectory, name)
-		resp, err := r.client.Get(ctx, fullPrefix, clientv3.WithPrefix())
-		if err != nil {
-			return err
-		}
 
-		oldList := r.connMap[fullPrefix]
-
-		addrMap := make(map[string]*addrConn, len(oldList))
-		for _, conn := range oldList {
-			addrMap[conn.addr] = conn
-		}
-		newList := make([]*addrConn, 0, len(oldList))
-		for _, kv := range resp.Kvs {
-			prefix, addr := r.splitEndpoint(string(kv.Key))
-			if addr == "" {
-				continue
-			}
-			if _, _, err = net.SplitHostPort(addr); err != nil {
-				continue
-			}
-			if prefix != fullPrefix {
-				continue
-			}
-
-			if conn, ok := addrMap[addr]; ok {
-				conn.isConnected = true
-				continue
-			}
-
-			dialOpts := append(append(r.dialOptions, opts...), grpc.WithResolvers(r.resolver))
-
-			err := r.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
-			if err != nil {
-				return errs.WrapMsg(err, "checkOpts is failed")
-			}
-
-			conn, err := grpc.DialContext(context.Background(), addr, dialOpts...)
-			if err != nil {
-				continue
-			}
-			newList = append(newList, &addrConn{conn: conn, addr: addr, isConnected: false})
-		}
-		for _, conn := range oldList {
-			if conn.isConnected {
-				conn.isConnected = false
-				newList = append(newList, conn)
-				continue
-			}
-			if err = conn.conn.Close(); err != nil {
-				log.ZWarn(ctx, "close conn err", err)
-			}
-		}
-		r.connMap[fullPrefix] = newList
+	if r.client == nil {
+		return fmt.Errorf("etcd client closed")
 	}
+
+	ctx := context.Background()
+	fullPrefix := fmt.Sprintf("%s/%s", r.rootDirectory, service)
+	resp, err := r.client.Get(ctx, fullPrefix, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+
+	oldList := r.connMap[fullPrefix]
+
+	addrMap := make(map[string]*addrConn, len(oldList))
+	for _, conn := range oldList {
+		addrMap[conn.addr] = conn
+	}
+	newList := make([]*addrConn, 0, len(oldList))
+	for _, kv := range resp.Kvs {
+		prefix, addr := r.splitEndpoint(string(kv.Key))
+		if addr == "" {
+			continue
+		}
+		if _, _, err = net.SplitHostPort(addr); err != nil {
+			continue
+		}
+		if prefix != fullPrefix {
+			continue
+		}
+
+		if conn, ok := addrMap[addr]; ok {
+			conn.isConnected = true
+			continue
+		}
+
+		dialOpts := append([]grpc.DialOption{}, r.dialOptions...)
+		if storedOpts, ok := r.serviceDialOptions[fullPrefix]; ok && len(storedOpts) > 0 {
+			dialOpts = append(dialOpts, storedOpts...)
+		} else if len(opts) > 0 {
+			dialOpts = append(dialOpts, opts...)
+		}
+		dialOpts = append(dialOpts, grpc.WithResolvers(r.resolver))
+
+		err := r.checkOpts(dialOpts...) // Check opts in include mw.GrpcClient()
+		if err != nil {
+			return errs.WrapMsg(err, "checkOpts is failed")
+		}
+
+		conn, err := grpc.DialContext(context.Background(), addr, dialOpts...)
+		if err != nil {
+			continue
+		}
+		newList = append(newList, &addrConn{conn: conn, addr: addr, isConnected: false})
+	}
+	for _, conn := range oldList {
+		if conn.isConnected {
+			conn.isConnected = false
+			newList = append(newList, conn)
+			continue
+		}
+		if err = conn.conn.Close(); err != nil {
+			log.ZWarn(ctx, "close conn err", err)
+		}
+	}
+	r.connMap[fullPrefix] = newList
 
 	return nil
 }
@@ -195,15 +347,29 @@ func (r *SvcDiscoveryRegistryImpl) GetUserIdHashGatewayHost(ctx context.Context,
 
 // GetConns returns gRPC client connections for a given service name
 func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error) {
+	if err := r.ensureServiceWatch(serviceName); err != nil {
+		return nil, err
+	}
+
 	fullServiceKey := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
+
+	if len(opts) > 0 {
+		r.mu.Lock()
+		r.serviceDialOptions[fullServiceKey] = append([]grpc.DialOption(nil), opts...)
+		r.mu.Unlock()
+	}
+
 	r.mu.RLock()
-	if len(r.connMap) == 0 {
-		r.mu.RUnlock()
-		if err := r.initializeConnMap(opts...); err != nil {
+	existing := r.connMap[fullServiceKey]
+	r.mu.RUnlock()
+
+	if len(existing) == 0 {
+		if err := r.initializeConnMap(serviceName, opts...); err != nil {
 			return nil, err
 		}
-		r.mu.RLock()
 	}
+
+	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return datautil.Batch(func(t *addrConn) grpc.ClientConnInterface { return t.conn }, r.connMap[fullServiceKey]), nil
 }
@@ -243,42 +409,178 @@ func (r *SvcDiscoveryRegistryImpl) AddOption(opts ...grpc.DialOption) {
 	r.dialOptions = append(r.dialOptions, opts...)
 }
 
-// CloseConn closes a given gRPC client connection
-//func (r *SvcDiscoveryRegistryImpl) CloseConn(conn *grpc.ClientConn) {
-//	conn.Close()
-//}
-
 // Register registers a new service endpoint with etcd
 func (r *SvcDiscoveryRegistryImpl) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
-	r.serviceKey = fmt.Sprintf("%s/%s/%s", r.rootDirectory, serviceName, net.JoinHostPort(host, strconv.Itoa(port)))
-	em, err := endpoints.NewManager(r.client, r.rootDirectory+"/"+serviceName)
-	if err != nil {
-		return err
-	}
-	r.endpointMgr = em
+	r.regMu.Lock()
+	defer r.regMu.Unlock()
 
-	leaseResp, err := r.client.Grant(ctx, 30) //
-	if err != nil {
-		return err
-	}
-	r.leaseID = leaseResp.ID
-
-	r.rpcRegisterTarget = fmt.Sprintf("%s:%d", host, port)
-	endpoint := endpoints.Endpoint{Addr: r.rpcRegisterTarget}
-
-	err = em.AddEndpoint(context.TODO(), r.serviceKey, endpoint, clientv3.WithLease(leaseResp.ID))
-	if err != nil {
-		return err
+	if r.client == nil {
+		return fmt.Errorf("etcd client is closed")
 	}
 
-	go r.keepAliveLease(r.leaseID)
+	if r.keepAliveCancel != nil {
+		r.keepAliveCancel()
+		r.keepAliveCancel = nil
+	}
 
-	//_, err := r.client.Put(ctx, BuildDiscoveryKey(serviceName), jsonutil.StructToJsonString(BuildDefaultTarget(host, port)))
-	//if err != nil {
-	//	return err
-	//}
+	if r.leaseID != 0 {
+		if _, err := r.client.Revoke(context.Background(), r.leaseID); err != nil {
+			log.ZWarn(ctx, "failed to revoke previous lease", err, zap.String("service", serviceName), zap.String("addr", net.JoinHostPort(host, strconv.Itoa(port))))
+		}
+		r.leaseID = 0
+	}
+
+	registerCtx, cancel := withTimeout(ctx, defaultRegisterTimeout)
+	defer cancel()
+
+	if err := r.registerLocked(registerCtx, serviceName, host, port); err != nil {
+		return err
+	}
+
+	keepCtx, keepCancel := context.WithCancel(context.Background())
+	r.keepAliveCancel = keepCancel
+	go r.keepAliveLoop(keepCtx)
 
 	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) registerLocked(ctx context.Context, serviceName, host string, port int) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	serviceDir := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
+	serviceKey := fmt.Sprintf("%s/%s", serviceDir, net.JoinHostPort(host, strconv.Itoa(port)))
+
+	manager, err := endpoints.NewManager(r.client, serviceDir)
+	if err != nil {
+		return err
+	}
+
+	leaseResp, err := r.client.Grant(ctx, defaultLeaseTTL)
+	if err != nil {
+		return err
+	}
+
+	endpointAddr := net.JoinHostPort(host, strconv.Itoa(port))
+	endpoint := endpoints.Endpoint{Addr: endpointAddr}
+
+	if err := manager.AddEndpoint(ctx, serviceKey, endpoint, clientv3.WithLease(leaseResp.ID)); err != nil {
+		return err
+	}
+
+	r.endpointMgr = manager
+	r.serviceKey = serviceKey
+	r.leaseID = leaseResp.ID
+	r.rpcRegisterTarget = endpointAddr
+	r.registeredService = serviceName
+	r.registeredHost = host
+	r.registeredPort = port
+
+	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) keepAliveLoop(ctx context.Context) {
+outer:
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		client := r.client
+		if client == nil {
+			return
+		}
+
+		r.regMu.Lock()
+		leaseID := r.leaseID
+		r.regMu.Unlock()
+		if leaseID == 0 {
+			return
+		}
+
+		ch, err := client.KeepAlive(ctx, leaseID)
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			if !r.reRegister(ctx, err) {
+				if !sleepWithContext(ctx, keepAliveRetryDelay) {
+					return
+				}
+			}
+			continue
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ka, ok := <-ch:
+				if !ok || ka == nil {
+					if ctx.Err() != nil {
+						return
+					}
+					if !r.reRegister(ctx, fmt.Errorf("keepalive channel closed")) {
+						if !sleepWithContext(ctx, keepAliveRetryDelay) {
+							return
+						}
+					}
+					continue outer
+				}
+			}
+		}
+	}
+}
+
+func (r *SvcDiscoveryRegistryImpl) reRegister(ctx context.Context, cause error) bool {
+	r.regMu.Lock()
+	defer r.regMu.Unlock()
+
+	if r.client == nil || r.registeredService == "" || r.registeredHost == "" {
+		return false
+	}
+
+	addr := net.JoinHostPort(r.registeredHost, strconv.Itoa(r.registeredPort))
+	log.ZWarn(context.Background(), "etcd keepalive lost, re-registering endpoint", cause, zap.String("service", r.registeredService), zap.String("addr", addr))
+
+	if r.leaseID != 0 {
+		if _, err := r.client.Revoke(context.Background(), r.leaseID); err != nil {
+			log.ZWarn(context.Background(), "failed to revoke stale lease", err, zap.String("service", r.registeredService), zap.String("addr", addr))
+		}
+		r.leaseID = 0
+	}
+
+	retryCtx, cancel := withTimeout(ctx, defaultRegisterTimeout)
+	defer cancel()
+
+	if err := r.registerLocked(retryCtx, r.registeredService, r.registeredHost, r.registeredPort); err != nil {
+		log.ZWarn(context.Background(), "re-register endpoint failed", err, zap.String("service", r.registeredService), zap.String("addr", addr))
+		return false
+	}
+
+	return true
+}
+
+func withTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		return context.WithTimeout(context.Background(), d)
+	}
+	if _, ok := ctx.Deadline(); ok {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, d)
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) bool {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 // keepAliveLease maintains the lease alive by sending keep-alive requests
@@ -298,15 +600,131 @@ func (r *SvcDiscoveryRegistryImpl) keepAliveLease(leaseID clientv3.LeaseID) {
 // watchServiceChanges watches for changes in the service directory
 func (r *SvcDiscoveryRegistryImpl) watchServiceChanges() {
 	for _, s := range r.watchNames {
-		go func() {
-			watchChan := r.client.Watch(context.Background(), r.rootDirectory+"/"+s, clientv3.WithPrefix())
-			for range watchChan {
-				if err := r.initializeConnMap(); err != nil {
-					log.ZWarn(context.Background(), "initializeConnMap in watch err", err)
-				}
-			}
-		}()
+		if err := r.ensureServiceWatch(s); err != nil {
+			log.ZWarn(context.Background(), "ensure service watch err", err, zap.String("service", s))
+		}
 	}
+}
+
+func (r *SvcDiscoveryRegistryImpl) ensureServiceWatch(service string) error {
+	r.serviceWatchMu.Lock()
+	if _, exists := r.serviceWatchers[service]; exists {
+		r.serviceWatchMu.Unlock()
+		return nil
+	}
+
+	if r.client == nil {
+		r.serviceWatchMu.Unlock()
+		return fmt.Errorf("etcd client closed")
+	}
+
+	watchCtx, cancel := context.WithCancel(context.Background())
+	r.serviceWatchers[service] = cancel
+	r.serviceWatchMu.Unlock()
+
+	go r.runServiceWatch(watchCtx, service)
+
+	return nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) runServiceWatch(ctx context.Context, service string) {
+	watchChan := r.client.Watch(ctx, fmt.Sprintf("%s/%s", r.rootDirectory, service), clientv3.WithPrefix())
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case _, ok := <-watchChan:
+			if !ok {
+				return
+			}
+			if err := r.initializeConnMap(service); err != nil {
+				log.ZWarn(context.Background(), "initializeConnMap in watch err", err, zap.String("service", service))
+			}
+		}
+	}
+}
+
+func (r *SvcDiscoveryRegistryImpl) stopServiceWatches() {
+	r.serviceWatchMu.Lock()
+	cancels := make([]context.CancelFunc, 0, len(r.serviceWatchers))
+	for _, cancel := range r.serviceWatchers {
+		cancels = append(cancels, cancel)
+	}
+	r.serviceWatchers = make(map[string]context.CancelFunc)
+	r.serviceWatchMu.Unlock()
+
+	for _, cancel := range cancels {
+		cancel()
+	}
+}
+
+func (r *SvcDiscoveryRegistryImpl) stopKeyWatches() {
+	r.watchKeyMu.Lock()
+	entries := make([]*watchKeyEntry, 0, len(r.watchKeyEntries))
+	for _, entry := range r.watchKeyEntries {
+		entries = append(entries, entry)
+	}
+	r.watchKeyEntries = make(map[string]*watchKeyEntry)
+	r.watchKeyMu.Unlock()
+
+	for _, entry := range entries {
+		if entry.cancel != nil {
+			entry.cancel()
+		}
+	}
+}
+
+func (r *SvcDiscoveryRegistryImpl) getOrCreateWatchKeyEntry(key string) (*watchKeyEntry, error) {
+	r.watchKeyMu.Lock()
+	if entry, ok := r.watchKeyEntries[key]; ok {
+		r.watchKeyMu.Unlock()
+		return entry, nil
+	}
+	if r.client == nil {
+		r.watchKeyMu.Unlock()
+		return nil, fmt.Errorf("etcd client closed")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	entry := &watchKeyEntry{
+		key:    key,
+		ctx:    ctx,
+		cancel: cancel,
+		subs:   make(map[*watchKeySubscriber]struct{}),
+	}
+	r.watchKeyEntries[key] = entry
+	r.watchKeyMu.Unlock()
+
+	go entry.run(r)
+	return entry, nil
+}
+
+func (r *SvcDiscoveryRegistryImpl) removeWatchKeySubscriber(key string, entry *watchKeyEntry, sub *watchKeySubscriber) {
+	if sub == nil || entry == nil {
+		return
+	}
+	sub.cancel()
+	empty := entry.removeSubscriber(sub)
+	if !empty {
+		return
+	}
+
+	r.watchKeyMu.Lock()
+	if current, ok := r.watchKeyEntries[key]; ok && current == entry {
+		delete(r.watchKeyEntries, key)
+	}
+	r.watchKeyMu.Unlock()
+
+	if entry.cancel != nil {
+		entry.cancel()
+	}
+}
+
+func (r *SvcDiscoveryRegistryImpl) removeWatchKeyEntry(key string, entry *watchKeyEntry) {
+	r.watchKeyMu.Lock()
+	if current, ok := r.watchKeyEntries[key]; ok && current == entry {
+		delete(r.watchKeyEntries, key)
+	}
+	r.watchKeyMu.Unlock()
 }
 
 // splitEndpoint splits the endpoint string into prefix and address
@@ -322,23 +740,62 @@ func (r *SvcDiscoveryRegistryImpl) splitEndpoint(input string) (string, string) 
 
 // UnRegister removes the service endpoint from etcd
 func (r *SvcDiscoveryRegistryImpl) UnRegister() error {
-	if r.endpointMgr == nil {
-		return fmt.Errorf("endpoint manager is not initialized")
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCloseTimeout)
+	defer cancel()
+
+	r.regMu.Lock()
+	if r.keepAliveCancel != nil {
+		r.keepAliveCancel()
+		r.keepAliveCancel = nil
 	}
-	err := r.endpointMgr.DeleteEndpoint(context.TODO(), r.serviceKey)
-	if err != nil {
+
+	mgr := r.endpointMgr
+	serviceKey := r.serviceKey
+	leaseID := r.leaseID
+	client := r.client
+
+	r.endpointMgr = nil
+	r.serviceKey = ""
+	r.leaseID = 0
+	r.registeredService = ""
+	r.registeredHost = ""
+	r.registeredPort = 0
+	r.regMu.Unlock()
+
+	if mgr == nil || serviceKey == "" {
+		return nil
+	}
+
+	if err := mgr.DeleteEndpoint(ctx, serviceKey); err != nil {
 		return err
 	}
+
+	if leaseID != 0 && client != nil {
+		if _, err := client.Revoke(ctx, leaseID); err != nil {
+			log.ZWarn(ctx, "failed to revoke lease during unregister", err, zap.String("serviceKey", serviceKey))
+		}
+	}
+
 	return nil
 }
 
 // Close closes the etcd client connection
 func (r *SvcDiscoveryRegistryImpl) Close() {
+	r.stopServiceWatches()
+	r.stopKeyWatches()
+
+	if err := r.UnRegister(); err != nil {
+		log.ZWarn(context.Background(), "failed to unregister on close", err)
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	r.resetConnMap()
+	r.serviceDialOptions = make(map[string][]grpc.DialOption)
 	if r.client != nil {
 		_ = r.client.Close()
+		r.client = nil
 	}
 }
 
@@ -438,7 +895,7 @@ func (r *SvcDiscoveryRegistryImpl) SetWithLease(ctx context.Context, key string,
 		return errs.Wrap(err)
 	}
 
-	_, err = r.client.Put(context.TODO(), key, string(val), clientv3.WithLease(leaseResp.ID))
+	_, err = r.client.Put(ctx, key, string(val), clientv3.WithLease(leaseResp.ID))
 	if err != nil {
 		return errs.Wrap(err)
 	}
@@ -478,15 +935,43 @@ func (r *SvcDiscoveryRegistryImpl) DelData(ctx context.Context, key string) erro
 }
 
 func (r *SvcDiscoveryRegistryImpl) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
-	watchChan := r.client.Watch(ctx, key)
-	for watchResp := range watchChan {
-		for _, event := range watchResp.Events {
-			if event.IsModify() && string(event.Kv.Key) == key {
-				if err := fn(&discovery.WatchKey{Value: event.Kv.Value}); err != nil {
-					return err
-				}
+	if ctx == nil {
+		return fmt.Errorf("context is nil")
+	}
+	if fn == nil {
+		return fmt.Errorf("watch handler is nil")
+	}
+
+	key = fmt.Sprintf("%s/%s", r.rootDirectory, key)
+
+	entry, err := r.getOrCreateWatchKeyEntry(key)
+	if err != nil {
+		return err
+	}
+
+	subCtx, cancel := context.WithCancel(ctx)
+	sub := &watchKeySubscriber{
+		ctx:    subCtx,
+		cancel: cancel,
+		events: make(chan *discovery.WatchKey, 16),
+	}
+
+	entry.addSubscriber(sub)
+	defer r.removeWatchKeySubscriber(key, entry, sub)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-sub.ctx.Done():
+			return nil
+		case event := <-sub.events:
+			if event == nil {
+				continue
+			}
+			if err := fn(event); err != nil {
+				return err
 			}
 		}
 	}
-	return nil
 }
