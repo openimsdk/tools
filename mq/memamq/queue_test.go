@@ -7,23 +7,6 @@ import (
 	"time"
 )
 
-//func TestNewMemoryQueue(t *testing.T) {
-//	workerCount := 3
-//	bufferSize := 10
-//	queue := NewMemoryQueue(workerCount, bufferSize)
-//
-//	if cap(queue.taskChan) != bufferSize {
-//		t.Errorf("Expected buffer size %d, got %d", bufferSize, cap(queue.taskChan))
-//	}
-//
-//	if queue.isStopped {
-//		t.Errorf("New queue is prematurely stopped")
-//	}
-//
-//	if len(queue.taskChan) != 0 {
-//		t.Errorf("New queue should be empty, found %d items", len(queue.taskChan))
-//	}
-//}
 
 func TestPushAndStop(t *testing.T) {
 	queue := NewMemoryQueue(1, 5)

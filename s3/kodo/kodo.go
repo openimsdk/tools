@@ -312,47 +312,6 @@ func (k *Kodo) AccessURL(ctx context.Context, name string, expire time.Duration,
 		return "", err
 	}
 	return res.URL, nil
-	//if opt == nil || opt.Image == nil {
-	//	params := &awss3.GetObjectInput{
-	//		Bucket: aws.String(k.Region),
-	//		Key:    aws.String(name),
-	//	}
-	//	if opt != nil {
-	//		if opt.ContentType != "" {
-	//			params.ResponseContentType = aws.String(opt.ContentType)
-	//		}
-	//		if opt.Filename != "" {
-	//			params.ResponseContentDisposition = aws.String(`attachment; filename*=UTF-8''` + url.PathEscape(opt.Filename))
-	//		}
-	//	}
-	//	res, err := k.PresignClient.PresignGetObject(ctx, params, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//	return res.URL, nil
-	//}
-	//https://developer.qiniu.com/dora/8255/the-zoom
-	//process := ""
-	//if opt.Image.Width > 0 {
-	//	process += strconv.Itoa(opt.Image.Width) + "x"
-	//}
-	//if opt.Image.Height > 0 {
-	//	if opt.Image.Width > 0 {
-	//		process += strconv.Itoa(opt.Image.Height)
-	//	} else {
-	//		process += "x" + strconv.Itoa(opt.Image.Height)
-	//	}
-	//}
-	//imageMogr := "imageMogr2/thumbnail/" + process
-	////expire
-	//deadline := time.Now().Add(expire).Unix()
-	//domain := k.BucketURL
-	//query := make(url.Values)
-	//privateURL := storage.MakePrivateURLv2WithQuery(k.Auth, domain, name, query, deadline)
-	//if imageMogr != "" {
-	//	privateURL += "&" + imageMogr
-	//}
-	//return privateURL, nil
 }
 
 func (k *Kodo) SetObjectContentType(ctx context.Context, name string, contentType string) error {

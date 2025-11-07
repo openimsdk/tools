@@ -858,16 +858,7 @@ func (r *SvcDiscoveryRegistryImpl) GetClient() *clientv3.Client {
 }
 
 func (r *SvcDiscoveryRegistryImpl) checkOpts(opts ...grpc.DialOption) error {
-	// mwOpt := mw.GrpcClient()
-
-	// for _, opt := range opts {
-	// 	if opt == mwOpt {
-	// 		return nil
-	// 	}
-	// }
-
-	// return errs.New("missing required grpc.DialOption", "option", "mw.GrpcClient")
-	return nil
+    return nil
 }
 
 func (r *SvcDiscoveryRegistryImpl) resetConnMap() {

@@ -33,53 +33,10 @@ func GrpcServerErrorConvert() grpc.ServerOption {
 }
 
 func getCodeError(err error) errs.CodeError {
-	if codeErr := specialerror.ErrCode(err); codeErr != nil {
-		return codeErr
-	}
-	return errs.ErrInternalServer.WithDetail(errs.Unwrap(err).Error())
-	//var (
-	//	code        int
-	//	msg, detail string
-	//)
-	//codeErr := specialerror.ErrCode(err)
-	//if codeErr != nil {
-	//	code = codeErr.Code()
-	//	msg = codeErr.Msg()
-	//	detail = codeErr.Detail()
-	//} else {
-	//	code = errs.ServerInternalError
-	//}
-	//if code <= 0 || int64(code) > int64(math.MaxUint32) {
-	//	code = errs.ServerInternalError
-	//}
-	//
-	//if msg == "" || detail == "" {
-	//	stringErr := specialerror.ErrString(err)
-	//	wrapErr := specialerror.ErrWrapper(err)
-	//
-	//	if stringErr != nil {
-	//		if msg == "" {
-	//			msg = stringErr.Error()
-	//		}
-	//	}
-	//
-	//	if wrapErr != nil {
-	//		if msg == "" {
-	//			msg = wrapErr.Error()
-	//		}
-	//		if detail == "" {
-	//			detail = wrapErr.Error()
-	//		}
-	//	}
-	//}
-	//if msg == "" {
-	//	msg = err.Error()
-	//}
-	//if detail == "" {
-	//	detail = msg
-	//}
-	//
-	//return errs.NewCodeError(code, msg).WithDetail(detail)
+    if codeErr := specialerror.ErrCode(err); codeErr != nil {
+        return codeErr
+    }
+    return errs.ErrInternalServer.WithDetail(errs.Unwrap(err).Error())
 }
 
 func codeErrorToGrpcError(ctx context.Context, codeErr errs.CodeError) error {
