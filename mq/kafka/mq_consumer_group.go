@@ -30,7 +30,7 @@ func NewMConsumerGroupV2(ctx context.Context, conf *Config, groupID string, topi
 		msg:      make(chan *consumerMessage, 64),
 	}
 	mcg.ctx, mcg.cancel = context.WithCancel(ctx)
-	mcg.loopConsume()
+	go mcg.loopConsume()
 	return mcg, nil
 }
 
@@ -56,38 +56,33 @@ func (*mqConsumerGroup) Cleanup(sarama.ConsumerGroupSession) error {
 }
 
 func (x *mqConsumerGroup) closeMsgChan() {
-	select {
-	case <-x.ctx.Done():
-		x.once.Do(func() {
-			close(x.msg)
-		})
-	default:
-	}
+	x.once.Do(func() {
+		x.cancel()
+		close(x.msg)
+	})
 }
 
 func (x *mqConsumerGroup) loopConsume() {
-	go func() {
-		defer x.closeMsgChan()
-		ctx := mcontext.SetOperationID(x.ctx, fmt.Sprintf("consumer_group_%s_%s_%d", strings.Join(x.topics, "_"), x.groupID, rand.Uint32()))
-		for {
-			if err := x.consumer.Consume(x.ctx, x.topics, x); err != nil {
-				switch {
-				case errors.Is(err, context.Canceled):
-					return
-				case errors.Is(err, sarama.ErrClosedConsumerGroup):
-					return
-				}
-				log.ZWarn(ctx, "consume err", err, "topic", x.topics, "groupID", x.groupID)
+	defer x.closeMsgChan()
+	ctx := mcontext.SetOperationID(x.ctx, fmt.Sprintf("consumer_group_%s_%s_%d", strings.Join(x.topics, "_"), x.groupID, rand.Uint32()))
+	for {
+		if err := x.consumer.Consume(x.ctx, x.topics, x); err != nil {
+			switch {
+			case errors.Is(err, context.Canceled):
+				return
+			case errors.Is(err, sarama.ErrClosedConsumerGroup):
+				return
 			}
+			log.ZWarn(ctx, "consume err", err, "topic", x.topics, "groupID", x.groupID)
 		}
-	}()
+	}
 }
 
 func (x *mqConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	defer func() {
 		_ = recover()
-		x.closeMsgChan()
 	}()
+
 	msg := claim.Messages()
 	for {
 		select {
@@ -97,7 +92,12 @@ func (x *mqConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 			if !ok {
 				return nil
 			}
-			x.msg <- &consumerMessage{Msg: val, Session: session}
+
+			select {
+			case <-x.ctx.Done():
+				return context.Canceled
+			case x.msg <- &consumerMessage{Msg: val, Session: session}:
+			}
 		}
 	}
 }
