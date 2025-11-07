@@ -85,7 +85,7 @@ func NewRedisClient(ctx context.Context, config *Config) (redis.UniversalClient,
 		} else {
 			cli = redis.NewFailoverClient(opt)
 		}
-	} else if config.RedisMode == ClusterMode && len(config.Address) > 1 {
+	} else if config.RedisMode == ClusterMode {
 		opt := &redis.ClusterOptions{
 			Addrs:      config.Address,
 			Username:   config.Username,
