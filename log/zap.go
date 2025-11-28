@@ -93,9 +93,10 @@ func InitLoggerFromConfig(
 	rotationTime uint,
 	moduleVersion string,
 	isSimplify bool,
+	opts ...Options,
 ) error {
 
-	l, err := NewZapLogger(loggerPrefixName, moduleName, sdkType, platformName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime, moduleVersion, isSimplify)
+	l, err := NewZapLogger(loggerPrefixName, moduleName, sdkType, platformName, logLevel, isStdout, isJson, logLocation, rotateCount, rotationTime, moduleVersion, isSimplify, opts...)
 	if err != nil {
 		return err
 	}
@@ -215,6 +216,7 @@ func NewZapLogger(
 	rotationTime uint,
 	moduleVersion string,
 	isSimplify bool,
+	ops ...Options,
 ) (*ZapLogger, error) {
 	zapConfig := zap.Config{
 		Level:             zap.NewAtomicLevelAt(logLevelMap[logLevel]),
@@ -243,6 +245,10 @@ func NewZapLogger(
 		return nil, err
 	}
 	zl.zap = l.Sugar()
+
+	for _, o := range ops {
+		o(zl)
+	}
 	return zl, nil
 }
 
