@@ -183,6 +183,14 @@ func Flush() {
 	pkgLogger.Flush()
 }
 
+type Options func(logger *ZapLogger)
+
+func WithDefaultKeys(keys []string) Options {
+	return func(logger *ZapLogger) {
+		logger.defaultKeys = keys
+	}
+}
+
 type ZapLogger struct {
 	zap              *zap.SugaredLogger
 	level            zapcore.Level
@@ -193,6 +201,8 @@ type ZapLogger struct {
 	sdkType          string
 	platformName     string
 	isSimplify       bool
+
+	defaultKeys []string
 }
 
 func NewZapLogger(
@@ -497,6 +507,13 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 			}
 		} else {
 			ZError(ctx, "keysAndValues length is not even", errs.ErrInternalServer.Wrap())
+		}
+	}
+
+	for _, k := range l.defaultKeys {
+		v, _ := ctx.Value(k).(string)
+		if v != "" {
+			keysAndValues = append([]any{k, v}, keysAndValues...)
 		}
 	}
 
