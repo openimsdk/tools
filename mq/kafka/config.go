@@ -79,6 +79,9 @@ func BuildProducerConfig(conf Config) (*sarama.Config, error) {
 			return nil, errs.WrapMsg(err, "UnmarshalText failed", "compressType", conf.CompressType)
 		}
 	}
+	if conf.MaxMessageBytes > 0 {
+		kfk.Producer.MaxMessageBytes = conf.MaxMessageBytes
+	}
 	if conf.TLS.EnableTLS {
 		tls, err := newTLSConfig(conf.TLS.ClientCrt, conf.TLS.ClientKey, conf.TLS.CACrt, []byte(conf.TLS.ClientKeyPwd), conf.TLS.InsecureSkipVerify)
 		if err != nil {
@@ -108,10 +111,11 @@ type TLSConfig struct {
 }
 
 type Config struct {
-	Username     string    `yaml:"username"`
-	Password     string    `yaml:"password"`
-	ProducerAck  string    `yaml:"producerAck"`
-	CompressType string    `yaml:"compressType"`
-	Addr         []string  `yaml:"addr"`
-	TLS          TLSConfig `yaml:"tls"`
+	Username        string    `yaml:"username"`
+	Password        string    `yaml:"password"`
+	ProducerAck     string    `yaml:"producerAck"`
+	CompressType    string    `yaml:"compressType"`
+	MaxMessageBytes int       `yaml:"maxMessageBytes"`
+	Addr            []string  `yaml:"addr"`
+	TLS             TLSConfig `yaml:"tls"`
 }
