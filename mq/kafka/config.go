@@ -28,6 +28,12 @@ func BuildConsumerGroupConfig(conf *Config, initial int64, autoCommitEnable bool
 	kfk.Consumer.Offsets.Initial = initial
 	kfk.Consumer.Offsets.AutoCommit.Enable = autoCommitEnable
 	kfk.Consumer.Return.Errors = false
+	if conf.ConsumerFetchDefaultBytes > 0 {
+		kfk.Consumer.Fetch.Default = int32(conf.ConsumerFetchDefaultBytes)
+	}
+	if conf.ConsumerFetchMaxBytes > 0 {
+		kfk.Consumer.Fetch.Max = int32(conf.ConsumerFetchMaxBytes)
+	}
 	if conf.Username != "" || conf.Password != "" {
 		kfk.Net.SASL.Enable = true
 		kfk.Net.SASL.User = conf.Username
@@ -111,11 +117,13 @@ type TLSConfig struct {
 }
 
 type Config struct {
-	Username        string    `yaml:"username"`
-	Password        string    `yaml:"password"`
-	ProducerAck     string    `yaml:"producerAck"`
-	CompressType    string    `yaml:"compressType"`
-	MaxMessageBytes int       `yaml:"maxMessageBytes"`
-	Addr            []string  `yaml:"addr"`
-	TLS             TLSConfig `yaml:"tls"`
+	Username                  string    `yaml:"username"`
+	Password                  string    `yaml:"password"`
+	ProducerAck               string    `yaml:"producerAck"`
+	CompressType              string    `yaml:"compressType"`
+	MaxMessageBytes           int       `yaml:"maxMessageBytes"`
+	ConsumerFetchDefaultBytes int       `yaml:"consumerFetchDefaultBytes"`
+	ConsumerFetchMaxBytes     int       `yaml:"consumerFetchMaxBytes"`
+	Addr                      []string  `yaml:"addr"`
+	TLS                       TLSConfig `yaml:"tls"`
 }
