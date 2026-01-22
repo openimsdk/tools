@@ -266,3 +266,11 @@ func IncrVersion(dbs ...func() error) error {
 	}
 	return nil
 }
+
+func BulkWrite(ctx context.Context, coll *mongo.Collection, models []mongo.WriteModel, opts ...*options.BulkWriteOptions) error {
+	_, err := coll.BulkWrite(ctx, models, opts...)
+	if err != nil {
+		return errs.WrapMsg(err, "mongo bulk write")
+	}
+	return nil
+}
