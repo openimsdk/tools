@@ -45,12 +45,13 @@ type Config struct {
 	SecretKey    string
 	SessionToken string
 	PublicRead   bool
+	CDN          string
 }
 
 func NewCos(conf Config) (*Cos, error) {
 	u, err := url.Parse(conf.BucketURL)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	client := cos.NewClient(&cos.BaseURL{BucketURL: u}, &http.Client{
 		Transport: &cos.AuthorizationTransport{
@@ -59,12 +60,24 @@ func NewCos(conf Config) (*Cos, error) {
 			SessionToken: conf.SessionToken,
 		},
 	})
-	return &Cos{
+	c := &Cos{
 		publicRead: conf.PublicRead,
 		copyURL:    u.Host + "/",
 		client:     client,
 		credential: client.GetCredential(),
-	}, nil
+	}
+	if conf.CDN != "" {
+		c.cdn = &cdnReplace{
+			oldValue: strings.TrimSuffix(conf.BucketURL, "/"),
+			newValue: strings.TrimSuffix(conf.CDN, "/"),
+		}
+	}
+	return c, nil
+}
+
+type cdnReplace struct {
+	oldValue string
+	newValue string
 }
 
 type Cos struct {
@@ -72,6 +85,17 @@ type Cos struct {
 	copyURL    string
 	client     *cos.Client
 	credential *cos.Credential
+	cdn        *cdnReplace
+}
+
+func (c *Cos) replaceURL(urlText *string) {
+	if c.cdn == nil {
+		return
+	}
+	if !strings.HasPrefix(*urlText, c.cdn.oldValue) {
+		return
+	}
+	*urlText = strings.Replace(*urlText, c.cdn.oldValue, c.cdn.newValue, 1)
 }
 
 func (c *Cos) Engine() string {
@@ -156,6 +180,7 @@ func (c *Cos) AuthSign(ctx context.Context, uploadID string, name string, expire
 			Query:      url.Values{"partNumber": {strconv.Itoa(partNumber)}},
 		}
 	}
+	c.replaceURL(&result.URL)
 	return &result, nil
 }
 
@@ -164,7 +189,9 @@ func (c *Cos) PresignedPutObject(ctx context.Context, name string, expire time.D
 	if err != nil {
 		return nil, err
 	}
-	return &s3.PresignedPutResult{URL: rawURL.String()}, nil
+	urlText := rawURL.String()
+	c.replaceURL(&urlText)
+	return &s3.PresignedPutResult{URL: urlText}, nil
 }
 
 func (c *Cos) DeleteObject(ctx context.Context, name string) error {
@@ -320,7 +347,9 @@ func (c *Cos) AccessURL(ctx context.Context, name string, expire time.Duration, 
 			rawURL.RawQuery = rawURL.RawQuery + "&" + imageMogr
 		}
 	}
-	return rawURL.String(), nil
+	urlText := rawURL.String()
+	c.replaceURL(&urlText)
+	return urlText, nil
 }
 
 func (c *Cos) getPresignedURL(ctx context.Context, name string, expire time.Duration, opt *cos.PresignedURLOptions) (*url.URL, error) {
@@ -377,6 +406,7 @@ func (c *Cos) FormData(ctx context.Context, name string, size int64, contentType
 	if c.credential.SessionToken != "" {
 		fd.FormData["x-cos-security-token"] = c.credential.SessionToken
 	}
+	c.replaceURL(&fd.URL)
 	return fd, nil
 }
 
