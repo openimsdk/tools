@@ -36,13 +36,13 @@ func (e *stackError) Cause() error {
 }
 
 func (e *stackError) Is(err error) bool {
-	if e == nil && err == nil {
-		return true
+	if e == nil {
+		return err == nil
 	}
-	if e != nil {
+	if err == nil {
 		return false
 	}
-	if e.err == err {
+	if e == err || e.err == err {
 		return true
 	}
 	return errors.Is(e.err, err)
