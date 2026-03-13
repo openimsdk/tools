@@ -91,7 +91,16 @@ func (e *codeError) Is(err error) bool {
 		if err == nil && e == nil {
 			return true
 		}
-		return false
+		// target isn't CodeError type, tring convert it.
+		for i := 0; i < len(Handlers); i++ {
+			if codeErr = Handlers[i](err); codeErr != nil {
+				break
+			}
+		}
+		// convert failed.
+		if codeErr == nil {
+			return false
+		}
 	}
 	if e == nil {
 		return false
@@ -192,3 +201,5 @@ func (r *codeRelation) Is(parent, child int) bool {
 	_, ok = s[child]
 	return ok
 }
+
+var Handlers []func(err error) CodeError
