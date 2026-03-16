@@ -2,9 +2,11 @@ package log
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/openimsdk/tools/errs"
@@ -25,6 +27,10 @@ var (
 		errs.ErrInternalServer.Code(): LevelError,
 	}
 	AsyncWrite = false
+
+	errInvalidLogLevel        = errors.New("invalid log level")
+	errInvalidTemporaryPeriod = errors.New("temporary log level duration must be greater than zero")
+	errUnsupportedLoggerType  = errors.New("logger does not support temporary level changes")
 )
 
 type LogFormatter interface {
@@ -184,6 +190,23 @@ func Flush() {
 	pkgLogger.Flush()
 }
 
+func SetTemporaryLevel(logLevel int, duration time.Duration) error {
+	if _, ok := logLevelMap[logLevel]; !ok {
+		return errInvalidLogLevel
+	}
+	if duration <= 0 {
+		return errInvalidTemporaryPeriod
+	}
+	if pkgLogger == nil {
+		return errUnsupportedLoggerType
+	}
+	logger, ok := pkgLogger.(*ZapLogger)
+	if !ok {
+		return errUnsupportedLoggerType
+	}
+	return logger.setTemporaryLevel(logLevelMap[logLevel], duration)
+}
+
 type Options func(logger *ZapLogger)
 
 func WithDefaultKeys(keys []string) Options {
@@ -192,9 +215,47 @@ func WithDefaultKeys(keys []string) Options {
 	}
 }
 
+type temporaryLevelState struct {
+	mu          sync.Mutex
+	baseLevel   zapcore.Level
+	atomicLevel zap.AtomicLevel
+	version     uint64
+}
+
+func newTemporaryLevelState(level zapcore.Level) *temporaryLevelState {
+	return &temporaryLevelState{
+		baseLevel:   level,
+		atomicLevel: zap.NewAtomicLevelAt(level),
+	}
+}
+
+func (s *temporaryLevelState) enabled(level zapcore.Level) bool {
+	return s.atomicLevel.Enabled(level)
+}
+
+func (s *temporaryLevelState) setTemporaryLevel(level zapcore.Level, duration time.Duration) error {
+	s.mu.Lock()
+	s.version++
+	version := s.version
+	s.atomicLevel.SetLevel(level)
+	s.mu.Unlock()
+
+	time.AfterFunc(duration, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.version != version {
+			return
+		}
+		s.atomicLevel.SetLevel(s.baseLevel)
+	})
+
+	return nil
+}
+
 type ZapLogger struct {
 	zap              *zap.SugaredLogger
 	level            zapcore.Level
+	levelState       *temporaryLevelState
 	moduleName       string
 	moduleVersion    string
 	loggerPrefixName string
@@ -227,7 +288,10 @@ func NewZapLogger(
 	} else {
 		zapConfig.Encoding = "console"
 	}
+	levelState := newTemporaryLevelState(logLevelMap[logLevel])
+	zapConfig.Level = levelState.atomicLevel
 	zl := &ZapLogger{level: logLevelMap[logLevel],
+		levelState:       levelState,
 		moduleName:       moduleName,
 		loggerPrefixName: loggerPrefixName,
 		rotationTime:     time.Duration(rotationTime) * time.Hour,
@@ -267,7 +331,9 @@ func NewConsoleZapLogger(
 	} else {
 		zapConfig.Encoding = "console"
 	}
-	zl := &ZapLogger{level: logLevelMap[logLevel], moduleName: moduleName, moduleVersion: moduleVersion}
+	levelState := newTemporaryLevelState(logLevelMap[logLevel])
+	zapConfig.Level = levelState.atomicLevel
+	zl := &ZapLogger{level: logLevelMap[logLevel], levelState: levelState, moduleName: moduleName, moduleVersion: moduleVersion}
 	opts, err := zl.consoleCores(outPut, isJson)
 	if err != nil {
 		return nil, err
@@ -319,12 +385,12 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 	var cores []zapcore.Core
 	if logLocation != "" {
 		cores = []zapcore.Core{
-			zapcore.NewCore(fileEncoder, writer, zap.NewAtomicLevelAt(l.level)),
+			zapcore.NewCore(fileEncoder, writer, l.levelEnabler()),
 		}
 	}
 
 	if isStdout {
-		cores = append(cores, zapcore.NewCore(fileEncoder, zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(l.level)))
+		cores = append(cores, zapcore.NewCore(fileEncoder, zapcore.Lock(os.Stdout), l.levelEnabler()))
 	}
 
 	return zap.WrapCore(func(c zapcore.Core) zapcore.Core {
@@ -353,7 +419,7 @@ func (l *ZapLogger) consoleCores(outPut *os.File, isJson bool) (zap.Option, erro
 		fileEncoder = zapcore.NewConsoleEncoder(c)
 	}
 	var cores []zapcore.Core
-	cores = append(cores, zapcore.NewCore(fileEncoder, zapcore.Lock(outPut), zap.NewAtomicLevelAt(l.level)))
+	cores = append(cores, zapcore.NewCore(fileEncoder, zapcore.Lock(outPut), l.levelEnabler()))
 
 	return zap.WrapCore(func(c zapcore.Core) zapcore.Core {
 		return zapcore.NewTee(cores...)
@@ -453,8 +519,29 @@ func (l *ZapLogger) ToZap() *zap.SugaredLogger {
 	return l.zap
 }
 
+func (l *ZapLogger) levelEnabler() zapcore.LevelEnabler {
+	if l.levelState != nil {
+		return l.levelState.atomicLevel
+	}
+	return zap.NewAtomicLevelAt(l.level)
+}
+
+func (l *ZapLogger) enabled(level zapcore.Level) bool {
+	if l.levelState != nil {
+		return l.levelState.enabled(level)
+	}
+	return level >= l.level
+}
+
+func (l *ZapLogger) setTemporaryLevel(level zapcore.Level, duration time.Duration) error {
+	if l == nil || l.levelState == nil {
+		return errUnsupportedLoggerType
+	}
+	return l.levelState.setTemporaryLevel(level, duration)
+}
+
 func (l *ZapLogger) Debug(ctx context.Context, msg string, keysAndValues ...any) {
-	if l.level > zapcore.DebugLevel {
+	if !l.enabled(zapcore.DebugLevel) {
 		return
 	}
 	keysAndValues = l.kvAppend(ctx, keysAndValues)
@@ -462,7 +549,7 @@ func (l *ZapLogger) Debug(ctx context.Context, msg string, keysAndValues ...any)
 }
 
 func (l *ZapLogger) Info(ctx context.Context, msg string, keysAndValues ...any) {
-	if l.level > zapcore.InfoLevel {
+	if !l.enabled(zapcore.InfoLevel) {
 		return
 	}
 	keysAndValues = l.kvAppend(ctx, keysAndValues)
@@ -470,7 +557,7 @@ func (l *ZapLogger) Info(ctx context.Context, msg string, keysAndValues ...any) 
 }
 
 func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	if l.level > zapcore.WarnLevel {
+	if !l.enabled(zapcore.WarnLevel) {
 		return
 	}
 	keysAndValues = l.kvAppend(ctx, appendError(keysAndValues, err))
@@ -478,7 +565,7 @@ func (l *ZapLogger) Warn(ctx context.Context, msg string, err error, keysAndValu
 }
 
 func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	if l.level > zapcore.ErrorLevel {
+	if !l.enabled(zapcore.ErrorLevel) {
 		return
 	}
 	keysAndValues = l.kvAppend(ctx, appendError(keysAndValues, err))
@@ -486,7 +573,7 @@ func (l *ZapLogger) Error(ctx context.Context, msg string, err error, keysAndVal
 }
 
 func (l *ZapLogger) Panic(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	if l.level > zapcore.PanicLevel {
+	if !l.enabled(zapcore.PanicLevel) {
 		return
 	}
 	keysAndValues = l.kvAppend(ctx, appendError(keysAndValues, err))
