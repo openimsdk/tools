@@ -2,6 +2,7 @@ package minio
 
 import (
 	"context"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -327,11 +328,79 @@ func (m *Minio) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, er
 	}, nil
 }
 
+func (m *Minio) copyObject(ctx context.Context, dst minio.CopyDestOptions, src minio.CopySrcOptions) (minio.UploadInfo, error) {
+	if err := copySrcOptionsValidate(src); err != nil {
+		return minio.UploadInfo{}, err
+	}
+	if err := copyDestOptionsValidate(dst); err != nil {
+		return minio.UploadInfo{}, err
+	}
+
+	header := make(http.Header)
+	dst.Marshal(header)
+	src.Marshal(header)
+
+	resp, err := executeMethod(m.core.Client, ctx, http.MethodPut, requestMetadata{
+		bucketName:   dst.Bucket,
+		objectName:   dst.Object,
+		customHeader: header,
+	})
+	if err != nil {
+		return minio.UploadInfo{}, err
+	}
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			// Drain any remaining Body and then close the connection.
+			// Without this closing connection would disallow re-using
+			// the same connection for future uses.
+			//  - http://stackoverflow.com/a/17961593/4465767
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+	}()
+
+	if resp.StatusCode != successCode {
+		return minio.UploadInfo{}, httpRespToErrorResponse(resp, dst.Bucket, dst.Object)
+	}
+
+	if dst.Progress != nil {
+		io.Copy(io.Discard, io.LimitReader(dst.Progress, dst.Size))
+	}
+
+	type copyObjectResult struct {
+		ETag         string
+		LastModified time.Time
+	}
+
+	cpObjRes := copyObjectResult{}
+
+	if err = xml.NewDecoder(resp.Body).Decode(&cpObjRes); err != nil {
+		return minio.UploadInfo{}, err
+	}
+
+	expTime, ruleID := amzExpirationToExpiryDateRuleID(resp.Header.Get("X-Amz-Expiration"))
+	etag := strings.Trim(resp.Header.Get("ETag"), `"`)
+	if etag == "" {
+		etag = strings.Trim(cpObjRes.ETag, `"'`)
+	}
+
+	return minio.UploadInfo{
+		Bucket:           dst.Bucket,
+		Key:              dst.Object,
+		LastModified:     cpObjRes.LastModified,
+		ETag:             etag,
+		VersionID:        resp.Header.Get("X-Amz-Version-Id"),
+		Expiration:       expTime,
+		ExpirationRuleID: ruleID,
+	}, nil
+}
+
 func (m *Minio) CopyObject(ctx context.Context, src string, dst string) (*s3.CopyObjectInfo, error) {
 	if err := m.initMinio(ctx); err != nil {
 		return nil, err
 	}
-	result, err := m.core.Client.CopyObject(ctx, minio.CopyDestOptions{
+	// for some versions compatible with s3, the ETag is returned via the body, not via the header.
+	result, err := m.copyObject(ctx, minio.CopyDestOptions{
 		Bucket: m.bucket,
 		Object: dst,
 	}, minio.CopySrcOptions{
