@@ -53,7 +53,7 @@ func (r *SvcDiscoveryRegistryImpl) SetKey(ctx context.Context, key string, data 
 	return nil
 }
 
-func (r *SvcDiscoveryRegistryImpl) setWithLease(ctx context.Context, key string, val []byte, ttl int64) (clientv3.LeaseID, error) {
+func (r *SvcDiscoveryRegistryImpl) setKeyWithLease(ctx context.Context, key string, val []byte, ttl int64) (clientv3.LeaseID, error) {
 	leaseResp, err := r.client.Grant(ctx, ttl) //
 	if err != nil {
 		return 0, errs.Wrap(err)
@@ -69,18 +69,7 @@ func (r *SvcDiscoveryRegistryImpl) setWithLease(ctx context.Context, key string,
 }
 
 func (r *SvcDiscoveryRegistryImpl) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
-	id, err := r.setWithLease(ctx, key, val, ttl)
-	if err != nil {
-		return errs.Wrap(err)
-	}
-	keepCtx := r.newKVKeepAliveContext()
-	go r.keepAliveLease(keepCtx, id)
-
-	return nil
-}
-
-func (r *SvcDiscoveryRegistryImpl) SetWithLeaseAndKeepLoop(ctx context.Context, key string, val []byte, ttl int64) error {
-	id, err := r.setWithLease(ctx, key, val, ttl)
+	id, err := r.setKeyWithLease(ctx, key, val, ttl)
 	if err != nil {
 		return errs.Wrap(err)
 	}
@@ -95,7 +84,7 @@ func (r *SvcDiscoveryRegistryImpl) SetWithLeaseAndKeepLoop(ctx context.Context, 
 			}
 
 			retryCtx, cancel := withTimeout(keepCtx, defaultRegisterTimeout)
-			newID, err := r.setWithLease(retryCtx, key, val, ttl)
+			newID, err := r.setKeyWithLease(retryCtx, key, val, ttl)
 			cancel()
 			if err != nil {
 				continue

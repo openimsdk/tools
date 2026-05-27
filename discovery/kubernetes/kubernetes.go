@@ -346,10 +346,6 @@ func (k *ConnManager) SetWithLease(ctx context.Context, key string, val []byte, 
 	return discovery.ErrNotSupported
 }
 
-func (r *ConnManager) SetWithLeaseAndKeepLoop(ctx context.Context, key string, val []byte, ttl int64) error {
-	return discovery.ErrNotSupported
-}
-
 func (k *ConnManager) GetKey(ctx context.Context, key string) ([]byte, error) {
 	return nil, discovery.ErrNotSupported
 }

@@ -194,10 +194,6 @@ func (s *ZkClient) SetWithLease(ctx context.Context, key string, val []byte, ttl
 	return discovery.ErrNotSupported
 }
 
-func (r *ZkClient) SetWithLeaseAndKeepLoop(ctx context.Context, key string, val []byte, ttl int64) error {
-	return discovery.ErrNotSupported
-}
-
 func (s *ZkClient) GetKey(ctx context.Context, key string) ([]byte, error) {
 	return nil, discovery.ErrNotSupported
 }
