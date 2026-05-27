@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
 	"github.com/openimsdk/tools/utils/datautil"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 )
 
 func (r *SvcDiscoveryRegistryImpl) combineKeyWithPrefix(key string) string {
@@ -78,6 +80,17 @@ func (r *SvcDiscoveryRegistryImpl) SetWithLease(ctx context.Context, key string,
 	go func() {
 		for {
 			r.keepAliveLease(keepCtx, id)
+			if keepCtx.Err() != nil {
+				return
+			}
+
+			log.ZWarn(
+				context.Background(),
+				"etcd lease keepalive stopped, resetting key with lease",
+				nil,
+				zap.String("key", key),
+				zap.Int64("leaseID", int64(id)),
+			)
 
 			if !sleepWithContext(keepCtx, keepAliveRetryDelay) {
 				return
@@ -87,6 +100,13 @@ func (r *SvcDiscoveryRegistryImpl) SetWithLease(ctx context.Context, key string,
 			newID, err := r.setKeyWithLease(retryCtx, key, val, ttl)
 			cancel()
 			if err != nil {
+				log.ZWarn(
+					context.Background(),
+					"reset etcd key with lease failed",
+					err,
+					zap.String("key", key),
+					zap.Int64("leaseID", int64(id)),
+				)
 				continue
 			}
 			id = newID
