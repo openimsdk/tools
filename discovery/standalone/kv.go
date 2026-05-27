@@ -28,6 +28,10 @@ func (x *keyValue) SetWithLease(ctx context.Context, key string, val []byte, ttl
 	return discovery.ErrNotSupported
 }
 
+func (r *keyValue) SetWithLeaseAndKeepLoop(ctx context.Context, key string, val []byte, ttl int64) error {
+	return discovery.ErrNotSupported
+}
+
 func (x *keyValue) GetKey(ctx context.Context, key string) ([]byte, error) {
 	x.lock.RLock()
 	defer x.lock.RUnlock()

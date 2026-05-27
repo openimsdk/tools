@@ -53,7 +53,7 @@ func (r *SvcDiscoveryRegistryImpl) registerLocked(ctx context.Context, serviceNa
 		ctx = context.Background()
 	}
 
-	serviceDir := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
+	serviceDir := r.combineKeyWithPrefix(serviceName)
 	serviceKey := fmt.Sprintf("%s/%s", serviceDir, net.JoinHostPort(host, strconv.Itoa(port)))
 
 	manager, err := endpoints.NewManager(r.client, serviceDir)
@@ -241,6 +241,7 @@ func (r *SvcDiscoveryRegistryImpl) UnRegister() error {
 func (r *SvcDiscoveryRegistryImpl) Close() {
 	r.stopServiceWatches()
 	r.stopKeyWatches()
+	r.stopKVKeepAlives()
 
 	if err := r.UnRegister(); err != nil {
 		log.ZWarn(context.Background(), "failed to unregister on close", err)

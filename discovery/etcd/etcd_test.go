@@ -2,12 +2,13 @@ package etcd
 
 import (
 	"context"
-	"github.com/openimsdk/tools/discovery"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/openimsdk/tools/discovery"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const testServerName = "auth"
@@ -79,7 +80,7 @@ func TestWatch(t *testing.T) {
 func TestGetValue(t *testing.T) {
 	r := getEtcd()
 	t.Log("start watch")
-	val, err := r.GetKeyWithPrefix(context.Background(), "openim/test-user")
+	val, err := r.GetKeyWithPrefix(context.Background(), "test-user")
 	if err != nil {
 		panic(err)
 	}

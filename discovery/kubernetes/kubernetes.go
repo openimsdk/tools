@@ -335,7 +335,7 @@ func (k *ConnManager) handleEndpointChange(obj interface{}) {
 }
 
 func (k *ConnManager) checkOpts(opts ...grpc.DialOption) error {
-    return nil
+	return nil
 }
 
 func (k *ConnManager) SetKey(ctx context.Context, key string, data []byte) error {
@@ -343,6 +343,10 @@ func (k *ConnManager) SetKey(ctx context.Context, key string, data []byte) error
 }
 
 func (k *ConnManager) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
+	return discovery.ErrNotSupported
+}
+
+func (r *ConnManager) SetWithLeaseAndKeepLoop(ctx context.Context, key string, val []byte, ttl int64) error {
 	return discovery.ErrNotSupported
 }
 
