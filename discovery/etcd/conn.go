@@ -23,7 +23,7 @@ func (r *SvcDiscoveryRegistryImpl) initializeConnMap(service string, opts ...grp
 	}
 
 	ctx := context.Background()
-	fullPrefix := fmt.Sprintf("%s/%s", r.rootDirectory, service)
+	fullPrefix := r.combineKeyWithPrefix(service)
 	resp, err := r.client.Get(ctx, fullPrefix, clientv3.WithPrefix())
 	if err != nil {
 		return err
@@ -98,7 +98,7 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 		return nil, err
 	}
 
-	fullServiceKey := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
+	fullServiceKey := r.combineKeyWithPrefix(serviceName)
 
 	if len(opts) > 0 {
 		r.mu.Lock()
@@ -123,7 +123,7 @@ func (r *SvcDiscoveryRegistryImpl) GetConns(ctx context.Context, serviceName str
 
 // GetConn returns a single gRPC client connection for a given service name
 func (r *SvcDiscoveryRegistryImpl) GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error) {
-	target := fmt.Sprintf("etcd:///%s/%s", r.rootDirectory, serviceName)
+	target := fmt.Sprintf("etcd:///%s", r.combineKeyWithPrefix(serviceName))
 
 	dialOpts := append(append(r.dialOptions, opts...), grpc.WithResolvers(r.resolver))
 
@@ -132,7 +132,7 @@ func (r *SvcDiscoveryRegistryImpl) GetConn(ctx context.Context, serviceName stri
 		return nil, errs.WrapMsg(err, "checkOpts is failed")
 	}
 
-	return grpc.DialContext(ctx, target, dialOpts...)
+	return grpc.NewClient(target, dialOpts...)
 }
 
 // GetSelfConnTarget returns the connection target for the current service

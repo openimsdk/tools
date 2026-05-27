@@ -335,7 +335,7 @@ func (k *ConnManager) handleEndpointChange(obj interface{}) {
 }
 
 func (k *ConnManager) checkOpts(opts ...grpc.DialOption) error {
-    return nil
+	return nil
 }
 
 func (k *ConnManager) SetKey(ctx context.Context, key string, data []byte) error {

@@ -165,7 +165,7 @@ func (r *SvcDiscoveryRegistryImpl) ensureServiceWatch(service string) error {
 }
 
 func (r *SvcDiscoveryRegistryImpl) runServiceWatch(ctx context.Context, service string) {
-	watchChan := r.client.Watch(ctx, fmt.Sprintf("%s/%s", r.rootDirectory, service), clientv3.WithPrefix())
+	watchChan := r.client.Watch(ctx, r.combineKeyWithPrefix(service), clientv3.WithPrefix())
 	for {
 		select {
 		case <-ctx.Done():
@@ -272,7 +272,7 @@ func (r *SvcDiscoveryRegistryImpl) WatchKey(ctx context.Context, key string, fn 
 		return fmt.Errorf("watch handler is nil")
 	}
 
-	key = fmt.Sprintf("%s/%s", r.rootDirectory, key)
+	key = r.combineKeyWithPrefix(key)
 
 	entry, err := r.getOrCreateWatchKeyEntry(key)
 	if err != nil {

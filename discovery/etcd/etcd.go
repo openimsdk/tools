@@ -53,6 +53,8 @@ type SvcDiscoveryRegistryImpl struct {
 
 	regMu             sync.Mutex
 	keepAliveCancel   context.CancelFunc
+	kvKeepAliveMu     sync.Mutex
+	kvKeepAliveCancel []context.CancelFunc
 	registeredService string
 	registeredHost    string
 	registeredPort    int
