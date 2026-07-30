@@ -74,6 +74,7 @@ require (
 	github.com/lestrrat-go/strftime v1.0.6
 	github.com/sercand/kuberesolver/v6 v6.0.1
 	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/xdg-go/scram v1.1.2
 	go.etcd.io/etcd/api/v3 v3.5.13
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
@@ -152,7 +153,6 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
-	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
