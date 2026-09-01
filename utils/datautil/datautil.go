@@ -748,3 +748,11 @@ func IfNil[T any](ptr *T, fallback T) T {
 	}
 	return *ptr
 }
+
+func SetIfNotNil[T any](values map[string]any, key string, value *T) bool {
+	if value == nil {
+		return false
+	}
+	values[key] = *value
+	return true
+}
