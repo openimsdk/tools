@@ -34,10 +34,8 @@ func BuildConsumerGroupConfig(conf *Config, initial int64, autoCommitEnable bool
 	if conf.ConsumerFetchMaxBytes > 0 {
 		kfk.Consumer.Fetch.Max = int32(conf.ConsumerFetchMaxBytes)
 	}
-	if conf.Username != "" || conf.Password != "" {
-		kfk.Net.SASL.Enable = true
-		kfk.Net.SASL.User = conf.Username
-		kfk.Net.SASL.Password = conf.Password
+	if err := configureSASL(kfk, conf); err != nil {
+		return nil, err
 	}
 	if conf.TLS.EnableTLS {
 		tls, err := newTLSConfig(conf.TLS.ClientCrt, conf.TLS.ClientKey, conf.TLS.CACrt, []byte(conf.TLS.ClientKeyPwd), conf.TLS.InsecureSkipVerify)
@@ -53,7 +51,7 @@ func BuildConsumerGroupConfig(conf *Config, initial int64, autoCommitEnable bool
 func NewConsumerGroup(conf *sarama.Config, addr []string, groupID string) (sarama.ConsumerGroup, error) {
 	cg, err := sarama.NewConsumerGroup(addr, groupID, conf)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "NewConsumerGroup failed", "addr", addr, "groupID", groupID, "conf", *conf)
+		return nil, errs.WrapMsg(err, "new consumer group failed", "addr", addr, "groupID", groupID)
 	}
 	return cg, nil
 }
@@ -63,10 +61,8 @@ func BuildProducerConfig(conf Config) (*sarama.Config, error) {
 	kfk.Producer.Return.Successes = true
 	kfk.Producer.Return.Errors = true
 	kfk.Producer.Partitioner = sarama.NewHashPartitioner
-	if conf.Username != "" || conf.Password != "" {
-		kfk.Net.SASL.Enable = true
-		kfk.Net.SASL.User = conf.Username
-		kfk.Net.SASL.Password = conf.Password
+	if err := configureSASL(kfk, &conf); err != nil {
+		return nil, err
 	}
 	switch strings.ToLower(conf.ProducerAck) {
 	case "no_response":
@@ -99,10 +95,40 @@ func BuildProducerConfig(conf Config) (*sarama.Config, error) {
 	return kfk, nil
 }
 
+func configureSASL(kfk *sarama.Config, conf *Config) error {
+	mechanism := strings.ToUpper(strings.TrimSpace(conf.SASLMechanism))
+	if mechanism == "" {
+		if conf.Username == "" && conf.Password == "" {
+			return nil
+		}
+		mechanism = string(sarama.SASLTypePlaintext)
+	}
+
+	switch sarama.SASLMechanism(mechanism) {
+	case sarama.SASLTypePlaintext:
+	case sarama.SASLTypeSCRAMSHA256, sarama.SASLTypeSCRAMSHA512:
+		if conf.Username == "" {
+			return errs.New("kafka SASL username is required").Wrap()
+		}
+		if conf.Password == "" {
+			return errs.New("kafka SASL password is required").Wrap()
+		}
+		kfk.Net.SASL.SCRAMClientGeneratorFunc = newSCRAMClientGenerator(sarama.SASLMechanism(mechanism))
+	default:
+		return errs.New("unsupported kafka SASL mechanism", "mechanism", conf.SASLMechanism).Wrap()
+	}
+
+	kfk.Net.SASL.Enable = true
+	kfk.Net.SASL.User = conf.Username
+	kfk.Net.SASL.Password = conf.Password
+	kfk.Net.SASL.Mechanism = sarama.SASLMechanism(mechanism)
+	return nil
+}
+
 func NewProducer(conf *sarama.Config, addr []string) (sarama.SyncProducer, error) {
 	producer, err := sarama.NewSyncProducer(addr, conf)
 	if err != nil {
-		return nil, errs.WrapMsg(err, "NewSyncProducer failed", "addr", addr, "conf", *conf)
+		return nil, errs.WrapMsg(err, "new sync producer failed", "addr", addr)
 	}
 	return producer, nil
 }
@@ -119,6 +145,7 @@ type TLSConfig struct {
 type Config struct {
 	Username                  string    `yaml:"username"`
 	Password                  string    `yaml:"password"`
+	SASLMechanism             string    `yaml:"saslMechanism"`
 	ProducerAck               string    `yaml:"producerAck"`
 	CompressType              string    `yaml:"compressType"`
 	MaxMessageBytes           int       `yaml:"maxMessageBytes"`
