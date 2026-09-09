@@ -21,7 +21,7 @@ func TestRemoteClientConnInvokeSuccess(t *testing.T) {
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		require.Equal(t, "op-123", r.Header.Get(constant.OperationID))
 
-		var req invokeRequest
+		var req InvokeRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		require.Equal(t, "messagegateway", req.Service)
 		require.Equal(t, "/inprocess.Test/Echo", req.Method)
@@ -31,7 +31,7 @@ func TestRemoteClientConnInvokeSuccess(t *testing.T) {
 		require.NoError(t, proto.Unmarshal(req.Request, &in))
 		out, err := proto.Marshal(wrapperspb.String(in.Value + ":remote"))
 		require.NoError(t, err)
-		require.NoError(t, json.NewEncoder(w).Encode(invokeResponse{Data: out}))
+		require.NoError(t, json.NewEncoder(w).Encode(InvokeResponse{Data: out}))
 	}))
 	defer server.Close()
 
@@ -44,7 +44,7 @@ func TestRemoteClientConnInvokeSuccess(t *testing.T) {
 
 func TestRemoteClientConnInvokeErrCode(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.NoError(t, json.NewEncoder(w).Encode(invokeResponse{
+		require.NoError(t, json.NewEncoder(w).Encode(InvokeResponse{
 			ErrCode: 1004,
 			ErrMsg:  "record not found",
 			ErrDlt:  "user not exist",
