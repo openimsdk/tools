@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/go-git/go-git/v5"
+
 	"github.com/openimsdk/tools/errs"
-	"gopkg.in/src-d/go-git.v4"
 )
 
 // Get returns the overall codebase version. It's for detecting

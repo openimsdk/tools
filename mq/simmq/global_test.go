@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/openimsdk/tools/mq"
 )
 
 func TestName(t *testing.T) {
@@ -19,8 +21,8 @@ func TestName(t *testing.T) {
 			t.Log("consumer end")
 			close(done)
 		}()
-		fn := func(ctx context.Context, key string, value []byte) error {
-			t.Logf("consumer key: %s, value: %s", key, value)
+		fn := func(msg mq.Message) error {
+			t.Logf("consumer key: %s, value: %s", msg.Key(), msg.Value())
 			return nil
 		}
 		c := GetTopicConsumer(topic)

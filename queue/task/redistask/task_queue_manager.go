@@ -237,6 +237,15 @@ func (m *QueueManager[T, K]) TransformProcessingData(ctx context.Context, fromKe
 	return m.backfillProcessingQueue(ctx, fromKey)
 }
 
+func (m *QueueManager[T, K]) AutoTransformProcessingData(ctx context.Context, fromKey K, data T) (K, error) {
+	key, assigned := m.assignStrategy(ctx, m)
+	if !assigned {
+		var zero K
+		return zero, task.ErrDataNotFound
+	}
+	return key, m.TransformProcessingData(ctx, fromKey, key, data)
+}
+
 func (m *QueueManager[T, K]) pushToProcessingQueue(ctx context.Context, key K, data T) error {
 	queueKey := m.getProcessingQueueKey(key)
 
