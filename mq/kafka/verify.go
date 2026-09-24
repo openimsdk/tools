@@ -16,7 +16,6 @@ package kafka
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/IBM/sarama"
 	"github.com/openimsdk/tools/errs"
@@ -29,13 +28,13 @@ func CheckTopics(ctx context.Context, conf *Config, topics []string) error {
 	}
 	cli, err := sarama.NewClient(conf.Addr, kfk)
 	if err != nil {
-		return errs.WrapMsg(err, "NewClient failed", "config: ", fmt.Sprintf("%+v", conf))
+		return errs.WrapMsg(err, "new kafka client failed", "addr", conf.Addr)
 	}
 	defer cli.Close()
 
 	existingTopics, err := cli.Topics()
 	if err != nil {
-		return errs.WrapMsg(err, "Failed to list topics")
+		return errs.WrapMsg(err, "failed to list topics")
 	}
 
 	existingTopicsMap := make(map[string]bool)
@@ -58,7 +57,7 @@ func CheckHealth(ctx context.Context, conf *Config) error {
 	}
 	cli, err := sarama.NewClient(conf.Addr, kfk)
 	if err != nil {
-		return errs.WrapMsg(err, "NewClient failed", "config: ", fmt.Sprintf("%+v", conf))
+		return errs.WrapMsg(err, "new kafka client failed", "addr", conf.Addr)
 	}
 	defer cli.Close()
 
