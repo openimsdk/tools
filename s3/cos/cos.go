@@ -67,10 +67,18 @@ func NewCos(conf Config) (*Cos, error) {
 		credential: client.GetCredential(),
 	}
 	if conf.CDN != "" {
+		cdnText := strings.TrimSuffix(conf.CDN, "/")
+		cdnURL, err := url.Parse(cdnText)
+		if err != nil {
+			return nil, err
+		}
 		c.cdn = &cdnReplace{
 			oldValue: strings.TrimSuffix(conf.BucketURL, "/"),
-			newValue: strings.TrimSuffix(conf.CDN, "/"),
+			newValue: cdnText,
 		}
+		// URLs returned to clients must be signed for the CDN host. Keep the
+		// bucket client for all server-side COS operations.
+		c.cdnClient = cos.NewClient(&cos.BaseURL{BucketURL: cdnURL}, nil)
 	}
 	return c, nil
 }
@@ -84,8 +92,16 @@ type Cos struct {
 	publicRead bool
 	copyURL    string
 	client     *cos.Client
+	cdnClient  *cos.Client
 	credential *cos.Credential
 	cdn        *cdnReplace
+}
+
+func (c *Cos) signingClient() *cos.Client {
+	if c.cdnClient != nil {
+		return c.cdnClient
+	}
+	return c.client
 }
 
 func (c *Cos) replaceURL(urlText *string) {
@@ -162,8 +178,9 @@ func (c *Cos) PartSize(ctx context.Context, size int64) (int64, error) {
 }
 
 func (c *Cos) AuthSign(ctx context.Context, uploadID string, name string, expire time.Duration, partNumbers []int) (*s3.AuthSignResult, error) {
+	signingClient := c.signingClient()
 	result := s3.AuthSignResult{
-		URL:    c.client.BaseURL.BucketURL.String() + "/" + cos.EncodeURIComponent(name),
+		URL:    signingClient.BaseURL.BucketURL.String() + "/" + cos.EncodeURIComponent(name),
 		Query:  url.Values{"uploadId": {uploadID}},
 		Header: make(http.Header),
 		Parts:  make([]s3.SignPart, len(partNumbers)),
@@ -185,7 +202,7 @@ func (c *Cos) AuthSign(ctx context.Context, uploadID string, name string, expire
 }
 
 func (c *Cos) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
-	rawURL, err := c.client.Object.GetPresignedURL(ctx, http.MethodPut, name, c.credential.SecretID, c.credential.SecretKey, expire, nil)
+	rawURL, err := c.signingClient().Object.GetPresignedURL(ctx, http.MethodPut, name, c.credential.SecretID, c.credential.SecretKey, expire, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +371,7 @@ func (c *Cos) AccessURL(ctx context.Context, name string, expire time.Duration, 
 
 func (c *Cos) getPresignedURL(ctx context.Context, name string, expire time.Duration, opt *cos.PresignedURLOptions) (*url.URL, error) {
 	if !c.publicRead {
-		return c.client.Object.GetPresignedURL(ctx, http.MethodGet, name, c.credential.SecretID, c.credential.SecretKey, expire, opt)
+		return c.signingClient().Object.GetPresignedURL(ctx, http.MethodGet, name, c.credential.SecretID, c.credential.SecretKey, expire, opt)
 	}
 	return c.client.Object.GetObjectURL(name), nil
 }
