@@ -8,7 +8,6 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
-	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -95,14 +94,9 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, watchName
 	if err != nil {
 		return nil, err
 	}
-	r, err := resolver.NewBuilder(client)
-	if err != nil {
-		return nil, err
-	}
-
 	s := &SvcDiscoveryRegistryImpl{
 		client:             client,
-		resolver:           r,
+		resolver:           resolverBuilder{client: client},
 		rootDirectory:      rootDirectory,
 		connMap:            make(map[string][]*addrConn),
 		serviceDialOptions: make(map[string][]grpc.DialOption),

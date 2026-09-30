@@ -20,12 +20,12 @@ func SliceSubFuncs[T, V any, E comparable](a []T, b []V, fna func(i T) E, fnb fu
 		return a
 	}
 	k := make(map[E]struct{})
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		k[fnb(b[i])] = struct{}{}
 	}
 	t := make(map[E]struct{})
 	rs := make([]T, 0, len(a))
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		e := fna(a[i])
 		if _, ok := t[e]; ok {
 			continue
@@ -99,12 +99,12 @@ func SliceSubConvertPre[E comparable, T any](a []T, b []E, fn func(t T) E) []T {
 // SliceAnySub returns elements in slice a that are not present in slice b (a - b).
 func SliceAnySub[E any, T comparable](a, b []E, fn func(t E) T) []E {
 	m := make(map[T]E)
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		v := b[i]
 		m[fn(v)] = v
 	}
 	var es []E
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		v := a[i]
 		if _, ok := m[fn(v)]; !ok {
 			es = append(es, v)
@@ -117,7 +117,7 @@ func SliceAnySub[E any, T comparable](a, b []E, fn func(t E) T) []E {
 func DistinctAny[E any, K comparable](es []E, fn func(e E) K) []E {
 	v := make([]E, 0, len(es))
 	tmp := map[K]struct{}{}
-	for i := 0; i < len(es); i++ {
+	for i := range es {
 		t := es[i]
 		k := fn(t)
 		if _, ok := tmp[k]; !ok {
@@ -131,7 +131,7 @@ func DistinctAny[E any, K comparable](es []E, fn func(e E) K) []E {
 func DistinctAnyGetComparable[E any, K comparable](es []E, fn func(e E) K) []K {
 	v := make([]K, 0, len(es))
 	tmp := map[K]struct{}{}
-	for i := 0; i < len(es); i++ {
+	for i := range es {
 		t := es[i]
 		k := fn(t)
 		if _, ok := tmp[k]; !ok {
@@ -180,7 +180,7 @@ func Delete[E any](es []E, index ...int) []E {
 			tmp[i] = struct{}{}
 		}
 		v := make([]E, 0, len(es))
-		for i := 0; i < len(es); i++ {
+		for i := range es {
 			if _, ok := tmp[i]; !ok {
 				v = append(v, es[i])
 			}
@@ -199,7 +199,7 @@ func DeleteAt[E any](es *[]E, index ...int) []E {
 // IndexAny get the index of the element
 func IndexAny[E any, K comparable](e E, es []E, fn func(e E) K) int {
 	k := fn(e)
-	for i := 0; i < len(es); i++ {
+	for i := range es {
 		if fn(es[i]) == k {
 			return i
 		}
@@ -285,7 +285,7 @@ func Duplicate[E comparable](es []E) bool {
 // SliceToMapOkAny slice to map (Custom type, filter)
 func SliceToMapOkAny[E any, K comparable, V any](es []E, fn func(e E) (K, V, bool)) map[K]V {
 	kv := make(map[K]V)
-	for i := 0; i < len(es); i++ {
+	for i := range es {
 		t := es[i]
 		if k, v, ok := fn(t); ok {
 			kv[k] = v
@@ -319,7 +319,7 @@ func SliceSetAny[E any, K comparable](es []E, fn func(e E) K) map[K]struct{} {
 
 func Filter[E, T any](es []E, fn func(e E) (T, bool)) []T {
 	rs := make([]T, 0, len(es))
-	for i := 0; i < len(es); i++ {
+	for i := range es {
 		e := es[i]
 		if t, ok := fn(e); ok {
 			rs = append(rs, t)
@@ -331,7 +331,7 @@ func Filter[E, T any](es []E, fn func(e E) (T, bool)) []T {
 // Slice Converts slice types in batches
 func Slice[E any, T any](es []E, fn func(e E) T) []T {
 	v := make([]T, len(es))
-	for i := 0; i < len(es); i++ {
+	for i := range es {
 		v[i] = fn(es[i])
 	}
 	return v
@@ -424,13 +424,13 @@ func BothExistAny[E any, K comparable](es [][]E, fn func(e E) K) []E {
 	}
 	var idx int
 	ei := make([]map[K]E, len(es))
-	for i := 0; i < len(ei); i++ {
+	for i := range ei {
 		e := es[i]
 		if len(e) == 0 {
 			return []E{}
 		}
 		kv := make(map[K]E)
-		for j := 0; j < len(e); j++ {
+		for j := range e {
 			t := e[j]
 			k := fn(t)
 			kv[k] = t
@@ -443,7 +443,7 @@ func BothExistAny[E any, K comparable](es [][]E, fn func(e E) K) []E {
 	v := make([]E, 0, len(ei[idx]))
 	for k := range ei[idx] {
 		all := true
-		for i := 0; i < len(ei); i++ {
+		for i := range ei {
 			if i == idx {
 				continue
 			}
@@ -527,7 +527,7 @@ func Equal[E comparable](a []E, b []E) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i := 0; i < len(a); i++ {
+	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
@@ -559,7 +559,7 @@ func Order[E comparable, T any](es []E, ts []T, fn func(t T) E) []T {
 		return ts
 	}
 	kv := make(map[E][]T)
-	for i := 0; i < len(ts); i++ {
+	for i := range ts {
 		t := ts[i]
 		k := fn(t)
 		kv[k] = append(kv[k], t)
