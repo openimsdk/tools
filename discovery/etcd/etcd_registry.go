@@ -5,18 +5,44 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 
-	"github.com/openimsdk/tools/log"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"github.com/openimsdk/tools/log"
 )
 
+type registrar struct {
+	client        *clientv3.Client
+	rootDirectory string
+
+	mu              sync.Mutex
+	endpointMgr     endpoints.Manager
+	serviceKey      string           // e.g. /openim/msg/192.168.1.10:10001
+	leaseID         clientv3.LeaseID // etcd current lease ID
+	target          string           // self exposed host:port (for IsSelfNode)
+	keepAliveCancel context.CancelFunc
+
+	// on reconnecting
+	service string
+	host    string
+	port    int
+}
+
+func newRegistrar(client *clientv3.Client, rootDirectory string) *registrar {
+	return &registrar{
+		client:        client,
+		rootDirectory: rootDirectory,
+	}
+}
+
 // Register registers a new service endpoint with etcd
-func (r *SvcDiscoveryRegistryImpl) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
-	r.regMu.Lock()
-	defer r.regMu.Unlock()
+func (r *registrar) Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	if r.client == nil {
 		return fmt.Errorf("etcd client is closed")
@@ -48,12 +74,12 @@ func (r *SvcDiscoveryRegistryImpl) Register(ctx context.Context, serviceName, ho
 	return nil
 }
 
-func (r *SvcDiscoveryRegistryImpl) registerLocked(ctx context.Context, serviceName, host string, port int) error {
+func (r *registrar) registerLocked(ctx context.Context, serviceName, host string, port int) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	serviceDir := r.combineKeyWithPrefix(serviceName)
+	serviceDir := fmt.Sprintf("%s/%s", r.rootDirectory, serviceName)
 	serviceKey := fmt.Sprintf("%s/%s", serviceDir, net.JoinHostPort(host, strconv.Itoa(port)))
 
 	manager, err := endpoints.NewManager(r.client, serviceDir)
@@ -77,15 +103,22 @@ func (r *SvcDiscoveryRegistryImpl) registerLocked(ctx context.Context, serviceNa
 	r.endpointMgr = manager
 	r.serviceKey = serviceKey
 	r.leaseID = leaseResp.ID
-	r.rpcRegisterTarget = endpointAddr
-	r.registeredService = serviceName
-	r.registeredHost = host
-	r.registeredPort = port
+	r.target = endpointAddr
+	r.service = serviceName
+	r.host = host
+	r.port = port
+
+	log.ZInfo(ctx, "rpc register success",
+		"service", serviceName,
+		"serviceKey", serviceKey,
+		"target", endpointAddr,
+		"leaseID", int64(leaseResp.ID),
+	)
 
 	return nil
 }
 
-func (r *SvcDiscoveryRegistryImpl) keepAliveLoop(ctx context.Context) {
+func (r *registrar) keepAliveLoop(ctx context.Context) {
 outer:
 	for {
 		if ctx.Err() != nil {
@@ -96,9 +129,9 @@ outer:
 			return
 		}
 
-		r.regMu.Lock()
+		r.mu.Lock()
 		leaseID := r.leaseID
-		r.regMu.Unlock()
+		r.mu.Unlock()
 		if leaseID == 0 {
 			return
 		}
@@ -137,17 +170,17 @@ outer:
 	}
 }
 
-func (r *SvcDiscoveryRegistryImpl) reRegister(ctx context.Context, cause error) bool {
-	r.regMu.Lock()
-	defer r.regMu.Unlock()
+func (r *registrar) reRegister(ctx context.Context, cause error) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	if r.client == nil || r.registeredService == "" || r.registeredHost == "" {
+	if r.client == nil || r.service == "" || r.host == "" {
 		return false
 	}
 
-	service := r.registeredService
-	host := r.registeredHost
-	port := r.registeredPort
+	service := r.service
+	host := r.host
+	port := r.port
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
 
 	oldLeaseID := r.leaseID
@@ -197,11 +230,11 @@ func (r *SvcDiscoveryRegistryImpl) reRegister(ctx context.Context, cause error) 
 }
 
 // UnRegister removes the service endpoint from etcd
-func (r *SvcDiscoveryRegistryImpl) UnRegister() error {
+func (r *registrar) UnRegister() error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCloseTimeout)
 	defer cancel()
 
-	r.regMu.Lock()
+	r.mu.Lock()
 	if r.keepAliveCancel != nil {
 		r.keepAliveCancel()
 		r.keepAliveCancel = nil
@@ -215,45 +248,49 @@ func (r *SvcDiscoveryRegistryImpl) UnRegister() error {
 	r.endpointMgr = nil
 	r.serviceKey = ""
 	r.leaseID = 0
-	r.registeredService = ""
-	r.registeredHost = ""
-	r.registeredPort = 0
-	r.regMu.Unlock()
+	r.target = ""
+	r.service = ""
+	r.host = ""
+	r.port = 0
+	r.mu.Unlock()
 
 	if mgr == nil || serviceKey == "" {
 		return nil
 	}
 
 	if err := mgr.DeleteEndpoint(ctx, serviceKey); err != nil {
+		log.ZWarn(ctx, "failed to delete endpoint during unregister", err, "serviceKey", serviceKey)
 		return err
 	}
 
+	log.ZInfo(ctx, "rpc unregister success", "serviceKey", serviceKey)
+
 	if leaseID != 0 && client != nil {
 		if _, err := client.Revoke(ctx, leaseID); err != nil {
-			log.ZWarn(ctx, "failed to revoke lease during unregister", err, zap.String("serviceKey", serviceKey))
+			log.ZWarn(ctx, "failed to revoke lease during unregister", err, "serviceKey", serviceKey)
 		}
 	}
 
 	return nil
 }
 
-// Close closes the etcd client connection
-func (r *SvcDiscoveryRegistryImpl) Close() {
-	r.stopServiceWatches()
-	r.stopKeyWatches()
-	r.stopKVKeepAlives()
-
-	if err := r.UnRegister(); err != nil {
-		log.ZWarn(context.Background(), "failed to unregister on close", err)
-	}
-
+// GetSelfConnTarget returns the connection target for the current service
+func (r *registrar) GetSelfConnTarget() string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.target
+}
 
-	r.resetConnMap()
-	r.serviceDialOptions = make(map[string][]grpc.DialOption)
-	if r.client != nil {
-		_ = r.client.Close()
-		r.client = nil
+// IsSelfNode checks if the given client conn connects to the current service
+func (r *registrar) IsSelfNode(cc grpc.ClientConnInterface) bool {
+	cli, ok := cc.(*grpc.ClientConn)
+	if !ok {
+		return false
 	}
+	target := r.GetSelfConnTarget()
+	return target != "" && target == cli.Target()
+}
+
+func (r *registrar) close() error {
+	return r.UnRegister()
 }

@@ -272,10 +272,6 @@ func (k *ConnManager) UnRegister() error {
 	return nil
 }
 
-func (k *ConnManager) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
-	return "", nil
-}
-
 func (k *ConnManager) getServicePort(serviceName string) (int32, error) {
 	var svcPort int32
 

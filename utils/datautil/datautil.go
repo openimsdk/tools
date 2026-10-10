@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
-	"time"
 
 	"github.com/jinzhu/copier"
 
@@ -714,9 +713,8 @@ func CopySlice[T any](a []T) []T {
 }
 
 func ShuffleSlice[T any](a []T) []T {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	shuffled := CopySlice(a)
-	r.Shuffle(len(shuffled), func(i, j int) {
+	rand.Shuffle(len(shuffled), func(i, j int) {
 		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
 	})
 	return shuffled
@@ -755,4 +753,25 @@ func SetIfNotNil[T any](values map[string]any, key string, value *T) bool {
 	}
 	values[key] = *value
 	return true
+}
+
+func Reduce[T, R any](values []T, initial R, fn func(R, T) R) R {
+	result := initial
+	for _, value := range values {
+		result = fn(result, value)
+	}
+	return result
+}
+
+func Flatten[T any](slices ...[]T) []T {
+	capacity := 0
+	for _, slice := range slices {
+		capacity += len(slice)
+	}
+
+	result := make([]T, 0, capacity)
+	for _, slice := range slices {
+		result = append(result, slice...)
+	}
+	return result
 }

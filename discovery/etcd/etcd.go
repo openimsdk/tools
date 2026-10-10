@@ -2,16 +2,14 @@ package etcd
 
 import (
 	"context"
-	"io"
-	"sync"
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
-	gresolver "google.golang.org/grpc/resolver"
+
+	"github.com/openimsdk/tools/log"
+	"github.com/openimsdk/tools/utils/datautil"
 )
 
 const (
@@ -21,57 +19,14 @@ const (
 	defaultCloseTimeout    = 5 * time.Second
 )
 
-// CfgOption defines a function type for modifying clientv3.Config
-type CfgOption func(*clientv3.Config)
-type addrConn struct {
-	conn        *grpc.ClientConn
-	addr        string
-	isConnected bool
-}
-
 // SvcDiscoveryRegistryImpl implementation
 type SvcDiscoveryRegistryImpl struct {
-	client            *clientv3.Client
-	resolver          gresolver.Builder
-	dialOptions       []grpc.DialOption
-	serviceKey        string
-	endpointMgr       endpoints.Manager
-	leaseID           clientv3.LeaseID
-	rpcRegisterTarget string
-	watchNames        []string
-
+	client        *clientv3.Client
 	rootDirectory string
 
-	mu                 sync.RWMutex
-	connMap            map[string][]*addrConn
-	serviceDialOptions map[string][]grpc.DialOption
-	serviceWatchMu     sync.Mutex
-	serviceWatchers    map[string]context.CancelFunc
-	watchKeyMu         sync.Mutex
-	watchKeyEntries    map[string]*watchKeyEntry
-
-	regMu             sync.Mutex
-	keepAliveCancel   context.CancelFunc
-	kvKeepAliveMu     sync.Mutex
-	kvKeepAliveCancel []context.CancelFunc
-	registeredService string
-	registeredHost    string
-	registeredPort    int
-}
-
-func createNoOpLogger() *zap.Logger {
-	// Create a no-op write syncer
-	noOpWriter := zapcore.AddSync(io.Discard)
-
-	// Create a basic zap core with the no-op writer
-	core := zapcore.NewCore(
-		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-		noOpWriter,
-		zapcore.InfoLevel, // You can set this to any level that suits your needs
-	)
-
-	// Create the logger using the core
-	return zap.New(core)
+	*registrar
+	*connPool
+	*kvHub
 }
 
 // NewSvcDiscoveryRegistry creates a new service discovery registry implementation
@@ -81,34 +36,51 @@ func NewSvcDiscoveryRegistry(rootDirectory string, endpoints []string, watchName
 		DialTimeout: 5 * time.Second,
 		// Increase keep-alive queue capacity and message size
 		PermitWithoutStream: true,
-		Logger:              createNoOpLogger(),
+		Logger:              zap.NewNop(),
 		MaxCallSendMsgSize:  10 * 1024 * 1024, // 10 MB
 	}
 
 	// Apply provided options to the config
-	for _, opt := range options {
-		opt(&cfg)
-	}
+	datautil.Foreach(options, func(option CfgOption) { option(&cfg) })
+
+	cfg.DialOptions = append(cfg.DialOptions, grpc.WithStatsHandler(etcdRPCDiagnostics{}))
 
 	client, err := clientv3.New(cfg)
 	if err != nil {
 		return nil, err
 	}
-	s := &SvcDiscoveryRegistryImpl{
-		client:             client,
-		resolver:           resolverBuilder{client: client},
-		rootDirectory:      rootDirectory,
-		connMap:            make(map[string][]*addrConn),
-		serviceDialOptions: make(map[string][]grpc.DialOption),
-		watchNames:         watchNames,
-		serviceWatchers:    make(map[string]context.CancelFunc),
-		watchKeyEntries:    make(map[string]*watchKeyEntry),
-	}
+	client.Watcher = newReconnectingWatcher(client, client.Watcher)
 
-	s.watchServiceChanges()
-	return s, nil
+	log.ZInfo(context.Background(), "etcd client created",
+		"endpoints", cfg.Endpoints,
+		"rootDirectory", rootDirectory,
+		"authConfigured", cfg.Username != "",
+	)
+
+	return &SvcDiscoveryRegistryImpl{
+		client:        client,
+		rootDirectory: rootDirectory,
+		registrar:     newRegistrar(client, rootDirectory),
+		connPool:      newConnPool(client, rootDirectory, watchNames),
+		kvHub:         newKVHub(client, rootDirectory),
+	}, nil
 }
 
 func (r *SvcDiscoveryRegistryImpl) GetClient() *clientv3.Client {
 	return r.client
+}
+
+func (r *SvcDiscoveryRegistryImpl) Close() {
+	if r.connPool != nil {
+		r.connPool.close()
+	}
+	if r.kvHub != nil {
+		r.kvHub.close()
+	}
+	if r.registrar != nil {
+		_ = r.registrar.UnRegister()
+	}
+	if r.client != nil {
+		_ = r.client.Close()
+	}
 }

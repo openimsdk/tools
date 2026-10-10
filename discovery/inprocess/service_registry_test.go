@@ -27,10 +27,6 @@ func TestServiceRegistryRegisterAndConns(t *testing.T) {
 	require.NoError(t, registry.Register(ctx, "messagegateway", "127.0.0.1", 10001))
 	require.Equal(t, "127.0.0.1:10001", registry.Target())
 
-	host, err := registry.GetUserIdHashGatewayHost(ctx, "user1")
-	require.NoError(t, err)
-	require.Equal(t, "127.0.0.1:10001", host)
-
 	registry.setBroadcastAddressProvider("secret", func(context.Context) ([]string, error) {
 		return []string{
 			"127.0.0.1:10001",

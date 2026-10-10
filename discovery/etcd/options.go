@@ -4,8 +4,10 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"google.golang.org/grpc"
 )
+
+// CfgOption defines a function type for modifying clientv3.Config
+type CfgOption func(*clientv3.Config)
 
 // WithDialTimeout sets a custom dial timeout for the etcd client
 func WithDialTimeout(timeout time.Duration) CfgOption {
@@ -27,8 +29,4 @@ func WithUsernameAndPassword(username, password string) CfgOption {
 		cfg.Username = username
 		cfg.Password = password
 	}
-}
-
-func (r *SvcDiscoveryRegistryImpl) checkOpts(_ ...grpc.DialOption) error {
-	return nil
 }

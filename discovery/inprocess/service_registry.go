@@ -76,10 +76,6 @@ func (r *serviceRegistry) Close() {
 	r.memoryKV.close()
 }
 
-func (r *serviceRegistry) GetUserIdHashGatewayHost(context.Context, string) (string, error) {
-	return r.Target(), nil
-}
-
 // SetBroadcastAddress enables cross-instance calls: GetConns returns the local
 // in-process connection plus one remote connection per address reported by fn.
 // secret must equal the peers' share.secret, which their RpcInvoke endpoint checks.

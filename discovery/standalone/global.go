@@ -46,7 +46,3 @@ func (x *svcDiscoveryRegistry) Register(ctx context.Context, serviceName, host s
 }
 
 func (x *svcDiscoveryRegistry) Close() {}
-
-func (x *svcDiscoveryRegistry) GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) {
-	return "", nil
-}

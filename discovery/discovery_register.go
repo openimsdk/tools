@@ -56,5 +56,4 @@ type SvcDiscoveryRegistry interface {
 	AddOption(opts ...grpc.DialOption)
 	Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error
 	Close()
-	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error)
 }
