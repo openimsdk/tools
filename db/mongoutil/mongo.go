@@ -18,16 +18,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/openimsdk/tools/db/tx"
-	"github.com/openimsdk/tools/errs"
-	"github.com/openimsdk/tools/log"
-	"github.com/openimsdk/tools/mw/specialerror"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/tag"
+
+	"github.com/openimsdk/tools/db/tx"
+	"github.com/openimsdk/tools/errs"
+	"github.com/openimsdk/tools/log"
+	"github.com/openimsdk/tools/mw/specialerror"
 )
 
 // MongoMode
@@ -117,58 +118,44 @@ func (c *Client) GetTx() tx.Tx {
 
 // NewMongoDB initializes a new MongoDB connection.
 func NewMongoDB(ctx context.Context, config *Config) (*Client, error) {
+	if err := config.ValidateAndSetDefaults(); err != nil {
+		return nil, err
+	}
+
 	var opts *options.ClientOptions
-
-	if config.MongoMode == ReplicaSetMode {
-		if config.ReplicaSet == nil {
-			return nil, errs.New("replicaSet configuration required for replicaSet mode")
-		}
-		if config.ReplicaSet.Name == "" {
-			return nil, errs.New("replicaSet name required for replicaSet mode")
-		}
-		if len(config.ReplicaSet.Hosts) == 0 && len(config.Address) == 0 {
-			return nil, errs.New("replicaSet hosts or address required for replicaSet mode")
-		}
-	} else {
-		if config.Uri == "" && config.Address == nil {
-			return nil, errs.New("address required for standalone mode")
-		}
-	}
-
-	if config.MongoMode == "" {
-		config.MongoMode = StandaloneMode
-	}
-
 	switch config.MongoMode {
 	case ReplicaSetMode:
 		opts = buildReplicaSetOptions(config)
 	case StandaloneMode:
-		if err := config.ValidateAndSetDefaults(); err != nil {
-			return nil, err
-		}
-
 		opts = options.Client().ApplyURI(config.Uri).SetMaxPoolSize(uint64(config.MaxPoolSize))
 	}
 
-	var (
-		cli *mongo.Client
-		err error
-	)
+	cli, err := mongo.Connect(ctx, opts)
+	if err != nil {
+		return nil, errs.WrapMsg(err, "failed to connect to MongoDB", "URI", config.Uri)
+	}
 
-	for range config.MaxRetry {
-		cli, err = connectMongo(ctx, opts)
-		if err != nil && shouldRetry(ctx, err) {
+retry:
+	for i := range config.MaxRetry {
+		err = cli.Ping(ctx, nil)
+		if err != nil && i+1 < config.MaxRetry && shouldRetry(ctx, err) {
 			log.ZError(ctx, "Fail to connect Mongo", err)
-			time.Sleep(time.Second / 2)
+			select {
+			case <-ctx.Done():
+				break retry
+			case <-time.After(retryDelay(i)):
+			}
 			continue
 		}
 		break
 	}
 	if err != nil {
+		_ = cli.Disconnect(context.Background())
 		return nil, errs.WrapMsg(err, "failed to connect to MongoDB", "URI", config.Uri)
 	}
 	mtx, err := NewMongoTx(ctx, cli)
 	if err != nil {
+		_ = cli.Disconnect(context.Background())
 		return nil, err
 	}
 	return &Client{
@@ -294,15 +281,4 @@ func buildReadConcern(level string) *readconcern.ReadConcern {
 	default:
 		return readconcern.Local()
 	}
-}
-
-func connectMongo(ctx context.Context, opts *options.ClientOptions) (*mongo.Client, error) {
-	cli, err := mongo.Connect(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	if err := cli.Ping(ctx, nil); err != nil {
-		return nil, err
-	}
-	return cli, nil
 }

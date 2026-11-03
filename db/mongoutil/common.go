@@ -16,15 +16,25 @@ package mongoutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/rand/v2"
+	"net"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/auth"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 )
 
 const (
 	defaultMaxPoolSize = 100
 	defaultMaxRetry    = 3
+
+	mongoDriverCodeUnauthorized         = 13
+	mongoDriverCodeAuthenticationFailed = 18
 )
 
 func buildMongoURI(config *Config, authSource string) string {
@@ -46,13 +56,35 @@ func buildMongoURI(config *Config, authSource string) string {
 
 // shouldRetry determines whether an error should trigger a retry.
 func shouldRetry(ctx context.Context, err error) bool {
-	select {
-	case <-ctx.Done():
+	if err == nil || ctx.Err() != nil {
 		return false
-	default:
-		if cmdErr, ok := err.(mongo.CommandError); ok {
-			return cmdErr.Code != 13 && cmdErr.Code != 18
-		}
-		return true
 	}
+	var cmdErr mongo.CommandError
+	if errors.As(err, &cmdErr) && (cmdErr.Code == mongoDriverCodeUnauthorized || cmdErr.Code == mongoDriverCodeAuthenticationFailed) {
+		return false
+	}
+	var drvErr driver.Error
+	if errors.As(err, &drvErr) && (drvErr.Code == mongoDriverCodeUnauthorized || drvErr.Code == mongoDriverCodeAuthenticationFailed) {
+		return false
+	}
+	var authErr *auth.Error
+	if errors.As(err, &authErr) && !errors.As(authErr, new(net.Error)) {
+		return false
+	}
+	var sse topology.ServerSelectionError
+	if errors.As(err, &sse) {
+		for _, server := range sse.Desc.Servers {
+			if server.LastError != nil && !shouldRetry(ctx, server.LastError) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func retryDelay(attempt int) time.Duration {
+	const base = 500 * time.Millisecond
+	const maxDelay = 5 * time.Second
+	delay := min(base<<min(attempt, 4), maxDelay)
+	return delay/2 + rand.N(delay/2)
 }

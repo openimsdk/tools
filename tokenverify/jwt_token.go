@@ -1,9 +1,10 @@
 package tokenverify
 
 import (
+	"errors"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
 	"github.com/openimsdk/tools/errs"
@@ -42,20 +43,15 @@ func GetClaimFromToken(tokensString string, secretFunc jwt.Keyfunc) (*Claims, er
 		return nil, errs.WrapMsg(errs.ErrTokenUnknown, "claims unknown", "token", tokensString)
 	}
 
-	if ve, ok := err.(*jwt.ValidationError); ok {
-		return nil, errs.WrapMsg(mapValidationError(ve), "jwt parse error", "token", tokensString)
+	switch {
+	case errors.Is(err, jwt.ErrTokenMalformed):
+		err = errs.ErrTokenMalformed
+	case errors.Is(err, jwt.ErrTokenExpired):
+		err = errs.ErrTokenExpired
+	case errors.Is(err, jwt.ErrTokenNotValidYet), errors.Is(err, jwt.ErrTokenUsedBeforeIssued):
+		err = errs.ErrTokenNotValidYet
+	default:
+		err = errs.ErrTokenUnknown
 	}
-
 	return nil, errs.WrapMsg(err, "jwt parse error", "token", tokensString)
-}
-
-func mapValidationError(ve *jwt.ValidationError) error {
-	if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-		return errs.ErrTokenMalformed
-	} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
-		return errs.ErrTokenExpired
-	} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
-		return errs.ErrTokenNotValidYet
-	}
-	return errs.NewCodeError(errs.TokenUnknownError, ve.Error())
 }
