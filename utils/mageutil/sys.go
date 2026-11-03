@@ -2,12 +2,13 @@ package mageutil
 
 import (
 	"fmt"
-	"github.com/shirou/gopsutil/net"
-	"github.com/shirou/gopsutil/process"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/shirou/gopsutil/v3/net"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 func OsArch() string {
@@ -40,9 +41,9 @@ func CheckProcessNames(processPath string, expectedCount int) error {
 
 	if runningCount == expectedCount {
 		return nil
-	} else {
-		return fmt.Errorf("%s Expected %d processes, but %d running", processPath, expectedCount, runningCount)
 	}
+
+	return fmt.Errorf("%s Expected %d processes, but %d running", processPath, expectedCount, runningCount)
 }
 
 // CheckProcessNamesExist checks if there are any processes running that match the specified path.

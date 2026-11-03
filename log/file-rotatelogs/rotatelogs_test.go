@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
 	"github.com/stretchr/testify/assert"
 )
 
